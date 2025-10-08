@@ -1,44 +1,49 @@
-import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { Platform } from 'react-native';
+import localforage from 'localforage';
+import { drizzle as drizzleExpo } from 'drizzle-orm/expo-sqlite';
+import { drizzle as drizzleLocalforage } from 'drizzle-orm/localforage';
+import * as SQLite from 'expo-sqlite/next';
 
 import * as schema from './schema';
 
-let sqlite: SQLiteDatabase | undefined;
+const DATABASE_NAME = 'frc-redzone-app';
+const STORE_NAME = 'frc_redzone_store';
 
-const globalContext = globalThis as typeof globalThis & {
-  navigator?: { product?: string };
-  window?: unknown;
-};
+function initializeLocalforageDb() {
+  localforage.config({
+    driver: localforage.INDEXEDDB,
+    name: DATABASE_NAME,
+    storeName: STORE_NAME,
+    description: 'IndexedDB store for offline scouting data',
+  });
 
-const canUseSQLite =
-  typeof globalContext.window !== 'undefined' ||
-  globalContext.navigator?.product === 'ReactNative';
+  return drizzleLocalforage(localforage, { schema });
+}
 
-if (canUseSQLite) {
-  try {
-    const database = openDatabaseSync('frc-redzone-app.db');
+function initializeExpoSqliteDb() {
+  const database = SQLite.openDatabaseSync(`${DATABASE_NAME}.db`);
 
-    database.execSync('PRAGMA foreign_keys = ON;');
+  database.execSync('PRAGMA foreign_keys = ON;');
 
-    const createStatements = [
-      `CREATE TABLE IF NOT EXISTS teamrecord (
+  const createStatements = [
+    `CREATE TABLE IF NOT EXISTS teamrecord (
     team_number INTEGER PRIMARY KEY NOT NULL,
     team_name TEXT NOT NULL,
     location TEXT
   );`,
-      `CREATE TABLE IF NOT EXISTS frcevent (
+    `CREATE TABLE IF NOT EXISTS frcevent (
     event_key TEXT PRIMARY KEY NOT NULL,
     event_name TEXT NOT NULL,
     short_name TEXT,
     year INTEGER NOT NULL,
     week INTEGER NOT NULL
   );`,
-      `CREATE TABLE IF NOT EXISTS season (
+    `CREATE TABLE IF NOT EXISTS season (
     id INTEGER PRIMARY KEY NOT NULL,
     year INTEGER NOT NULL,
     name TEXT NOT NULL
   );`,
-      `CREATE TABLE IF NOT EXISTS matchschedule (
+    `CREATE TABLE IF NOT EXISTS matchschedule (
     event_key TEXT NOT NULL,
     match_number INTEGER NOT NULL,
     match_level TEXT NOT NULL,
@@ -57,29 +62,36 @@ if (canUseSQLite) {
     FOREIGN KEY (blue2_id) REFERENCES teamrecord(team_number),
     FOREIGN KEY (blue3_id) REFERENCES teamrecord(team_number)
   );`,
-      `CREATE TABLE IF NOT EXISTS teamevent (
+    `CREATE TABLE IF NOT EXISTS teamevent (
     event_key TEXT NOT NULL,
     team_number INTEGER NOT NULL,
     PRIMARY KEY (event_key, team_number),
     FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
     FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
   );`,
-    ];
+  ];
 
-    for (const statement of createStatements) {
-      database.execSync(statement);
-    }
-
-    sqlite = database;
-  } catch (error) {
-    console.warn(
-      'expo-sqlite failed to initialize; skipping SQLite setup for this environment.',
-      error
-    );
+  for (const statement of createStatements) {
+    database.execSync(statement);
   }
+
+  return drizzleExpo(database, { schema });
 }
 
-const drizzleDb = sqlite ? drizzle(sqlite, { schema }) : undefined;
+type LocalforageDatabase = ReturnType<typeof initializeLocalforageDb>;
+type ExpoSqliteDatabase = ReturnType<typeof initializeExpoSqliteDb>;
+
+let drizzleDb: LocalforageDatabase | ExpoSqliteDatabase | undefined;
+
+try {
+  if (Platform.OS === 'web') {
+    drizzleDb = initializeLocalforageDb();
+  } else {
+    drizzleDb = initializeExpoSqliteDb();
+  }
+} catch (error) {
+  console.warn('Failed to initialize database; persistence will be unavailable.', error);
+}
 
 export const db = drizzleDb;
 
@@ -87,7 +99,7 @@ export type Database = NonNullable<typeof drizzleDb>;
 
 export function getDbOrThrow(): Database {
   if (!drizzleDb) {
-    throw new Error('SQLite database is not available in this environment.');
+    throw new Error('Database is not available in this environment.');
   }
 
   return drizzleDb;
