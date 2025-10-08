@@ -3,6 +3,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
+import '@/db'; // Initialize the SQLite-backed storage on startup.
+
 import { AuthProvider, OrganizationProvider } from '@/app/providers';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
