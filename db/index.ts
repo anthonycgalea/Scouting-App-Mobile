@@ -3,7 +3,7 @@ import { openDatabaseSync } from 'expo-sqlite/next';
 
 import * as schema from './schema';
 
-const sqlite = openDatabaseSync('scouting-app.db');
+const sqlite = openDatabaseSync('frc-redzone-app.db');
 
 sqlite.execSync('PRAGMA foreign_keys = ON;');
 
@@ -21,7 +21,7 @@ const createStatements = [
     week INTEGER NOT NULL
   );`,
   `CREATE TABLE IF NOT EXISTS season (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY NOT NULL,
     year INTEGER NOT NULL,
     name TEXT NOT NULL
   );`,
@@ -62,3 +62,4 @@ export const db = drizzle(sqlite, { schema });
 export type Database = typeof db;
 
 export { schema };
+
