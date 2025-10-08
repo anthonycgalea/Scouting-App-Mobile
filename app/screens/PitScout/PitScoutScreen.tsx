@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
+import { apiClient } from '@/app/services/api/client';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
-import { apiClient } from '@/app/services/api/client';
 
 export function PitScoutScreen() {
   const [pingResponse, setPingResponse] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function PitScoutScreen() {
       setError(null);
 
       try {
-        const { data } = await apiClient.get('/public/ping');
+        const { data } = await apiClient.get('/ping');
 
         if (!isMounted) {
           return;
