@@ -1,31 +1,44 @@
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { openDatabaseSync } from 'expo-sqlite/next';
+import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 
 import * as schema from './schema';
 
-const sqlite = openDatabaseSync('frc-redzone-app.db');
+let sqlite: SQLiteDatabase | undefined;
 
-sqlite.execSync('PRAGMA foreign_keys = ON;');
+const globalContext = globalThis as typeof globalThis & {
+  navigator?: { product?: string };
+  window?: unknown;
+};
 
-const createStatements = [
-  `CREATE TABLE IF NOT EXISTS teamrecord (
+const canUseSQLite =
+  typeof globalContext.window !== 'undefined' ||
+  globalContext.navigator?.product === 'ReactNative';
+
+if (canUseSQLite) {
+  try {
+    const database = openDatabaseSync('frc-redzone-app.db');
+
+    database.execSync('PRAGMA foreign_keys = ON;');
+
+    const createStatements = [
+      `CREATE TABLE IF NOT EXISTS teamrecord (
     team_number INTEGER PRIMARY KEY NOT NULL,
     team_name TEXT NOT NULL,
     location TEXT
   );`,
-  `CREATE TABLE IF NOT EXISTS frcevent (
+      `CREATE TABLE IF NOT EXISTS frcevent (
     event_key TEXT PRIMARY KEY NOT NULL,
     event_name TEXT NOT NULL,
     short_name TEXT,
     year INTEGER NOT NULL,
     week INTEGER NOT NULL
   );`,
-  `CREATE TABLE IF NOT EXISTS season (
+      `CREATE TABLE IF NOT EXISTS season (
     id INTEGER PRIMARY KEY NOT NULL,
     year INTEGER NOT NULL,
     name TEXT NOT NULL
   );`,
-  `CREATE TABLE IF NOT EXISTS matchschedule (
+      `CREATE TABLE IF NOT EXISTS matchschedule (
     event_key TEXT NOT NULL,
     match_number INTEGER NOT NULL,
     match_level TEXT NOT NULL,
@@ -44,22 +57,40 @@ const createStatements = [
     FOREIGN KEY (blue2_id) REFERENCES teamrecord(team_number),
     FOREIGN KEY (blue3_id) REFERENCES teamrecord(team_number)
   );`,
-  `CREATE TABLE IF NOT EXISTS teamevent (
+      `CREATE TABLE IF NOT EXISTS teamevent (
     event_key TEXT NOT NULL,
     team_number INTEGER NOT NULL,
     PRIMARY KEY (event_key, team_number),
     FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
     FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
   );`,
-];
+    ];
 
-for (const statement of createStatements) {
-  sqlite.execSync(statement);
+    for (const statement of createStatements) {
+      database.execSync(statement);
+    }
+
+    sqlite = database;
+  } catch (error) {
+    console.warn(
+      'expo-sqlite failed to initialize; skipping SQLite setup for this environment.',
+      error
+    );
+  }
 }
 
-export const db = drizzle(sqlite, { schema });
+const drizzleDb = sqlite ? drizzle(sqlite, { schema }) : undefined;
 
-export type Database = typeof db;
+export const db = drizzleDb;
+
+export type Database = NonNullable<typeof drizzleDb>;
+
+export function getDbOrThrow(): Database {
+  if (!drizzleDb) {
+    throw new Error('SQLite database is not available in this environment.');
+  }
+
+  return drizzleDb;
+}
 
 export { schema };
-
