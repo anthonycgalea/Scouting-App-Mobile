@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const DEV_WEB_BASE_URL = 'http://localhost:5173';
+const DEV_WEB_BASE_URL = 'http://localhost:8000';
 
 /**
  * Returns the base API url when the app is running in a web browser.
