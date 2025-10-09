@@ -6,6 +6,7 @@ type TeamRecordResponse = {
   team_number: number;
   team_name: string;
   location?: string | null;
+  rookieYear?: string | number | null;
 };
 
 type EventResponse = {
@@ -16,21 +17,25 @@ type EventResponse = {
   week: number | null;
 };
 
-type PaginatedResponse<T> =
-  | T[]
-  | {
-      data?: T[] | { data?: T[]; items?: T[]; results?: T[] };
-      items?: T[];
-      results?: T[];
-      meta?: {
-        nextPage?: number | null;
-        hasNext?: boolean;
-        page?: number;
-        currentPage?: number;
-        totalPages?: number;
-        lastPage?: number;
-      };
-    };
+type PaginatedResponseMeta = {
+  page?: number | null;
+  currentPage?: number | null;
+  pageSize?: number | null;
+  totalItems?: number | null;
+  totalPages?: number | null;
+  lastPage?: number | null;
+  hasNext?: boolean | null;
+  nextPage?: number | null;
+};
+
+type PaginatedResponseData<T> = {
+  data?: T[] | { data?: T[]; items?: T[]; results?: T[] };
+  items?: T[];
+  results?: T[];
+  meta?: PaginatedResponseMeta;
+};
+
+type PaginatedResponse<T> = T[] | PaginatedResponseData<T>;
 
 type UpsertResult = {
   created: number;
@@ -45,7 +50,7 @@ export type UpdateGeneralDataResult = {
 const normalizeTeam = (team: TeamRecordResponse) => ({
   teamNumber: team.team_number,
   teamName: team.team_name,
-  location: team.location ?? null,
+  location: team.location ? team.location.trim() || null : null,
 });
 
 const normalizeEvent = (event: EventResponse) => ({
@@ -90,41 +95,72 @@ function extractItems<T>(response: PaginatedResponse<T>): T[] {
   return [];
 }
 
-function hasMorePages<T>(response: PaginatedResponse<T>, currentPage: number, receivedItems: T[]): boolean {
+const resolveCurrentPage = <T>(response: PaginatedResponse<T>, requestedPage: number | undefined): number => {
   if (!Array.isArray(response)) {
     const meta = response?.meta;
 
     if (meta) {
-      if (typeof meta.nextPage === 'number') {
-        return meta.nextPage > currentPage;
+      const { currentPage, page } = meta;
+
+      if (typeof currentPage === 'number' && Number.isFinite(currentPage)) {
+        return currentPage;
       }
 
-      if (typeof meta.hasNext === 'boolean') {
-        return meta.hasNext;
-      }
-
-      const totalPages = meta.totalPages ?? meta.lastPage;
-      const page = meta.page ?? meta.currentPage;
-
-      if (typeof page === 'number' && typeof totalPages === 'number') {
-        return page < totalPages;
+      if (typeof page === 'number' && Number.isFinite(page)) {
+        return page;
       }
     }
   }
 
-  return receivedItems.length > 0;
+  return requestedPage ?? 0;
+};
+
+function getNextPage<T>(
+  response: PaginatedResponse<T>,
+  requestedPage: number | undefined,
+  receivedItems: T[],
+): number | null {
+  const currentPage = resolveCurrentPage(response, requestedPage);
+
+  if (!Array.isArray(response)) {
+    const meta = response?.meta;
+
+    if (meta) {
+      if (meta.hasNext === false) {
+        return null;
+      }
+
+      if (meta.nextPage === null) {
+        return null;
+      }
+
+      if (typeof meta.nextPage === 'number' && Number.isFinite(meta.nextPage)) {
+        return meta.nextPage;
+      }
+
+      if (meta.hasNext === true) {
+        return currentPage + 1;
+      }
+    }
+  }
+
+  if (receivedItems.length === 0) {
+    return null;
+  }
+
+  return currentPage + 1;
 }
 
 async function syncTeams(): Promise<UpsertResult> {
   const db = getDbOrThrow();
-  let page = 1;
+  let page: number | undefined;
   let created = 0;
   let updated = 0;
 
   while (true) {
     const data = await apiRequest<PaginatedResponse<TeamRecordResponse>>('/public/teams', {
       method: 'GET',
-      params: { page: page.toString() },
+      params: page !== undefined ? { page: page.toString() } : undefined,
     });
 
     const items = extractItems(data);
@@ -165,11 +201,18 @@ async function syncTeams(): Promise<UpsertResult> {
       }
     });
 
-    if (!hasMorePages(data, page, items)) {
+    const nextPage = getNextPage(data, page, items);
+
+    if (nextPage === null) {
       break;
     }
 
-    page += 1;
+    if (page !== undefined && nextPage <= page) {
+      page = page + 1;
+      continue;
+    }
+
+    page = nextPage;
   }
 
   return { created, updated };
