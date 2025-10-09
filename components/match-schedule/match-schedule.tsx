@@ -257,6 +257,7 @@ const styles = StyleSheet.create({
   matchLabelText: {
     fontSize: 20,
     fontWeight: '700',
+    textAlign: 'center',
   },
   matchStatusWrapper: {
     alignItems: 'flex-start',
