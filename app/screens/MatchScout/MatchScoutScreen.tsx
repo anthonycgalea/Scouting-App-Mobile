@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import {
@@ -55,8 +56,34 @@ const MOCK_MATCHES: MatchScheduleEntry[] = [
 
 export function MatchScoutScreen() {
   const [selectedSection, setSelectedSection] = useState<MatchScheduleSection>('qualification');
+  const router = useRouter();
 
   const groupedMatches = useMemo(() => groupMatchesBySection(MOCK_MATCHES), []);
+
+  const handleMatchPress = useCallback(
+    (match: MatchScheduleEntry) => {
+      const params: Record<string, string> = {
+        matchLevel: match.match_level,
+        matchNumber: String(match.match_number),
+      };
+
+      const maybeAddTeam = (key: string, value: number | null | undefined) => {
+        if (value !== null && value !== undefined) {
+          params[key] = String(value);
+        }
+      };
+
+      maybeAddTeam('red1', match.red1_id);
+      maybeAddTeam('red2', match.red2_id);
+      maybeAddTeam('red3', match.red3_id);
+      maybeAddTeam('blue1', match.blue1_id);
+      maybeAddTeam('blue2', match.blue2_id);
+      maybeAddTeam('blue3', match.blue3_id);
+
+      router.push({ pathname: '/(drawer)/match-scout/select-team', params });
+    },
+    [router]
+  );
 
   return (
     <ScreenContainer>
@@ -65,7 +92,7 @@ export function MatchScoutScreen() {
         onChange={setSelectedSection}
         options={SECTION_DEFINITIONS}
       />
-      <MatchSchedule matches={groupedMatches[selectedSection]} />
+      <MatchSchedule matches={groupedMatches[selectedSection]} onMatchPress={handleMatchPress} />
     </ScreenContainer>
   );
 }

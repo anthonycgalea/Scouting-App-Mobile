@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -9,6 +9,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import type { MatchScheduleEntry, TeamMatchValidationEntry } from './types';
 
 interface RowData {
+  match: MatchScheduleEntry;
   matchNumber: number;
   matchLevel: string;
   red1?: number | null;
@@ -25,6 +26,7 @@ interface MatchScheduleProps {
   validationEntries?: TeamMatchValidationEntry[];
   isValidationLoading?: boolean;
   isValidationError?: boolean;
+  onMatchPress?: (match: MatchScheduleEntry) => void;
 }
 
 const createMatchKey = (matchLevel: string, matchNumber: number) =>
@@ -41,6 +43,7 @@ const createRowData = (
       const matchKey = createMatchKey(match.match_level, match.match_number);
 
       return {
+        match,
         matchNumber: match.match_number,
         matchLevel: match.match_level,
         red1: match.red1_id,
@@ -82,6 +85,7 @@ export function MatchSchedule({
   validationEntries,
   isValidationError = false,
   isValidationLoading = false,
+  onMatchPress,
 }: MatchScheduleProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -123,9 +127,17 @@ export function MatchSchedule({
     const blueTeams = [row.blue1, row.blue2, row.blue3];
 
     return (
-      <View
+      <Pressable
         key={`${row.matchLevel}-${row.matchNumber}`}
-        style={[styles.matchCard, { backgroundColor: cardBackground, borderColor: dividerColor }]}
+        onPress={onMatchPress ? () => onMatchPress(row.match) : undefined}
+        style={({ pressed }) => [
+          styles.matchCard,
+          {
+            backgroundColor: cardBackground,
+            borderColor: dividerColor,
+            opacity: pressed ? 0.96 : 1,
+          },
+        ]}
       >
         <View style={styles.matchLayout}>
           <View
@@ -177,7 +189,7 @@ export function MatchSchedule({
             </View>
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   });
 
