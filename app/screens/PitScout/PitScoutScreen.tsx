@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { Stack } from 'expo-router';
+
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -81,6 +83,7 @@ export function PitScoutScreen() {
 
   return (
     <ScreenContainer>
+      <Stack.Screen options={{ title: 'Pit Scout' }} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
