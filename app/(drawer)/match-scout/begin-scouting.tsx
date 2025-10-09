@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
@@ -14,27 +14,7 @@ type BeginScoutingParams = {
   matchNumber?: string | string[];
   eventKey?: string | string[];
   driverStation?: string | string[];
-};
-
-const parseTabletFromDriverStation = (driverStation: string | undefined) => {
-  const normalized = driverStation?.toLowerCase();
-
-  switch (normalized) {
-    case 'red1':
-      return '1';
-    case 'red2':
-      return '2';
-    case 'red3':
-      return '3';
-    case 'blue1':
-      return '4';
-    case 'blue2':
-      return '5';
-    case 'blue3':
-      return '6';
-    default:
-      return '';
-  }
+  matchLevel?: string | string[];
 };
 
 type PhaseCounts = {
@@ -42,8 +22,6 @@ type PhaseCounts = {
   coralL3: number;
   coralL2: number;
   coralL1: number;
-  algaeL3: number;
-  algaeL2: number;
   net: number;
   processor: number;
 };
@@ -57,8 +35,6 @@ const limitConfig: LimitConfig = {
   coralL3: { auto: 12, teleop: 12 },
   coralL2: { auto: 12, teleop: 12 },
   coralL1: { auto: 10, teleop: 50 },
-  algaeL3: { auto: 3, teleop: 3 },
-  algaeL2: { auto: 3, teleop: 3 },
   net: { auto: 9, teleop: 18 },
   processor: { auto: 9, teleop: 18 },
 };
@@ -68,13 +44,28 @@ const createInitialPhaseCounts = (): PhaseCounts => ({
   coralL3: 0,
   coralL2: 0,
   coralL1: 0,
-  algaeL3: 0,
-  algaeL2: 0,
   net: 0,
   processor: 0,
 });
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const getMatchLevelLabel = (matchLevel: string | undefined) => {
+  const normalized = matchLevel?.toLowerCase();
+
+  switch (normalized) {
+    case 'qm':
+      return 'Quals';
+    case 'sf':
+      return 'Semis';
+    case 'qf':
+      return 'Quarters';
+    case 'f':
+      return 'Finals';
+    default:
+      return matchLevel?.toUpperCase() ?? '';
+  }
+};
 
 interface CounterControlProps {
   label: string;
@@ -138,11 +129,10 @@ export default function BeginScoutingRoute() {
   const initialMatchNumber = toSingleValue(params.matchNumber) ?? '';
   const eventKey = toSingleValue(params.eventKey) ?? '';
   const driverStation = toSingleValue(params.driverStation);
+  const matchLevel = toSingleValue(params.matchLevel);
 
   const [teamNumber, setTeamNumber] = useState(initialTeamNumber);
   const [matchNumber, setMatchNumber] = useState(initialMatchNumber);
-  const [tabletNumber, setTabletNumber] = useState(parseTabletFromDriverStation(driverStation));
-  const [scouterName, setScouterName] = useState('');
   const [isAuto, setIsAuto] = useState(true);
   const [autoCounts, setAutoCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
   const [teleCounts, setTeleCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
@@ -155,6 +145,23 @@ export default function BeginScoutingRoute() {
   const toggleActiveTextColor = '#F8FAFC';
 
   const currentCounts = isAuto ? autoCounts : teleCounts;
+  const hasPrefilledDetails = useMemo(
+    () => Boolean(eventKey && initialMatchNumber && initialTeamNumber && driverStation),
+    [driverStation, eventKey, initialMatchNumber, initialTeamNumber]
+  );
+  const matchDetailsTitle = useMemo(() => {
+    if (!hasPrefilledDetails) {
+      return '';
+    }
+
+    const levelLabel = getMatchLevelLabel(matchLevel);
+    const matchPrefix = levelLabel || matchLevel;
+    const matchLabel = matchPrefix
+      ? `${matchPrefix} Match ${initialMatchNumber}`
+      : `Match ${initialMatchNumber}`;
+
+    return `${eventKey} ${matchLabel}: Team ${initialTeamNumber} (${driverStation})`;
+  }, [driverStation, eventKey, hasPrefilledDetails, initialMatchNumber, initialTeamNumber, matchLevel]);
 
   const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {
     const limit = isAuto ? limitConfig[key].auto : limitConfig[key].teleop;
@@ -180,57 +187,42 @@ export default function BeginScoutingRoute() {
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <ThemedText type="title">Scouting Session</ThemedText>
-          {eventKey ? (
+          {matchDetailsTitle ? (
+            <ThemedText type="title" style={styles.titleText}>
+              {matchDetailsTitle}
+            </ThemedText>
+          ) : null}
+          {!matchDetailsTitle && eventKey ? (
             <ThemedText type="defaultSemiBold">Event: {eventKey}</ThemedText>
           ) : null}
         </View>
 
-        <View style={styles.formGrid}>
-          <View style={styles.inputGroup}>
-            <ThemedText type="defaultSemiBold">Team Number</ThemedText>
-            <TextInput
-              value={teamNumber}
-              onChangeText={setTeamNumber}
-              keyboardType="number-pad"
-              placeholder="Team Number"
-              placeholderTextColor="#94A3B8"
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
-            />
+        {!hasPrefilledDetails ? (
+          <View style={styles.formGrid}>
+            <View style={styles.inputGroup}>
+              <ThemedText type="defaultSemiBold">Team Number</ThemedText>
+              <TextInput
+                value={teamNumber}
+                onChangeText={setTeamNumber}
+                keyboardType="number-pad"
+                placeholder="Team Number"
+                placeholderTextColor="#94A3B8"
+                style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <ThemedText type="defaultSemiBold">Match Number</ThemedText>
+              <TextInput
+                value={matchNumber}
+                onChangeText={setMatchNumber}
+                keyboardType="number-pad"
+                placeholder="Match Number"
+                placeholderTextColor="#94A3B8"
+                style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
+              />
+            </View>
           </View>
-          <View style={styles.inputGroup}>
-            <ThemedText type="defaultSemiBold">Match Number</ThemedText>
-            <TextInput
-              value={matchNumber}
-              onChangeText={setMatchNumber}
-              keyboardType="number-pad"
-              placeholder="Match Number"
-              placeholderTextColor="#94A3B8"
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
-            />
-          </View>
-          <View style={styles.inputGroup}>
-            <ThemedText type="defaultSemiBold">Tablet</ThemedText>
-            <TextInput
-              value={tabletNumber}
-              onChangeText={setTabletNumber}
-              keyboardType="number-pad"
-              placeholder="Tablet Number"
-              placeholderTextColor="#94A3B8"
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
-            />
-          </View>
-          <View style={styles.inputGroup}>
-            <ThemedText type="defaultSemiBold">Scouter</ThemedText>
-            <TextInput
-              value={scouterName}
-              onChangeText={setScouterName}
-              placeholder="Name"
-              placeholderTextColor="#94A3B8"
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
-            />
-          </View>
-        </View>
+        ) : null}
 
         <View
           style={[
@@ -308,18 +300,6 @@ export default function BeginScoutingRoute() {
               onDecrement={() => handleAdjust('coralL1', -1)}
             />
             <CounterControl
-              label={`Algae L3`}
-              value={currentCounts.algaeL3}
-              onIncrement={() => handleAdjust('algaeL3', 1)}
-              onDecrement={() => handleAdjust('algaeL3', -1)}
-            />
-            <CounterControl
-              label={`Algae L2`}
-              value={currentCounts.algaeL2}
-              onIncrement={() => handleAdjust('algaeL2', 1)}
-              onDecrement={() => handleAdjust('algaeL2', -1)}
-            />
-            <CounterControl
               label={`Processor`}
               value={currentCounts.processor}
               onIncrement={() => handleAdjust('processor', 1)}
@@ -346,6 +326,9 @@ const styles = StyleSheet.create({
   header: {
     gap: 4,
     alignItems: 'center',
+  },
+  titleText: {
+    textAlign: 'center',
   },
   formGrid: {
     flexDirection: 'row',
