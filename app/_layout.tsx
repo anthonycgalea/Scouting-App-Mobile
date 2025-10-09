@@ -5,7 +5,7 @@ import 'react-native-reanimated';
 
 import '@/db'; // Initialize the SQLite-backed storage on startup.
 
-import { AuthProvider, OrganizationProvider } from '@/app/providers';
+import { AuthProvider, OrganizationProvider } from '@/providers';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export const unstable_settings = {
