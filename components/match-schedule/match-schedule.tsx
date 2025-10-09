@@ -128,30 +128,30 @@ export function MatchSchedule({
         style={[styles.matchCard, { backgroundColor: cardBackground, borderColor: dividerColor }]}
       >
         <View style={styles.matchLayout}>
+          <View
+            style={[styles.matchLabelCell, { borderColor: dividerColor, backgroundColor: cardBackground }]}
+          >
+            <ThemedText type="title" style={[styles.matchLabelText, { color: headerTextColor }]}>
+              {matchLabel}
+            </ThemedText>
+            <View style={styles.matchStatusWrapper}>
+              {row.played === undefined ? (
+                <ThemedText style={[styles.statusText, { color: pendingTextColor }]}>Pending</ThemedText>
+              ) : row.played ? (
+                <View style={styles.statusIndicator}>
+                  <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+                  <ThemedText style={styles.statusSuccess}>Played</ThemedText>
+                </View>
+              ) : (
+                <View style={styles.statusIndicator}>
+                  <Ionicons name="close-circle" size={20} color="#ef4444" />
+                  <ThemedText style={styles.statusError}>Unplayed</ThemedText>
+                </View>
+              )}
+            </View>
+          </View>
           <View style={styles.allianceGrid}>
             <View style={styles.allianceGridRow}>
-              <View
-                style={[styles.matchLabelCell, { borderColor: dividerColor, backgroundColor: cardBackground }]}
-              >
-                <ThemedText type="title" style={[styles.matchLabelText, { color: headerTextColor }]}>
-                  {matchLabel}
-                </ThemedText>
-                <View style={styles.matchStatusWrapper}>
-                  {row.played === undefined ? (
-                    <ThemedText style={[styles.statusText, { color: pendingTextColor }]}>Pending</ThemedText>
-                  ) : row.played ? (
-                    <View style={styles.statusIndicator}>
-                      <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-                      <ThemedText style={styles.statusSuccess}>Played</ThemedText>
-                    </View>
-                  ) : (
-                    <View style={styles.statusIndicator}>
-                      <Ionicons name="close-circle" size={20} color="#ef4444" />
-                      <ThemedText style={styles.statusError}>Unplayed</ThemedText>
-                    </View>
-                  )}
-                </View>
-              </View>
               {redTeams.map((team, index) => (
                 <View
                   key={`red-${index}`}
@@ -164,7 +164,6 @@ export function MatchSchedule({
               ))}
             </View>
             <View style={styles.allianceGridRow}>
-              <View style={[styles.matchLabelSpacer]} />
               {blueTeams.map((team, index) => (
                 <View
                   key={`blue-${index}`}
@@ -211,6 +210,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   matchLayout: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
     gap: 12,
   },
   allianceGrid: {
@@ -218,6 +219,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   allianceGridRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 12,
@@ -231,15 +233,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
     alignItems: 'flex-start',
+    alignSelf: 'stretch',
   },
   matchLabelText: {
     fontSize: 20,
     fontWeight: '700',
-  },
-  matchLabelSpacer: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
   },
   matchStatusWrapper: {
     alignItems: 'flex-start',
