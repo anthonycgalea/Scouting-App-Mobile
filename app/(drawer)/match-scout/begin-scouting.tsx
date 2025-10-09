@@ -406,9 +406,6 @@ export default function BeginScoutingRoute() {
 
         {selectedTab === 'info' ? (
           <View style={styles.infoSection}>
-            <ThemedText type="title" style={styles.sectionTitle}>
-              Team Overview
-            </ThemedText>
             <View style={[styles.infoCard, { borderColor: inputBorder, backgroundColor: inputBackground }]}>
               {infoDetails.map((detail) => (
                 <View key={detail.label} style={styles.infoRow}>
@@ -417,10 +414,6 @@ export default function BeginScoutingRoute() {
                 </View>
               ))}
             </View>
-            <ThemedText style={[styles.infoDescription, { color: tabInactiveTextColor }]}> 
-              This tab will be populated with additional team information, match strategy, and robot
-              notes to assist scouts during events.
-            </ThemedText>
           </View>
         ) : null}
 
@@ -465,12 +458,6 @@ export default function BeginScoutingRoute() {
                   </View>
                 </View>
               ) : null}
-
-              <View style={styles.phaseLabelContainer}>
-                <ThemedText type="defaultSemiBold" style={styles.phaseLabel}>
-                  {isAutoTab ? 'Auto Period' : 'Teleop Period'}
-                </ThemedText>
-              </View>
             </View>
 
             <View style={styles.section}>
@@ -531,12 +518,12 @@ export default function BeginScoutingRoute() {
         {selectedTab === 'endgame' ? (
           <View style={styles.endgameSection}>
             <View style={styles.endgameContent}>
-              <ThemedText type="title" style={styles.sectionTitle}>
-                Endgame Actions
-              </ThemedText>
-              <View style={styles.endgameGrid}>
-                {endgameOptions.map((option) => {
-                  const isSelected = endgameSelection === option.key;
+            <ThemedText type="title" style={styles.sectionTitle}>
+              Endgame
+            </ThemedText>
+            <View style={styles.endgameGrid}>
+              {endgameOptions.map((option) => {
+                const isSelected = endgameSelection === option.key;
 
                   return (
                     <Pressable
