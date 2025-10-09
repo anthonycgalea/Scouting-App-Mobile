@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useRouter } from 'expo-router';
 
 interface TeamListItem {
   number: number;
@@ -31,6 +32,7 @@ const normalizeText = (value: string) => value.normalize('NFD').replace(/[\u0300
 
 export function PitScoutScreen() {
   const [searchTerm, setSearchTerm] = useState('');
+  const router = useRouter();
 
   const backgroundCard = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
   const searchBackground = useThemeColor({ light: '#F1F5F9', dark: '#1F2937' }, 'background');
@@ -67,6 +69,16 @@ export function PitScoutScreen() {
     });
   }, [searchTerm]);
 
+  const handleTeamPress = (team: TeamListItem) => {
+    router.push({
+      pathname: '/(drawer)/pit-scout/team-details',
+      params: {
+        teamNumber: String(team.number),
+        teamName: team.name,
+      },
+    });
+  };
+
   return (
     <ScreenContainer>
       <ScrollView
@@ -89,7 +101,19 @@ export function PitScoutScreen() {
 
         <View style={styles.listContainer}>
           {filteredTeams.map((team) => (
-            <View key={team.number} style={[styles.teamRow, { backgroundColor: backgroundCard, borderColor }]}>
+            <Pressable
+              key={team.number}
+              accessibilityRole="button"
+              onPress={() => handleTeamPress(team)}
+              style={({ pressed }) => [
+                styles.teamRow,
+                {
+                  backgroundColor: backgroundCard,
+                  borderColor,
+                  opacity: pressed ? 0.95 : 1,
+                },
+              ]}
+            >
               <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
                 {team.number}
               </ThemedText>
@@ -101,7 +125,7 @@ export function PitScoutScreen() {
                   {team.location}
                 </ThemedText>
               </View>
-            </View>
+            </Pressable>
           ))}
         </View>
       </ScrollView>
