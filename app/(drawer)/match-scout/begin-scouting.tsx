@@ -150,14 +150,28 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
   const negativeBackground = useThemeColor({ light: '#DC2626', dark: '#B91C1C' }, 'tint');
 
   return (
-    <View style={[styles.counterCard, { backgroundColor: cardBackground, borderColor }]}> 
+    <View style={[styles.counterCard, { backgroundColor: cardBackground, borderColor }]}>
       <ThemedText type="defaultSemiBold" style={[styles.counterLabel, { color: textColor }]}>
         {label}
       </ThemedText>
-      <ThemedText type="title" style={[styles.counterValue, { color: textColor }]}>
-        {value}
-      </ThemedText>
       <View style={styles.counterButtons}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onIncrement}
+          style={({ pressed }) => [
+            styles.counterButton,
+            styles.counterButtonPositive,
+            { backgroundColor: positiveBackground },
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <ThemedText type="title" style={styles.counterValue}>
+            {value}
+          </ThemedText>
+          <ThemedText type="defaultSemiBold" style={styles.counterButtonAuxText}>
+            +
+          </ThemedText>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={onDecrement}
@@ -170,19 +184,6 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
         >
           <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
             -
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onIncrement}
-          style={({ pressed }) => [
-            styles.counterButton,
-            { backgroundColor: positiveBackground },
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-            +
           </ThemedText>
         </Pressable>
       </View>
@@ -372,42 +373,46 @@ export default function BeginScoutingRoute() {
             {phaseLabel} Counters
           </ThemedText>
           <View style={styles.counterGrid}>
-            <CounterControl
-              label={`Coral L4`}
-              value={currentCounts.coralL4}
-              onIncrement={() => handleAdjust('coralL4', 1)}
-              onDecrement={() => handleAdjust('coralL4', -1)}
-            />
-            <CounterControl
-              label={`Coral L3`}
-              value={currentCounts.coralL3}
-              onIncrement={() => handleAdjust('coralL3', 1)}
-              onDecrement={() => handleAdjust('coralL3', -1)}
-            />
-            <CounterControl
-              label={`Coral L2`}
-              value={currentCounts.coralL2}
-              onIncrement={() => handleAdjust('coralL2', 1)}
-              onDecrement={() => handleAdjust('coralL2', -1)}
-            />
-            <CounterControl
-              label={`Coral L1`}
-              value={currentCounts.coralL1}
-              onIncrement={() => handleAdjust('coralL1', 1)}
-              onDecrement={() => handleAdjust('coralL1', -1)}
-            />
-            <CounterControl
-              label={`Processor`}
-              value={currentCounts.processor}
-              onIncrement={() => handleAdjust('processor', 1)}
-              onDecrement={() => handleAdjust('processor', -1)}
-            />
-            <CounterControl
-              label={`Net`}
-              value={currentCounts.net}
-              onIncrement={() => handleAdjust('net', 1)}
-              onDecrement={() => handleAdjust('net', -1)}
-            />
+            <View style={styles.counterColumn}>
+              <CounterControl
+                label={`Coral L4`}
+                value={currentCounts.coralL4}
+                onIncrement={() => handleAdjust('coralL4', 1)}
+                onDecrement={() => handleAdjust('coralL4', -1)}
+              />
+              <CounterControl
+                label={`Coral L3`}
+                value={currentCounts.coralL3}
+                onIncrement={() => handleAdjust('coralL3', 1)}
+                onDecrement={() => handleAdjust('coralL3', -1)}
+              />
+              <CounterControl
+                label={`Coral L2`}
+                value={currentCounts.coralL2}
+                onIncrement={() => handleAdjust('coralL2', 1)}
+                onDecrement={() => handleAdjust('coralL2', -1)}
+              />
+              <CounterControl
+                label={`Coral L1`}
+                value={currentCounts.coralL1}
+                onIncrement={() => handleAdjust('coralL1', 1)}
+                onDecrement={() => handleAdjust('coralL1', -1)}
+              />
+            </View>
+            <View style={styles.counterColumn}>
+              <CounterControl
+                label={`Processor`}
+                value={currentCounts.processor}
+                onIncrement={() => handleAdjust('processor', 1)}
+                onDecrement={() => handleAdjust('processor', -1)}
+              />
+              <CounterControl
+                label={`Net`}
+                value={currentCounts.net}
+                onIncrement={() => handleAdjust('net', 1)}
+                onDecrement={() => handleAdjust('net', -1)}
+              />
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -463,39 +468,61 @@ const styles = StyleSheet.create({
   },
   counterGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    gap: 16,
     justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  counterColumn: {
+    flex: 1,
+    gap: 16,
   },
   counterCard: {
-    minWidth: 150,
     borderRadius: 16,
     borderWidth: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    alignItems: 'center',
+    padding: 16,
     gap: 12,
+    alignItems: 'stretch',
+    minWidth: 150,
   },
   counterLabel: {
     fontSize: 16,
+    textAlign: 'center',
   },
   counterValue: {
-    fontSize: 24,
+    fontSize: 28,
+    color: '#F8FAFC',
   },
   counterButtons: {
-    flexDirection: 'row',
-    gap: 12,
+    flexDirection: 'column',
+    gap: 0,
+    width: '100%',
+    flexGrow: 1,
+    minHeight: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   counterButton: {
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  counterButtonPositive: {
+    flex: 3,
+    gap: 8,
+    paddingVertical: 16,
   },
   counterButtonNegative: {
-    backgroundColor: '#DC2626',
+    flex: 1,
+    paddingVertical: 10,
   },
   counterButtonText: {
     color: '#F8FAFC',
+    fontSize: 20,
+  },
+  counterButtonAuxText: {
+    color: '#BFDBFE',
     fontSize: 18,
   },
   buttonPressed: {
