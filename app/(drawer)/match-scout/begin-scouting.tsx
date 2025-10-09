@@ -168,7 +168,12 @@ export default function BeginScoutingRoute() {
 
   useEffect(() => {
     const headerTitle = matchDetailsTitle || 'Match Scout';
-    navigation.setOptions({ headerTitle, title: headerTitle });
+    navigation.setOptions({
+      headerTitle,
+      title: headerTitle,
+      headerLargeTitle: false,
+      headerBackTitleVisible: false,
+    });
   }, [navigation, matchDetailsTitle]);
 
   const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {
