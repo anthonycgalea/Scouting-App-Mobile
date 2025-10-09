@@ -119,58 +119,63 @@ export function MatchSchedule({
 
   const rows = schedule.map((row) => {
     const matchLabel = `${getMatchLevelLabel(row.matchLevel)} ${row.matchNumber}`;
+    const redTeams = [row.red1, row.red2, row.red3];
+    const blueTeams = [row.blue1, row.blue2, row.blue3];
 
     return (
       <View
         key={`${row.matchLevel}-${row.matchNumber}`}
         style={[styles.matchCard, { backgroundColor: cardBackground, borderColor: dividerColor }]}
       >
-        <View style={styles.matchCardHeader}>
-          <ThemedText type="defaultSemiBold" style={[styles.matchLabel, { color: headerTextColor }]}>
-            {matchLabel}
-          </ThemedText>
-          <View style={styles.matchStatusWrapper}>
-            {row.played === undefined ? (
-              <ThemedText style={[styles.statusText, { color: pendingTextColor }]}>Pending</ThemedText>
-            ) : row.played ? (
-              <View style={styles.statusIndicator}>
-                <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-                <ThemedText style={styles.statusSuccess}>Played</ThemedText>
+        <View style={styles.matchLayout}>
+          <View style={styles.allianceGrid}>
+            <View style={styles.allianceGridRow}>
+              <View
+                style={[styles.matchLabelCell, { borderColor: dividerColor, backgroundColor: cardBackground }]}
+              >
+                <ThemedText type="title" style={[styles.matchLabelText, { color: headerTextColor }]}>
+                  {matchLabel}
+                </ThemedText>
+                <View style={styles.matchStatusWrapper}>
+                  {row.played === undefined ? (
+                    <ThemedText style={[styles.statusText, { color: pendingTextColor }]}>Pending</ThemedText>
+                  ) : row.played ? (
+                    <View style={styles.statusIndicator}>
+                      <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+                      <ThemedText style={styles.statusSuccess}>Played</ThemedText>
+                    </View>
+                  ) : (
+                    <View style={styles.statusIndicator}>
+                      <Ionicons name="close-circle" size={20} color="#ef4444" />
+                      <ThemedText style={styles.statusError}>Unplayed</ThemedText>
+                    </View>
+                  )}
+                </View>
               </View>
-            ) : (
-              <View style={styles.statusIndicator}>
-                <Ionicons name="close-circle" size={20} color="#ef4444" />
-                <ThemedText style={styles.statusError}>Unplayed</ThemedText>
-              </View>
-            )}
-          </View>
-        </View>
-        <View style={[styles.allianceRow, { backgroundColor: redCellBackground }]}>
-          <ThemedText style={[styles.allianceLabel, { color: redCellText }]}>Red</ThemedText>
-          <View style={styles.teamList}>
-            <ThemedText style={[styles.teamNumber, { color: redCellText }]}>
-              {renderTeamNumber(row.red1)}
-            </ThemedText>
-            <ThemedText style={[styles.teamNumber, { color: redCellText }]}>
-              {renderTeamNumber(row.red2)}
-            </ThemedText>
-            <ThemedText style={[styles.teamNumber, { color: redCellText }]}>
-              {renderTeamNumber(row.red3)}
-            </ThemedText>
-          </View>
-        </View>
-        <View style={[styles.allianceRow, { backgroundColor: blueCellBackground }]}>
-          <ThemedText style={[styles.allianceLabel, { color: blueCellText }]}>Blue</ThemedText>
-          <View style={styles.teamList}>
-            <ThemedText style={[styles.teamNumber, { color: blueCellText }]}>
-              {renderTeamNumber(row.blue1)}
-            </ThemedText>
-            <ThemedText style={[styles.teamNumber, { color: blueCellText }]}>
-              {renderTeamNumber(row.blue2)}
-            </ThemedText>
-            <ThemedText style={[styles.teamNumber, { color: blueCellText }]}>
-              {renderTeamNumber(row.blue3)}
-            </ThemedText>
+              {redTeams.map((team, index) => (
+                <View
+                  key={`red-${index}`}
+                  style={[styles.teamCell, { backgroundColor: redCellBackground }]}
+                >
+                  <ThemedText style={[styles.teamNumber, { color: redCellText }]}>
+                    {renderTeamNumber(team)}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+            <View style={styles.allianceGridRow}>
+              <View style={[styles.matchLabelSpacer]} />
+              {blueTeams.map((team, index) => (
+                <View
+                  key={`blue-${index}`}
+                  style={[styles.teamCell, { backgroundColor: blueCellBackground }]}
+                >
+                  <ThemedText style={[styles.teamNumber, { color: blueCellText }]}>
+                    {renderTeamNumber(team)}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
       </View>
@@ -204,18 +209,41 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
+  },
+  matchLayout: {
     gap: 12,
   },
-  matchCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  allianceGrid: {
+    flex: 1,
+    gap: 12,
   },
-  matchLabel: {
-    fontSize: 18,
+  allianceGridRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  matchLabelCell: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  matchLabelText: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  matchLabelSpacer: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
   },
   matchStatusWrapper: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   statusIndicator: {
     flexDirection: 'row',
@@ -223,7 +251,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statusText: {
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
   },
   statusSuccess: {
     fontSize: 14,
@@ -235,26 +264,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ef4444',
   },
-  allianceRow: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  allianceLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  teamList: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
   teamNumber: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  teamCell: {
+    flex: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
   },
   emptyState: {
     paddingVertical: 32,
