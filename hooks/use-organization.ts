@@ -1,4 +1,4 @@
-import { useOrganizationContext } from '@/app/providers/OrganizationProvider';
+import { useOrganizationContext } from '@/providers/OrganizationProvider';
 
 export function useOrganization() {
   return useOrganizationContext();

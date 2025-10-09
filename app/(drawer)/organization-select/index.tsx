@@ -1,4 +1,4 @@
-import { OrganizationSelectScreen } from '@/app/screens';
+import { OrganizationSelectScreen } from '@/screens';
 
 export default function OrganizationSelectRoute() {
   return <OrganizationSelectScreen />;

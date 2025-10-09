@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { DRAWER_ITEMS } from '@/app/navigation';
+import { DRAWER_ITEMS } from '@/navigation';
 import { ROUTES } from '@/constants/routes';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
