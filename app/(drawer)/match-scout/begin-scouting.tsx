@@ -168,7 +168,7 @@ export default function BeginScoutingRoute() {
 
   useEffect(() => {
     const headerTitle = matchDetailsTitle || 'Match Scout';
-    navigation.setOptions({ headerTitle });
+    navigation.setOptions({ headerTitle, title: headerTitle });
   }, [navigation, matchDetailsTitle]);
 
   const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {
@@ -194,16 +194,11 @@ export default function BeginScoutingRoute() {
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          {matchDetailsTitle ? (
-            <ThemedText type="title" style={styles.titleText}>
-              {matchDetailsTitle}
-            </ThemedText>
-          ) : null}
-          {!matchDetailsTitle && eventKey ? (
+        {!matchDetailsTitle && eventKey ? (
+          <View style={styles.header}>
             <ThemedText type="defaultSemiBold">Event: {eventKey}</ThemedText>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
 
         {!hasPrefilledDetails ? (
           <View style={styles.formGrid}>
@@ -334,9 +329,6 @@ const styles = StyleSheet.create({
   header: {
     gap: 4,
     alignItems: 'center',
-  },
-  titleText: {
-    textAlign: 'center',
   },
   formGrid: {
     flexDirection: 'row',
