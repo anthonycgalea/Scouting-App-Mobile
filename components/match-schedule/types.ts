@@ -1,6 +1,7 @@
 export interface MatchScheduleEntry {
   match_number: number;
   match_level: string;
+  event_key?: string;
   red1_id?: number | null;
   red2_id?: number | null;
   red3_id?: number | null;
