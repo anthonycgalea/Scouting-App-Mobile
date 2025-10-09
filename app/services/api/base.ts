@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 const DEV_WEB_BASE_URL = 'http://localhost:8000';
+const DEV_MOBILE_BASE_URL = 'http://10.0.0.114:8000';
 
 /**
  * Returns the base API url when the app is running in a web browser.
@@ -29,6 +30,10 @@ export const getWebProductionBaseUrl = () => {
  */
 export const getMobileBaseUrl = () => {
   // TODO: configure the mobile API url once it is available.
+
+  if (__DEV__) {
+    return DEV_MOBILE_BASE_URL;
+  }
   return 'https://api.mobile.example.com';
 };
 
