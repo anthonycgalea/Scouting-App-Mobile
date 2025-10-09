@@ -368,9 +368,6 @@ export default function BeginScoutingRoute() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            {phaseLabel} Counters
-          </ThemedText>
           <View style={styles.counterGrid}>
             <View style={styles.counterColumn}>
               <CounterControl
