@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { buildMatchHeaderTitle } from '../../utils/match-header';
 
 const toSingleValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -51,23 +52,6 @@ const createInitialPhaseCounts = (): PhaseCounts => ({
 });
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
-const getMatchLevelLabel = (matchLevel: string | undefined) => {
-  const normalized = matchLevel?.toLowerCase();
-
-  switch (normalized) {
-    case 'qm':
-      return 'Quals';
-    case 'sf':
-      return 'Semis';
-    case 'qf':
-      return 'Quarters';
-    case 'f':
-      return 'Finals';
-    default:
-      return matchLevel?.toUpperCase() ?? '';
-  }
-};
 
 interface CounterControlProps {
   label: string;
@@ -152,23 +136,28 @@ export default function BeginScoutingRoute() {
     () => Boolean(eventKey && initialMatchNumber && initialTeamNumber && driverStation),
     [driverStation, eventKey, initialMatchNumber, initialTeamNumber]
   );
-  const matchDetailsTitle = useMemo(() => {
-    if (!hasPrefilledDetails) {
-      return '';
-    }
-
-    const levelLabel = getMatchLevelLabel(matchLevel);
-    const matchPrefix = levelLabel || matchLevel;
-    const matchLabel = matchPrefix
-      ? `${matchPrefix} Match ${initialMatchNumber}`
-      : `Match ${initialMatchNumber}`;
-
-    return `${eventKey} ${matchLabel}: Team ${initialTeamNumber} (${driverStation})`;
-  }, [driverStation, eventKey, hasPrefilledDetails, initialMatchNumber, initialTeamNumber, matchLevel]);
+  const matchDetailsTitle = useMemo(
+    () =>
+      hasPrefilledDetails
+        ? buildMatchHeaderTitle({
+            driverStation,
+            eventKey,
+            matchLevel,
+            matchNumber: initialMatchNumber,
+            teamNumber: initialTeamNumber,
+          })
+        : '',
+    [driverStation, eventKey, hasPrefilledDetails, initialMatchNumber, initialTeamNumber, matchLevel]
+  );
 
   useEffect(() => {
-    const headerTitle = matchDetailsTitle || 'Match Scout';
-    navigation.setOptions({ headerTitle, title: headerTitle });
+    const headerTitle = matchDetailsTitle;
+    navigation.setOptions({
+      headerTitle,
+      headerLargeTitle: false,
+      headerBackTitleVisible: false,
+      headerBackTitle: '',
+    });
   }, [navigation, matchDetailsTitle]);
 
   const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {

@@ -133,7 +133,7 @@ export function MatchTeamSelectScreen({
     };
 
     if (driverStationLabel) {
-      params.driverStation = driverStationLabel;
+      params.driverStation = driverStationLabel.toUpperCase();
     }
 
     if (matchNumber !== undefined) {
@@ -144,8 +144,12 @@ export function MatchTeamSelectScreen({
       params.eventKey = eventKey;
     }
 
+    if (matchLevel) {
+      params.matchLevel = matchLevel;
+    }
+
     router.push({ pathname: '/(drawer)/match-scout/begin-scouting', params });
-  }, [driverStationLabel, eventKey, matchNumber, router, selectedOption]);
+  }, [driverStationLabel, eventKey, matchLevel, matchNumber, router, selectedOption]);
 
   const canBeginScouting = selectedOption?.teamNumber !== undefined;
 
