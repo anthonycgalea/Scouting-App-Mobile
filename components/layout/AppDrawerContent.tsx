@@ -57,7 +57,7 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
               accessibilityRole="button"
               accessibilityState={isActive ? { selected: true } : undefined}
               onPress={() => {
-                navigation.navigate(item.name);
+                router.navigate(item.href);
                 navigation.closeDrawer();
               }}
               style={[styles.drawerItem, isActive && styles.drawerItemActive]}
