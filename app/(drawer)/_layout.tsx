@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Drawer } from 'expo-router/drawer';
 
 import { AppDrawerContent, type DrawerContentProps } from '@/components/layout/AppDrawerContent';
-import { DRAWER_ITEMS, useDrawerScreenOptions } from '@/navigation/drawer-items';
+import { DRAWER_ITEMS, useDrawerScreenOptions } from '@/app/navigation/drawer-items';
 
 export default function DrawerLayout() {
   const screenOptions = useDrawerScreenOptions();

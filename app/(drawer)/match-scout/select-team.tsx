@@ -3,7 +3,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   MatchTeamSelectScreen,
   createMatchTeamSelectScreenPropsFromParams,
-} from '@/screens/MatchScout/MatchTeamSelectScreen';
+} from '@/app/screens/MatchScout/MatchTeamSelectScreen';
 
 export default function MatchTeamSelectRoute() {
   const router = useRouter();
