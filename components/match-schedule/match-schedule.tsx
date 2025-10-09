@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -27,8 +27,6 @@ interface MatchScheduleProps {
   isValidationError?: boolean;
 }
 
-const teamNumberKeys: (keyof RowData)[] = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'];
-
 const createMatchKey = (matchLevel: string, matchNumber: number) =>
   `${matchLevel.toLowerCase()}-${matchNumber}`;
 
@@ -53,43 +51,11 @@ const createRowData = (
     };
   });
 
-function filterData(
-  data: RowData[],
-  { matchSearch, teamSearch }: { matchSearch: string; teamSearch: string }
-) {
-  const matchQuery = matchSearch.trim();
-  const matchNumberQuery = Number(matchQuery);
-  const teamQuery = teamSearch.toLowerCase().trim();
-
-  return data.filter((item) => {
-    const matchMatches = matchQuery
-      ? !Number.isNaN(matchNumberQuery) && item.matchNumber === matchNumberQuery
-      : true;
-
-    const teamMatches = teamQuery
-      ? teamNumberKeys.some((key) => {
-          const teamNumber = item[key];
-          if (teamNumber === null || teamNumber === undefined) {
-            return false;
-          }
-
-          return teamNumber.toString().toLowerCase() === teamQuery;
-        })
-      : true;
-
-    return matchMatches && teamMatches;
-  });
-}
-
-function sortData(
-  data: RowData[],
-  payload: { reversed: boolean; matchSearch: string; teamSearch: string }
-) {
+function sortData(data: RowData[], payload: { reversed: boolean }) {
   const sorted = [...data].sort((a, b) =>
     payload.reversed ? b.matchNumber - a.matchNumber : a.matchNumber - b.matchNumber
   );
-
-  return filterData(sorted, { matchSearch: payload.matchSearch, teamSearch: payload.teamSearch });
+  return sorted;
 }
 
 const renderTeamNumber = (value?: number | null) => (value === null || value === undefined ? '-' : value);
@@ -122,14 +88,11 @@ export function MatchSchedule({
   isValidationError = false,
   isValidationLoading = false,
 }: MatchScheduleProps) {
-  const [matchSearch, setMatchSearch] = useState('');
-  const [teamSearch, setTeamSearch] = useState('');
   const [reverseSortDirection, setReverseSortDirection] = useState(false);
 
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const textColor = useThemeColor({}, 'text');
-  const iconColor = useThemeColor({}, 'icon');
 
   const isValidationReady =
     !isValidationLoading && !isValidationError && validationEntries !== undefined;
@@ -153,17 +116,14 @@ export function MatchSchedule({
   );
 
   const sortedData = useMemo(
-    () => sortData(schedule, { reversed: reverseSortDirection, matchSearch, teamSearch }),
-    [schedule, reverseSortDirection, matchSearch, teamSearch]
+    () => sortData(schedule, { reversed: reverseSortDirection }),
+    [schedule, reverseSortDirection]
   );
 
   const toggleSortDirection = () => {
     setReverseSortDirection((current) => !current);
   };
 
-  const placeholderColor = isDark ? 'rgba(148, 163, 184, 0.9)' : 'rgba(100, 116, 139, 0.9)';
-  const inputBorderColor = isDark ? 'rgba(63, 63, 70, 0.8)' : 'rgba(209, 213, 219, 0.9)';
-  const inputBackground = isDark ? 'rgba(39, 39, 42, 0.7)' : '#F9FAFB';
   const dividerColor = isDark ? 'rgba(63, 63, 70, 0.6)' : 'rgba(226, 232, 240, 0.9)';
   const cardBackground = isDark ? 'rgba(24, 24, 27, 0.85)' : '#FFFFFF';
   const headerTextColor = isDark ? '#F8FAFC' : '#0F172A';
@@ -235,30 +195,6 @@ export function MatchSchedule({
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.filters}>
-        <View style={[styles.inputWrapper, { borderColor: inputBorderColor, backgroundColor: inputBackground }]}> 
-          <Ionicons name="search" size={16} color={iconColor} style={styles.inputIcon} />
-          <TextInput
-            placeholder="Filter by match number"
-            placeholderTextColor={placeholderColor}
-            value={matchSearch}
-            onChangeText={setMatchSearch}
-            style={[styles.input, { color: textColor }]}
-            keyboardType="numeric"
-          />
-        </View>
-        <View style={[styles.inputWrapper, { borderColor: inputBorderColor, backgroundColor: inputBackground }]}> 
-          <Ionicons name="search" size={16} color={iconColor} style={styles.inputIcon} />
-          <TextInput
-            placeholder="Filter by team number"
-            placeholderTextColor={placeholderColor}
-            value={teamSearch}
-            onChangeText={setTeamSearch}
-            style={[styles.input, { color: textColor }]}
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
       <View style={styles.sortControl}>
         <PressableSortButton
           label="Match #"
@@ -307,24 +243,6 @@ const styles = StyleSheet.create({
   container: {
     gap: 16,
     paddingBottom: 24,
-  },
-  filters: {
-    gap: 12,
-  },
-  inputWrapper: {
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 10,
-    fontSize: 16,
   },
   sortControl: {
     flexDirection: 'row',
