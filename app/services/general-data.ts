@@ -1,4 +1,4 @@
-import { apiClient } from './api/client';
+import { apiRequest } from './api/client';
 import { getDbOrThrow, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 
@@ -122,7 +122,8 @@ async function syncTeams(): Promise<UpsertResult> {
   let updated = 0;
 
   while (true) {
-    const { data } = await apiClient.get<PaginatedResponse<TeamRecordResponse>>('/public/teams', {
+    const data = await apiRequest<PaginatedResponse<TeamRecordResponse>>('/public/teams', {
+      method: 'GET',
       params: { page: page.toString() },
     });
 
@@ -179,7 +180,9 @@ async function syncEvents(year: number): Promise<UpsertResult> {
   let created = 0;
   let updated = 0;
 
-  const { data } = await apiClient.get<PaginatedResponse<EventResponse>>(`/public/events/${year}`);
+  const data = await apiRequest<PaginatedResponse<EventResponse>>(`/public/events/${year}`, {
+    method: 'GET',
+  });
 
   const events = extractItems(data);
 

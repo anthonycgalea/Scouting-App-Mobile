@@ -1,67 +1,63 @@
 import { useCallback, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { Alert, ActivityIndicator, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { updateGeneralData, type UpdateGeneralDataResult } from '../../services/general-data';
+import { pingBackend } from '../../services/api/ping';
 
 export function AppSettingsScreen() {
-  const [isUpdating, setIsUpdating] = useState(false);
   const [lastResult, setLastResult] = useState<UpdateGeneralDataResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pingLabel, setPingLabel] = useState('Ping');
-  const [isPinging, setIsPinging] = useState(false);
 
-  const handleUpdatePress = useCallback(async () => {
-    try {
-      setIsUpdating(true);
-      setErrorMessage(null);
-      setLastResult(null);
+  const updateGeneralDataMutation = useMutation({
+    mutationFn: updateGeneralData,
+  });
 
-      const result = await updateGeneralData();
+  const pingMutation = useMutation({
+    mutationFn: pingBackend,
+  });
 
-      setLastResult(result);
+  const handleUpdatePress = useCallback(() => {
+    setErrorMessage(null);
+    setLastResult(null);
 
-      Alert.alert(
-        'General data updated',
-        `Teams updated: ${result.teams.created + result.teams.updated}. Events updated: ${result.events.created + result.events.updated}.`
-      );
-    } catch (error) {
-      console.error('Failed to update general data', error);
+    updateGeneralDataMutation.mutate(undefined, {
+      onSuccess: (result) => {
+        setLastResult(result);
 
-      const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-      setErrorMessage(message);
-      Alert.alert('Update failed', message);
-    } finally {
-      setIsUpdating(false);
-    }
-  }, []);
+        Alert.alert(
+          'General data updated',
+          `Teams updated: ${result.teams.created + result.teams.updated}. Events updated: ${result.events.created + result.events.updated}.`
+        );
+      },
+      onError: (error) => {
+        console.error('Failed to update general data', error);
 
-  const handlePingPress = useCallback(async () => {
-    try {
-      setIsPinging(true);
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        setErrorMessage(message);
+        Alert.alert('Update failed', message);
+      },
+    });
+  }, [updateGeneralDataMutation]);
 
-      const response = await fetch('/ping');
+  const handlePingPress = useCallback(() => {
+    pingMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        setPingLabel(data.message);
+      },
+      onError: (error) => {
+        console.error('Ping request failed', error);
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        Alert.alert('Ping failed', message);
+      },
+    });
+  }, [pingMutation]);
 
-      if (!response.ok) {
-        throw new Error(`Ping failed with status ${response.status}`);
-      }
-
-      const data: unknown = await response.json();
-
-      if (typeof data === 'object' && data !== null && 'message' in data && typeof (data as { message: unknown }).message === 'string') {
-        setPingLabel((data as { message: string }).message);
-      } else {
-        throw new Error('Ping response missing "message" string');
-      }
-    } catch (error) {
-      console.error('Ping request failed', error);
-      const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-      Alert.alert('Ping failed', message);
-    } finally {
-      setIsPinging(false);
-    }
-  }, []);
+  const isUpdating = updateGeneralDataMutation.isPending;
+  const isPinging = pingMutation.isPending;
 
   return (
     <ScreenContainer>
