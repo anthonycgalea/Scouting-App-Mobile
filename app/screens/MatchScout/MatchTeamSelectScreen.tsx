@@ -90,6 +90,7 @@ export function MatchTeamSelectScreen({
   const neutralButtonText = useThemeColor({}, 'text');
   const headerText = useThemeColor({}, 'text');
   const primaryButtonBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
+  const redButtonBackground = useThemeColor({ light: '#DC2626', dark: '#7F1D1D' }, 'tint');
   const primaryButtonText = '#F8FAFC';
 
   const matchLabel = useMemo(() => {
@@ -196,7 +197,10 @@ export function MatchTeamSelectScreen({
               style={({ pressed }) => [
                 styles.beginButton,
                 {
-                  backgroundColor: primaryButtonBackground,
+                  backgroundColor:
+                    selectedOption?.alliance === 'red'
+                      ? redButtonBackground
+                      : primaryButtonBackground,
                   opacity: !canBeginScouting ? 0.5 : pressed ? 0.85 : 1,
                 },
               ]}
