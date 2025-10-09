@@ -212,9 +212,10 @@ export default function BeginScoutingRoute() {
 
   const [teamNumber, setTeamNumber] = useState(initialTeamNumber);
   const [matchNumber, setMatchNumber] = useState(initialMatchNumber);
-  const [isAuto, setIsAuto] = useState(true);
+  const [selectedTab, setSelectedTab] = useState<'info' | 'auto' | 'teleop' | 'endgame'>('info');
   const [autoCounts, setAutoCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
   const [teleCounts, setTeleCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
+  const [endgameSelection, setEndgameSelection] = useState<'none' | 'park' | 'shallow' | 'deep'>('none');
 
   const inputBackground = useThemeColor({ light: '#FFFFFF', dark: '#0F172A' }, 'background');
   const inputBorder = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
@@ -222,8 +223,11 @@ export default function BeginScoutingRoute() {
   const toggleContainerBackground = useThemeColor({ light: '#E2E8F0', dark: '#1F2937' }, 'background');
   const toggleActiveBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
   const toggleActiveTextColor = '#F8FAFC';
+  const tabInactiveTextColor = useThemeColor({ light: '#334155', dark: '#CBD5F5' }, 'text');
 
-  const currentCounts = isAuto ? autoCounts : teleCounts;
+  const isAutoTab = selectedTab === 'auto';
+  const isTeleopTab = selectedTab === 'teleop';
+  const currentCounts = isAutoTab ? autoCounts : teleCounts;
   const hasPrefilledDetails = useMemo(
     () => Boolean(eventKey && initialMatchNumber && initialTeamNumber && driverStationLabel),
     [driverStationLabel, eventKey, initialMatchNumber, initialTeamNumber]
@@ -264,8 +268,8 @@ export default function BeginScoutingRoute() {
   }, [navigation, matchDetailsTitle]);
 
   const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {
-    const limit = isAuto ? limitConfig[key].auto : limitConfig[key].teleop;
-    const setCounts = isAuto ? setAutoCounts : setTeleCounts;
+    const limit = isAutoTab ? limitConfig[key].auto : limitConfig[key].teleop;
+    const setCounts = isAutoTab ? setAutoCounts : setTeleCounts;
 
     setCounts((prev) => {
       const nextValue = clamp(prev[key] + delta, 0, limit);
@@ -281,136 +285,218 @@ export default function BeginScoutingRoute() {
     });
   };
 
-  const phaseLabel = isAuto ? 'Auto' : 'Teleop';
+  const infoTeamNumber = teamNumber || initialTeamNumber || '---';
+  const infoMatchNumber = matchNumber || initialMatchNumber || '---';
+  const infoDetails = [
+    { label: 'Team Number', value: infoTeamNumber },
+    { label: 'Match Number', value: infoMatchNumber },
+    { label: 'Event', value: eventKey || 'Not specified' },
+    { label: 'Driver Station', value: driverStationLabel ?? 'Not specified' },
+  ];
+  const tabOptions = [
+    { key: 'info', label: 'Info' },
+    { key: 'auto', label: 'Auto' },
+    { key: 'teleop', label: 'Teleop' },
+    { key: 'endgame', label: 'Endgame' },
+  ] as const;
+  const endgameOptions = [
+    { key: 'none', label: 'None' },
+    { key: 'park', label: 'Park' },
+    { key: 'shallow', label: 'Shallow Climb' },
+    { key: 'deep', label: 'Deep Climb' },
+  ] as const;
 
   return (
     <ScreenContainer>
       <View style={styles.content}>
-        <View style={styles.detailsSection}>
-          {!matchDetailsTitle && eventKey ? (
-            <View style={styles.header}>
-              <ThemedText type="defaultSemiBold">Event: {eventKey}</ThemedText>
-            </View>
-          ) : null}
+        <View
+          style={[
+            styles.tabBar,
+            { backgroundColor: toggleContainerBackground, borderColor: inputBorder },
+          ]}
+        >
+          {tabOptions.map((tab) => {
+            const isSelected = selectedTab === tab.key;
 
-          {!hasPrefilledDetails ? (
-            <View style={styles.formGrid}>
-              <View style={styles.inputGroup}>
-                <ThemedText type="defaultSemiBold">Team Number</ThemedText>
-                <TextInput
-                  value={teamNumber}
-                  onChangeText={setTeamNumber}
-                  keyboardType="number-pad"
-                  placeholder="Team Number"
-                  placeholderTextColor="#94A3B8"
-                  style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
-                />
-              </View>
-              <View style={styles.inputGroup}>
-                <ThemedText type="defaultSemiBold">Match Number</ThemedText>
-                <TextInput
-                  value={matchNumber}
-                  onChangeText={setMatchNumber}
-                  keyboardType="number-pad"
-                  placeholder="Match Number"
-                  placeholderTextColor="#94A3B8"
-                  style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
-                />
-              </View>
-            </View>
-          ) : null}
-
-          <View
-            style={[
-              styles.phaseToggle,
-              { backgroundColor: toggleContainerBackground, borderColor: inputBorder },
-            ]}
-          >
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setIsAuto(true)}
-              style={({ pressed }) => [
-                styles.phaseToggleButton,
-                { backgroundColor: isAuto ? toggleActiveBackground : 'transparent' },
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <ThemedText
-                type="defaultSemiBold"
-                style={[
-                  styles.phaseToggleText,
-                  { color: isAuto ? toggleActiveTextColor : textColor },
+            return (
+              <Pressable
+                key={tab.key}
+                accessibilityRole="button"
+                onPress={() => setSelectedTab(tab.key)}
+                style={({ pressed }) => [
+                  styles.tabButton,
+                  { backgroundColor: isSelected ? toggleActiveBackground : 'transparent' },
+                  pressed && styles.buttonPressed,
                 ]}
               >
-                Auto
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setIsAuto(false)}
-              style={({ pressed }) => [
-                styles.phaseToggleButton,
-                { backgroundColor: !isAuto ? toggleActiveBackground : 'transparent' },
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <ThemedText
-                type="defaultSemiBold"
-                style={[
-                  styles.phaseToggleText,
-                  { color: !isAuto ? toggleActiveTextColor : textColor },
-                ]}
-              >
-                Teleop
-              </ThemedText>
-            </Pressable>
-          </View>
+                <ThemedText
+                  type="defaultSemiBold"
+                  style={[
+                    styles.tabButtonText,
+                    { color: isSelected ? toggleActiveTextColor : tabInactiveTextColor },
+                  ]}
+                >
+                  {tab.label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.counterGrid}>
-            <View style={styles.counterColumn}>
-              <CounterControl
-                label={`Coral L4`}
-                value={currentCounts.coralL4}
-                onIncrement={() => handleAdjust('coralL4', 1)}
-                onDecrement={() => handleAdjust('coralL4', -1)}
-              />
-              <CounterControl
-                label={`Coral L3`}
-                value={currentCounts.coralL3}
-                onIncrement={() => handleAdjust('coralL3', 1)}
-                onDecrement={() => handleAdjust('coralL3', -1)}
-              />
-              <CounterControl
-                label={`Coral L2`}
-                value={currentCounts.coralL2}
-                onIncrement={() => handleAdjust('coralL2', 1)}
-                onDecrement={() => handleAdjust('coralL2', -1)}
-              />
-              <CounterControl
-                label={`Coral L1`}
-                value={currentCounts.coralL1}
-                onIncrement={() => handleAdjust('coralL1', 1)}
-                onDecrement={() => handleAdjust('coralL1', -1)}
-              />
+        {selectedTab === 'info' ? (
+          <View style={styles.infoSection}>
+            <ThemedText type="title" style={styles.sectionTitle}>
+              Team Overview
+            </ThemedText>
+            <View style={[styles.infoCard, { borderColor: inputBorder, backgroundColor: inputBackground }]}>
+              {infoDetails.map((detail) => (
+                <View key={detail.label} style={styles.infoRow}>
+                  <ThemedText type="defaultSemiBold">{detail.label}</ThemedText>
+                  <ThemedText>{detail.value}</ThemedText>
+                </View>
+              ))}
             </View>
-            <View style={styles.counterColumn}>
-              <CounterControl
-                label={`Processor`}
-                value={currentCounts.processor}
-                onIncrement={() => handleAdjust('processor', 1)}
-                onDecrement={() => handleAdjust('processor', -1)}
-              />
-              <CounterControl
-                label={`Net`}
-                value={currentCounts.net}
-                onIncrement={() => handleAdjust('net', 1)}
-                onDecrement={() => handleAdjust('net', -1)}
-              />
+            <ThemedText style={[styles.infoDescription, { color: tabInactiveTextColor }]}> 
+              This tab will be populated with additional team information, match strategy, and robot
+              notes to assist scouts during events.
+            </ThemedText>
+          </View>
+        ) : null}
+
+        {isAutoTab || isTeleopTab ? (
+          <View style={styles.scoringContent}>
+            <View style={styles.detailsSection}>
+              {!matchDetailsTitle && eventKey ? (
+                <View style={styles.header}>
+                  <ThemedText type="defaultSemiBold">Event: {eventKey}</ThemedText>
+                </View>
+              ) : null}
+
+              {!hasPrefilledDetails ? (
+                <View style={styles.formGrid}>
+                  <View style={styles.inputGroup}>
+                    <ThemedText type="defaultSemiBold">Team Number</ThemedText>
+                    <TextInput
+                      value={teamNumber}
+                      onChangeText={setTeamNumber}
+                      keyboardType="number-pad"
+                      placeholder="Team Number"
+                      placeholderTextColor="#94A3B8"
+                      style={[
+                        styles.input,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                      ]}
+                    />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <ThemedText type="defaultSemiBold">Match Number</ThemedText>
+                    <TextInput
+                      value={matchNumber}
+                      onChangeText={setMatchNumber}
+                      keyboardType="number-pad"
+                      placeholder="Match Number"
+                      placeholderTextColor="#94A3B8"
+                      style={[
+                        styles.input,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                      ]}
+                    />
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={styles.phaseLabelContainer}>
+                <ThemedText type="defaultSemiBold" style={styles.phaseLabel}>
+                  {isAutoTab ? 'Auto Period' : 'Teleop Period'}
+                </ThemedText>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.counterGrid}>
+                <View style={styles.counterColumn}>
+                  <CounterControl
+                    label={`Coral L4`}
+                    value={currentCounts.coralL4}
+                    onIncrement={() => handleAdjust('coralL4', 1)}
+                    onDecrement={() => handleAdjust('coralL4', -1)}
+                  />
+                  <CounterControl
+                    label={`Coral L3`}
+                    value={currentCounts.coralL3}
+                    onIncrement={() => handleAdjust('coralL3', 1)}
+                    onDecrement={() => handleAdjust('coralL3', -1)}
+                  />
+                  <CounterControl
+                    label={`Coral L2`}
+                    value={currentCounts.coralL2}
+                    onIncrement={() => handleAdjust('coralL2', 1)}
+                    onDecrement={() => handleAdjust('coralL2', -1)}
+                  />
+                  <CounterControl
+                    label={`Coral L1`}
+                    value={currentCounts.coralL1}
+                    onIncrement={() => handleAdjust('coralL1', 1)}
+                    onDecrement={() => handleAdjust('coralL1', -1)}
+                  />
+                </View>
+                <View style={styles.counterColumn}>
+                  <CounterControl
+                    label={`Processor`}
+                    value={currentCounts.processor}
+                    onIncrement={() => handleAdjust('processor', 1)}
+                    onDecrement={() => handleAdjust('processor', -1)}
+                  />
+                  <CounterControl
+                    label={`Net`}
+                    value={currentCounts.net}
+                    onIncrement={() => handleAdjust('net', 1)}
+                    onDecrement={() => handleAdjust('net', -1)}
+                  />
+                </View>
+              </View>
             </View>
           </View>
-        </View>
+        ) : null}
+
+        {selectedTab === 'endgame' ? (
+          <View style={styles.endgameSection}>
+            <ThemedText type="title" style={styles.sectionTitle}>
+              Endgame Actions
+            </ThemedText>
+            <View style={styles.endgameGrid}>
+              {endgameOptions.map((option) => {
+                const isSelected = endgameSelection === option.key;
+
+                return (
+                  <Pressable
+                    key={option.key}
+                    accessibilityRole="button"
+                    onPress={() => setEndgameSelection(option.key)}
+                    style={({ pressed }) => [
+                      styles.endgameButton,
+                      {
+                        backgroundColor: isSelected ? toggleActiveBackground : 'transparent',
+                        borderColor: isSelected ? toggleActiveBackground : inputBorder,
+                      },
+                      pressed && styles.buttonPressed,
+                    ]}
+                  >
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={[
+                        styles.endgameButtonText,
+                        { color: isSelected ? toggleActiveTextColor : tabInactiveTextColor },
+                      ]}
+                    >
+                      {option.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
       </View>
     </ScreenContainer>
   );
@@ -420,6 +506,24 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     gap: 24,
+  },
+  scoringContent: {
+    flex: 1,
+    gap: 24,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: 'hidden',
+    alignSelf: 'center',
+  },
+  tabButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+  },
+  tabButtonText: {
+    fontSize: 16,
   },
   detailsSection: {
     gap: 24,
@@ -444,18 +548,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 16,
   },
-  phaseToggle: {
-    flexDirection: 'row',
-    borderRadius: 999,
-    overflow: 'hidden',
-    borderWidth: 1,
-    alignSelf: 'center',
+  phaseLabelContainer: {
+    alignItems: 'center',
+    marginTop: 8,
   },
-  phaseToggleButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-  },
-  phaseToggleText: {
+  phaseLabel: {
     fontSize: 16,
   },
   section: {
@@ -522,5 +619,40 @@ const styles = StyleSheet.create({
   },
   buttonPressed: {
     opacity: 0.85,
+  },
+  infoSection: {
+    gap: 16,
+  },
+  infoCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  infoRow: {
+    gap: 4,
+  },
+  infoDescription: {
+    textAlign: 'center',
+  },
+  endgameSection: {
+    gap: 16,
+  },
+  endgameGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'center',
+  },
+  endgameButton: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  endgameButtonText: {
+    fontSize: 16,
   },
 });
