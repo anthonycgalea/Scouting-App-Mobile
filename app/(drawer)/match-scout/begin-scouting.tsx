@@ -2,7 +2,7 @@ import type { ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect, useMemo, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -516,75 +516,77 @@ export default function BeginScoutingRoute() {
         ) : null}
 
         {selectedTab === 'endgame' ? (
-          <View style={styles.endgameSection}>
-            <View style={styles.endgameContent}>
-            <ThemedText type="title" style={styles.sectionTitle}>
-              Endgame
-            </ThemedText>
-            <View style={styles.endgameGrid}>
-              {endgameOptions.map((option) => {
-                const isSelected = endgameSelection === option.key;
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={styles.endgameSection}>
+              <View style={styles.endgameContent}>
+                <ThemedText type="title" style={styles.sectionTitle}>
+                  Endgame
+                </ThemedText>
+                <View style={styles.endgameGrid}>
+                  {endgameOptions.map((option) => {
+                    const isSelected = endgameSelection === option.key;
 
-                  return (
-                    <Pressable
-                      key={option.key}
-                      accessibilityRole="button"
-                      onPress={() => setEndgameSelection(option.key)}
-                      style={({ pressed }) => [
-                        styles.endgameButton,
-                        {
-                          backgroundColor: isSelected ? toggleActiveBackground : 'transparent',
-                          borderColor: isSelected ? toggleActiveBackground : inputBorder,
-                        },
-                        pressed && styles.buttonPressed,
-                      ]}
-                    >
-                      <ThemedText
-                        type="defaultSemiBold"
-                        style={[
-                          styles.endgameButtonText,
-                          { color: isSelected ? toggleActiveTextColor : tabInactiveTextColor },
+                    return (
+                      <Pressable
+                        key={option.key}
+                        accessibilityRole="button"
+                        onPress={() => setEndgameSelection(option.key)}
+                        style={({ pressed }) => [
+                          styles.endgameButton,
+                          {
+                            backgroundColor: isSelected ? toggleActiveBackground : 'transparent',
+                            borderColor: isSelected ? toggleActiveBackground : inputBorder,
+                          },
+                          pressed && styles.buttonPressed,
                         ]}
                       >
-                        {option.label}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={[
+                            styles.endgameButtonText,
+                            { color: isSelected ? toggleActiveTextColor : tabInactiveTextColor },
+                          ]}
+                        >
+                          {option.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <View style={styles.generalNotesSection}>
+                  <ThemedText type="defaultSemiBold" style={styles.generalNotesLabel}>
+                    General Notes
+                  </ThemedText>
+                  <TextInput
+                    multiline
+                    numberOfLines={4}
+                    placeholder="Add any observations or notes about the match"
+                    placeholderTextColor="#94A3B8"
+                    value={generalNotes}
+                    onChangeText={setGeneralNotes}
+                    onBlur={() => Keyboard.dismiss()}
+                    style={[
+                      styles.generalNotesInput,
+                      {
+                        backgroundColor: inputBackground,
+                        borderColor: inputBorder,
+                        color: textColor,
+                      },
+                    ]}
+                    textAlignVertical="top"
+                  />
+                </View>
               </View>
-              <View style={styles.generalNotesSection}>
-                <ThemedText type="defaultSemiBold" style={styles.generalNotesLabel}>
-                  General Notes
+              <Pressable
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.submitButton, pressed && styles.buttonPressed]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.submitButtonText}>
+                  Submit Match
                 </ThemedText>
-                <TextInput
-                  multiline
-                  numberOfLines={4}
-                  placeholder="Add any observations or notes about the match"
-                  placeholderTextColor="#94A3B8"
-                  value={generalNotes}
-                  onChangeText={setGeneralNotes}
-                  onBlur={() => Keyboard.dismiss()}
-                  style={[
-                    styles.generalNotesInput,
-                    {
-                      backgroundColor: inputBackground,
-                      borderColor: inputBorder,
-                      color: textColor,
-                    },
-                  ]}
-                  textAlignVertical="top"
-                />
-              </View>
+              </Pressable>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.submitButton, pressed && styles.buttonPressed]}
-            >
-              <ThemedText type="defaultSemiBold" style={styles.submitButtonText}>
-                Submit Match
-              </ThemedText>
-            </Pressable>
-          </View>
+          </TouchableWithoutFeedback>
         ) : null}
       </View>
     </ScreenContainer>
