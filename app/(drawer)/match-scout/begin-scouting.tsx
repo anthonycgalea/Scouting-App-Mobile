@@ -2,7 +2,7 @@ import type { ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -563,6 +563,7 @@ export default function BeginScoutingRoute() {
                   placeholderTextColor="#94A3B8"
                   value={generalNotes}
                   onChangeText={setGeneralNotes}
+                  onBlur={() => Keyboard.dismiss()}
                   style={[
                     styles.generalNotesInput,
                     {
