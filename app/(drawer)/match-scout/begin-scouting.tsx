@@ -2,7 +2,7 @@ import type { ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -145,15 +145,11 @@ interface CounterControlProps {
 function CounterControl({ label, value, onIncrement, onDecrement }: CounterControlProps) {
   const cardBackground = useThemeColor({ light: '#F1F5F9', dark: '#1F2937' }, 'background');
   const borderColor = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
-  const textColor = useThemeColor({}, 'text');
   const positiveBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
   const negativeBackground = useThemeColor({ light: '#DC2626', dark: '#B91C1C' }, 'tint');
 
   return (
     <View style={[styles.counterCard, { backgroundColor: cardBackground, borderColor }]}>
-      <ThemedText type="defaultSemiBold" style={[styles.counterLabel, { color: textColor }]}>
-        {label}
-      </ThemedText>
       <View style={styles.counterButtons}>
         <Pressable
           accessibilityRole="button"
@@ -165,6 +161,9 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
             pressed && styles.buttonPressed,
           ]}
         >
+          <ThemedText type="defaultSemiBold" style={styles.counterLabel}>
+            {label}
+          </ThemedText>
           <ThemedText type="title" style={styles.counterValue}>
             {value}
           </ThemedText>
@@ -288,84 +287,86 @@ export default function BeginScoutingRoute() {
 
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {!matchDetailsTitle && eventKey ? (
-          <View style={styles.header}>
-            <ThemedText type="defaultSemiBold">Event: {eventKey}</ThemedText>
-          </View>
-        ) : null}
-
-        {!hasPrefilledDetails ? (
-          <View style={styles.formGrid}>
-            <View style={styles.inputGroup}>
-              <ThemedText type="defaultSemiBold">Team Number</ThemedText>
-              <TextInput
-                value={teamNumber}
-                onChangeText={setTeamNumber}
-                keyboardType="number-pad"
-                placeholder="Team Number"
-                placeholderTextColor="#94A3B8"
-                style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
-              />
+      <View style={styles.content}>
+        <View style={styles.detailsSection}>
+          {!matchDetailsTitle && eventKey ? (
+            <View style={styles.header}>
+              <ThemedText type="defaultSemiBold">Event: {eventKey}</ThemedText>
             </View>
-            <View style={styles.inputGroup}>
-              <ThemedText type="defaultSemiBold">Match Number</ThemedText>
-              <TextInput
-                value={matchNumber}
-                onChangeText={setMatchNumber}
-                keyboardType="number-pad"
-                placeholder="Match Number"
-                placeholderTextColor="#94A3B8"
-                style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
-              />
-            </View>
-          </View>
-        ) : null}
+          ) : null}
 
-        <View
-          style={[
-            styles.phaseToggle,
-            { backgroundColor: toggleContainerBackground, borderColor: inputBorder },
-          ]}
-        >
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setIsAuto(true)}
-            style={({ pressed }) => [
-              styles.phaseToggleButton,
-              { backgroundColor: isAuto ? toggleActiveBackground : 'transparent' },
-              pressed && styles.buttonPressed,
+          {!hasPrefilledDetails ? (
+            <View style={styles.formGrid}>
+              <View style={styles.inputGroup}>
+                <ThemedText type="defaultSemiBold">Team Number</ThemedText>
+                <TextInput
+                  value={teamNumber}
+                  onChangeText={setTeamNumber}
+                  keyboardType="number-pad"
+                  placeholder="Team Number"
+                  placeholderTextColor="#94A3B8"
+                  style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <ThemedText type="defaultSemiBold">Match Number</ThemedText>
+                <TextInput
+                  value={matchNumber}
+                  onChangeText={setMatchNumber}
+                  keyboardType="number-pad"
+                  placeholder="Match Number"
+                  placeholderTextColor="#94A3B8"
+                  style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor }]}
+                />
+              </View>
+            </View>
+          ) : null}
+
+          <View
+            style={[
+              styles.phaseToggle,
+              { backgroundColor: toggleContainerBackground, borderColor: inputBorder },
             ]}
           >
-            <ThemedText
-              type="defaultSemiBold"
-              style={[
-                styles.phaseToggleText,
-                { color: isAuto ? toggleActiveTextColor : textColor },
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setIsAuto(true)}
+              style={({ pressed }) => [
+                styles.phaseToggleButton,
+                { backgroundColor: isAuto ? toggleActiveBackground : 'transparent' },
+                pressed && styles.buttonPressed,
               ]}
             >
-              Auto
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setIsAuto(false)}
-            style={({ pressed }) => [
-              styles.phaseToggleButton,
-              { backgroundColor: !isAuto ? toggleActiveBackground : 'transparent' },
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <ThemedText
-              type="defaultSemiBold"
-              style={[
-                styles.phaseToggleText,
-                { color: !isAuto ? toggleActiveTextColor : textColor },
+              <ThemedText
+                type="defaultSemiBold"
+                style={[
+                  styles.phaseToggleText,
+                  { color: isAuto ? toggleActiveTextColor : textColor },
+                ]}
+              >
+                Auto
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setIsAuto(false)}
+              style={({ pressed }) => [
+                styles.phaseToggleButton,
+                { backgroundColor: !isAuto ? toggleActiveBackground : 'transparent' },
+                pressed && styles.buttonPressed,
               ]}
             >
-              Teleop
-            </ThemedText>
-          </Pressable>
+              <ThemedText
+                type="defaultSemiBold"
+                style={[
+                  styles.phaseToggleText,
+                  { color: !isAuto ? toggleActiveTextColor : textColor },
+                ]}
+              >
+                Teleop
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -415,14 +416,17 @@ export default function BeginScoutingRoute() {
             </View>
           </View>
         </View>
-      </ScrollView>
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    padding: 20,
+  content: {
+    flex: 1,
+    gap: 24,
+  },
+  detailsSection: {
     gap: 24,
   },
   header: {
@@ -460,6 +464,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   section: {
+    flex: 1,
     gap: 16,
   },
   sectionTitle: {
@@ -470,7 +475,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    flex: 1,
+    alignItems: 'stretch',
   },
   counterColumn: {
     flex: 1,
@@ -483,10 +489,12 @@ const styles = StyleSheet.create({
     gap: 12,
     alignItems: 'stretch',
     minWidth: 150,
+    flex: 1,
   },
   counterLabel: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
+    color: '#E2E8F0',
   },
   counterValue: {
     fontSize: 28,
@@ -494,19 +502,17 @@ const styles = StyleSheet.create({
   },
   counterButtons: {
     flexDirection: 'column',
-    gap: 0,
+    gap: 12,
     width: '100%',
     flexGrow: 1,
-    minHeight: 180,
-    borderRadius: 12,
-    overflow: 'hidden',
+    flex: 1,
   },
   counterButton: {
-    borderRadius: 12,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
+    borderRadius: 12,
   },
   counterButtonPositive: {
     flex: 3,
