@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
@@ -7,6 +7,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function PitScoutTeamDetailsScreen() {
   const params = useLocalSearchParams<{ teamNumber?: string | string[]; teamName?: string | string[] }>();
+  const router = useRouter();
 
   const teamNumber = Array.isArray(params.teamNumber) ? params.teamNumber[0] : params.teamNumber;
   const teamName = Array.isArray(params.teamName) ? params.teamName[0] : params.teamName;
@@ -26,6 +27,9 @@ export default function PitScoutTeamDetailsScreen() {
         <View style={[styles.footer, { backgroundColor: footerBackground, borderColor }]}>
           <Pressable
             accessibilityRole="button"
+            onPress={() => {
+              router.replace('/(drawer)/pit-scout');
+            }}
             style={({ pressed }) => [
               styles.submitButton,
               {
