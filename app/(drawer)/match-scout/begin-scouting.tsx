@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
+import type { ParamListBase } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -124,6 +126,7 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
 
 export default function BeginScoutingRoute() {
   const params = useLocalSearchParams<BeginScoutingParams>();
+  const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
 
   const initialTeamNumber = toSingleValue(params.teamNumber) ?? '';
   const initialMatchNumber = toSingleValue(params.matchNumber) ?? '';
@@ -162,6 +165,11 @@ export default function BeginScoutingRoute() {
 
     return `${eventKey} ${matchLabel}: Team ${initialTeamNumber} (${driverStation})`;
   }, [driverStation, eventKey, hasPrefilledDetails, initialMatchNumber, initialTeamNumber, matchLevel]);
+
+  useEffect(() => {
+    const headerTitle = matchDetailsTitle || 'Match Scout';
+    navigation.setOptions({ headerTitle });
+  }, [navigation, matchDetailsTitle]);
 
   const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {
     const limit = isAuto ? limitConfig[key].auto : limitConfig[key].teleop;

@@ -5,6 +5,7 @@ export default function MatchScoutLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="select-team" options={{ presentation: 'card' }} />
+      <Stack.Screen name="begin-scouting" options={{ headerShown: true, title: 'Match Scout' }} />
     </Stack>
   );
 }

@@ -51,8 +51,6 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
 
 const renderTeamNumber = (value?: number) => (value === undefined ? 'TBD' : value);
 
-const getDriverStationLabel = (key: TeamOption['key']) => key.replace('_id', '');
-
 export interface MatchTeamSelectScreenProps {
   matchLevel?: string;
   matchNumber?: number;
@@ -123,7 +121,7 @@ export function MatchTeamSelectScreen({
     [selectedTeam, teamOptions]
   );
 
-  const driverStationLabel = selectedOption ? getDriverStationLabel(selectedOption.key) : undefined;
+  const driverStationLabel = selectedOption?.label;
 
   const handleBeginScouting = useCallback(() => {
     if (!selectedOption || selectedOption.teamNumber === undefined) {
