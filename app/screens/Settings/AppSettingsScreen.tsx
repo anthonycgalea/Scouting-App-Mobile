@@ -9,6 +9,8 @@ export function AppSettingsScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastResult, setLastResult] = useState<UpdateGeneralDataResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pingLabel, setPingLabel] = useState('Ping');
+  const [isPinging, setIsPinging] = useState(false);
 
   const handleUpdatePress = useCallback(async () => {
     try {
@@ -35,6 +37,32 @@ export function AppSettingsScreen() {
     }
   }, []);
 
+  const handlePingPress = useCallback(async () => {
+    try {
+      setIsPinging(true);
+
+      const response = await fetch('/ping');
+
+      if (!response.ok) {
+        throw new Error(`Ping failed with status ${response.status}`);
+      }
+
+      const data: unknown = await response.json();
+
+      if (typeof data === 'object' && data !== null && 'message' in data && typeof (data as { message: unknown }).message === 'string') {
+        setPingLabel((data as { message: string }).message);
+      } else {
+        throw new Error('Ping response missing "message" string');
+      }
+    } catch (error) {
+      console.error('Ping request failed', error);
+      const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+      Alert.alert('Ping failed', message);
+    } finally {
+      setIsPinging(false);
+    }
+  }, []);
+
   return (
     <ScreenContainer>
       <ThemedText type="title">App Settings</ThemedText>
@@ -56,6 +84,21 @@ export function AppSettingsScreen() {
           <ThemedText style={styles.actionButtonLabel}>
             {isUpdating ? 'Updating general data…' : 'Update general data'}
           </ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isPinging }}
+          disabled={isPinging}
+          onPress={handlePingPress}
+          style={({ pressed }) => [
+            styles.actionButton,
+            styles.pingButton,
+            pressed && !isPinging ? styles.actionButtonPressed : null,
+            isPinging ? styles.actionButtonDisabled : null,
+          ]}
+          testID="ping-button"
+        >
+          <ThemedText style={styles.actionButtonLabel}>{pingLabel}</ThemedText>
         </Pressable>
         {isUpdating ? (
           <View style={styles.progressRow}>
@@ -90,6 +133,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  pingButton: {
+    marginTop: 12,
   },
   actionButtonPressed: {
     opacity: 0.85,
