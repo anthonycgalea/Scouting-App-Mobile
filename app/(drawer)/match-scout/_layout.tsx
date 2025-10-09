@@ -55,10 +55,17 @@ export default function MatchScoutLayout() {
       <Stack.Screen name="select-team" options={{ presentation: 'card' }} />
       <Stack.Screen
         name="begin-scouting"
-        options={({ route }) => ({
-          headerShown: true,
-          title: buildMatchHeaderTitle((route.params ?? {}) as BeginScoutingRouteParams),
-        })}
+        options={({ route }) => {
+          const headerTitle = buildMatchHeaderTitle((route.params ?? {}) as BeginScoutingRouteParams);
+
+          return {
+            headerShown: true,
+            headerTitle,
+            title: headerTitle,
+            headerLargeTitle: false,
+            headerBackTitleVisible: false,
+          };
+        }}
       />
     </Stack>
   );
