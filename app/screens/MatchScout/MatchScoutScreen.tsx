@@ -9,7 +9,6 @@ import {
   SECTION_DEFINITIONS,
   groupMatchesBySection,
 } from '@/components/match-schedule';
-import { ThemedText } from '@/components/themed-text';
 
 const MOCK_MATCHES: MatchScheduleEntry[] = [
   {
@@ -61,10 +60,6 @@ export function MatchScoutScreen() {
 
   return (
     <ScreenContainer>
-      <ThemedText type="title">Match Scouting</ThemedText>
-      <ThemedText>
-        Record match performance, scoring actions, and alliance notes in real time.
-      </ThemedText>
       <MatchScheduleToggle
         value={selectedSection}
         onChange={setSelectedSection}
