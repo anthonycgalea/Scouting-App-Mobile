@@ -6,6 +6,7 @@ import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { updateGeneralData, type UpdateGeneralDataResult } from '../../services/general-data';
 import { pingBackend } from '../../services/api/ping';
+import { showToast } from '../../utils/showToast';
 
 export function AppSettingsScreen() {
   const [lastResult, setLastResult] = useState<UpdateGeneralDataResult | null>(null);
@@ -27,11 +28,9 @@ export function AppSettingsScreen() {
     updateGeneralDataMutation.mutate(undefined, {
       onSuccess: (result) => {
         setLastResult(result);
-
-        Alert.alert(
-          'General data updated',
-          `Teams updated: ${result.teams.created + result.teams.updated}. Events updated: ${result.events.created + result.events.updated}.`
-        );
+        const addedTeamsCount = result.teams.created;
+        const teamLabel = addedTeamsCount === 1 ? 'team' : 'teams';
+        showToast(`Added ${addedTeamsCount} new ${teamLabel}.`);
       },
       onError: (error) => {
         console.error('Failed to update general data', error);
