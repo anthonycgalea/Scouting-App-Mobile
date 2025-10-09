@@ -15,6 +15,7 @@ const MOCK_MATCHES: MatchScheduleEntry[] = [
   {
     match_number: 1,
     match_level: 'qm',
+    event_key: '2024mock',
     red1_id: 111,
     red2_id: 222,
     red3_id: 333,
@@ -25,6 +26,7 @@ const MOCK_MATCHES: MatchScheduleEntry[] = [
   {
     match_number: 2,
     match_level: 'qm',
+    event_key: '2024mock',
     red1_id: 777,
     red2_id: 888,
     red3_id: 999,
@@ -35,6 +37,7 @@ const MOCK_MATCHES: MatchScheduleEntry[] = [
   {
     match_number: 1,
     match_level: 'sf',
+    event_key: '2024mock',
     red1_id: 1313,
     red2_id: 1414,
     red3_id: 1515,
@@ -45,6 +48,7 @@ const MOCK_MATCHES: MatchScheduleEntry[] = [
   {
     match_number: 1,
     match_level: 'f',
+    event_key: '2024mock',
     red1_id: 1919,
     red2_id: 2020,
     red3_id: 2121,
@@ -72,6 +76,10 @@ export function MatchScoutScreen() {
           params[key] = String(value);
         }
       };
+
+      if (match.event_key) {
+        params.eventKey = match.event_key;
+      }
 
       maybeAddTeam('red1', match.red1_id);
       maybeAddTeam('red2', match.red2_id);

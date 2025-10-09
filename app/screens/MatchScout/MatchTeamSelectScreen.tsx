@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useRouter } from 'expo-router';
 
 import type { MatchScheduleEntry } from '@/components/match-schedule';
 
@@ -50,9 +51,12 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
 
 const renderTeamNumber = (value?: number) => (value === undefined ? 'TBD' : value);
 
+const getDriverStationLabel = (key: TeamOption['key']) => key.replace('_id', '');
+
 export interface MatchTeamSelectScreenProps {
   matchLevel?: string;
   matchNumber?: number;
+  eventKey?: string;
   red1?: number;
   red2?: number;
   red3?: number;
@@ -65,6 +69,7 @@ export interface MatchTeamSelectScreenProps {
 export function MatchTeamSelectScreen({
   matchLevel,
   matchNumber,
+  eventKey,
   red1,
   red2,
   red3,
@@ -74,6 +79,7 @@ export function MatchTeamSelectScreen({
   onCancel,
 }: MatchTeamSelectScreenProps) {
   const [selectedTeam, setSelectedTeam] = useState<string>();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const cardBackground = useThemeColor({ light: '#F8FAFC', dark: '#1F2937' }, 'background');
@@ -83,6 +89,8 @@ export function MatchTeamSelectScreen({
   const neutralButtonBackground = useThemeColor({ light: '#E2E8F0', dark: '#27272A' }, 'background');
   const neutralButtonText = useThemeColor({}, 'text');
   const headerText = useThemeColor({}, 'text');
+  const primaryButtonBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
+  const primaryButtonText = '#F8FAFC';
 
   const matchLabel = useMemo(() => {
     const levelLabel = getMatchLevelLabel(matchLevel);
@@ -108,6 +116,39 @@ export function MatchTeamSelectScreen({
     ],
     [red1, red2, red3, blue1, blue2, blue3]
   );
+
+  const selectedOption = useMemo(
+    () => teamOptions.find((option) => option.key === selectedTeam),
+    [selectedTeam, teamOptions]
+  );
+
+  const driverStationLabel = selectedOption ? getDriverStationLabel(selectedOption.key) : undefined;
+
+  const handleBeginScouting = useCallback(() => {
+    if (!selectedOption || selectedOption.teamNumber === undefined) {
+      return;
+    }
+
+    const params: Record<string, string> = {
+      teamNumber: String(selectedOption.teamNumber),
+    };
+
+    if (driverStationLabel) {
+      params.driverStation = driverStationLabel;
+    }
+
+    if (matchNumber !== undefined) {
+      params.matchNumber = String(matchNumber);
+    }
+
+    if (eventKey) {
+      params.eventKey = eventKey;
+    }
+
+    router.push({ pathname: '/(drawer)/match-scout/begin-scouting', params });
+  }, [driverStationLabel, eventKey, matchNumber, router, selectedOption]);
+
+  const canBeginScouting = selectedOption?.teamNumber !== undefined;
 
   return (
     <ScreenContainer>
@@ -146,10 +187,27 @@ export function MatchTeamSelectScreen({
         })}
       </View>
       <View style={styles.footer}>
-        <View style={[styles.selectionPreview, { backgroundColor: cardBackground, borderColor }]}>          
-          <ThemedText style={[styles.selectionText, { color: headerText }]}>
-            {selectedTeam ? `Selected: ${teamOptions.find((option) => option.key === selectedTeam)?.label ?? ''}` : 'Select a team to continue'}
-          </ThemedText>
+        <View style={[styles.selectionPreview, { backgroundColor: cardBackground, borderColor }]}>
+          {selectedOption ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={!canBeginScouting}
+              onPress={handleBeginScouting}
+              style={({ pressed }) => [
+                styles.beginButton,
+                {
+                  backgroundColor: primaryButtonBackground,
+                  opacity: !canBeginScouting ? 0.5 : pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <ThemedText style={[styles.beginButtonText, { color: primaryButtonText }]}>
+                {`Begin Scouting: ${renderTeamNumber(selectedOption.teamNumber)} (${driverStationLabel ?? ''})`}
+              </ThemedText>
+            </Pressable>
+          ) : (
+            <ThemedText style={[styles.selectionText, { color: headerText }]}>Select a team to continue</ThemedText>
+          )}
         </View>
         <Pressable
           accessibilityRole="button"
@@ -172,6 +230,7 @@ export function MatchTeamSelectScreen({
 export function createMatchTeamSelectScreenPropsFromParams(params: {
   matchLevel?: string | string[];
   matchNumber?: string | string[];
+  eventKey?: string | string[];
   red1?: string | string[];
   red2?: string | string[];
   red3?: string | string[];
@@ -182,6 +241,7 @@ export function createMatchTeamSelectScreenPropsFromParams(params: {
   return {
     matchLevel: toSingleValue(params.matchLevel),
     matchNumber: parseNumberParam(params.matchNumber),
+    eventKey: toSingleValue(params.eventKey),
     red1: parseNumberParam(params.red1),
     red2: parseNumberParam(params.red2),
     red3: parseNumberParam(params.red3),
@@ -232,10 +292,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     padding: 12,
+    gap: 8,
   },
   selectionText: {
     textAlign: 'center',
     fontWeight: '500',
+  },
+  beginButton: {
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  beginButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   cancelButton: {
     borderRadius: 12,
