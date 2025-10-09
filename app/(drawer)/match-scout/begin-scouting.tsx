@@ -143,13 +143,11 @@ interface CounterControlProps {
 }
 
 function CounterControl({ label, value, onIncrement, onDecrement }: CounterControlProps) {
-  const cardBackground = useThemeColor({ light: '#F1F5F9', dark: '#1F2937' }, 'background');
-  const borderColor = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
   const positiveBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
   const negativeBackground = useThemeColor({ light: '#DC2626', dark: '#B91C1C' }, 'tint');
 
   return (
-    <View style={[styles.counterCard, { backgroundColor: cardBackground, borderColor }]}>
+    <View style={styles.counterControl}>
       <View style={styles.counterButtons}>
         <Pressable
           accessibilityRole="button"
@@ -482,10 +480,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 16,
   },
-  counterCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
+  counterControl: {
     gap: 12,
     alignItems: 'stretch',
     minWidth: 150,
@@ -502,7 +497,7 @@ const styles = StyleSheet.create({
   },
   counterButtons: {
     flexDirection: 'column',
-    gap: 12,
+    gap: 0,
     width: '100%',
     flexGrow: 1,
     flex: 1,
@@ -511,17 +506,14 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
     borderRadius: 12,
   },
   counterButtonPositive: {
     flex: 3,
     gap: 8,
-    paddingVertical: 16,
   },
   counterButtonNegative: {
     flex: 1,
-    paddingVertical: 10,
   },
   counterButtonText: {
     color: '#F8FAFC',
