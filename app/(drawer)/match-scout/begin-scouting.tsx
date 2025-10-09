@@ -1,8 +1,8 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
 import type { ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLayoutEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -66,9 +66,9 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
 
   switch (normalized) {
     case 'qm':
-      return 'Quals';
+      return 'Qualification';
     case 'sf':
-      return 'Semis';
+      return 'Playoff';
     case 'qf':
       return 'Quarters';
     case 'f':
