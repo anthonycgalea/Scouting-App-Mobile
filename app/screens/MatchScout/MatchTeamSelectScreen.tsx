@@ -133,7 +133,7 @@ export function MatchTeamSelectScreen({
     };
 
     if (driverStationLabel) {
-      params.driverStation = driverStationLabel.toUpperCase();
+      params.driverStation = driverStationLabel;
     }
 
     if (matchNumber !== undefined) {
