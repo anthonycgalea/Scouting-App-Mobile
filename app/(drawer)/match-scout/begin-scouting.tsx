@@ -188,6 +188,66 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
   );
 }
 
+interface TabTransitionControlProps {
+  incrementLabel: string;
+  decrementLabel: string;
+  onIncrement: () => void;
+  onDecrement: () => void;
+}
+
+function TabTransitionControl({
+  incrementLabel,
+  decrementLabel,
+  onIncrement,
+  onDecrement,
+}: TabTransitionControlProps) {
+  const positiveBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
+  const negativeBackground = useThemeColor({ light: '#F8FAFC', dark: '#0F172A' }, 'background');
+  const negativeText = useThemeColor({ light: '#2563EB', dark: '#60A5FA' }, 'tint');
+
+  return (
+    <View style={[styles.counterControl, styles.tabTransitionControl]}>
+      <View style={styles.counterButtons}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onIncrement}
+          style={({ pressed }) => [
+            styles.counterButton,
+            styles.counterButtonPositive,
+            { backgroundColor: positiveBackground },
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <ThemedText type="defaultSemiBold" style={styles.tabTransitionHeading}>
+            Next
+          </ThemedText>
+          <ThemedText type="title" style={styles.tabTransitionLabel}>
+            {incrementLabel}
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onDecrement}
+          style={({ pressed }) => [
+            styles.counterButton,
+            styles.counterButtonNegative,
+            styles.tabTransitionBackButton,
+            { backgroundColor: negativeBackground, borderColor: negativeText },
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <ThemedText
+            type="defaultSemiBold"
+            style={[styles.tabTransitionBackLabel, { color: negativeText }]}
+          >
+            {decrementLabel}
+          </ThemedText>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export default function BeginScoutingRoute() {
   const params = useLocalSearchParams<BeginScoutingParams>();
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
@@ -216,6 +276,7 @@ export default function BeginScoutingRoute() {
   const [autoCounts, setAutoCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
   const [teleCounts, setTeleCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
   const [endgameSelection, setEndgameSelection] = useState<'none' | 'park' | 'shallow' | 'deep'>('none');
+  const [generalNotes, setGeneralNotes] = useState('');
 
   const inputBackground = useThemeColor({ light: '#FFFFFF', dark: '#0F172A' }, 'background');
   const inputBorder = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
@@ -453,6 +514,14 @@ export default function BeginScoutingRoute() {
                     onIncrement={() => handleAdjust('net', 1)}
                     onDecrement={() => handleAdjust('net', -1)}
                   />
+                  {(isAutoTab || isTeleopTab) && (
+                    <TabTransitionControl
+                      incrementLabel={isAutoTab ? 'Teleop' : 'Endgame'}
+                      decrementLabel={isAutoTab ? 'Info' : 'Auto'}
+                      onIncrement={() => setSelectedTab(isAutoTab ? 'teleop' : 'endgame')}
+                      onDecrement={() => setSelectedTab(isAutoTab ? 'info' : 'auto')}
+                    />
+                  )}
                 </View>
               </View>
             </View>
@@ -461,40 +530,72 @@ export default function BeginScoutingRoute() {
 
         {selectedTab === 'endgame' ? (
           <View style={styles.endgameSection}>
-            <ThemedText type="title" style={styles.sectionTitle}>
-              Endgame Actions
-            </ThemedText>
-            <View style={styles.endgameGrid}>
-              {endgameOptions.map((option) => {
-                const isSelected = endgameSelection === option.key;
+            <View style={styles.endgameContent}>
+              <ThemedText type="title" style={styles.sectionTitle}>
+                Endgame Actions
+              </ThemedText>
+              <View style={styles.endgameGrid}>
+                {endgameOptions.map((option) => {
+                  const isSelected = endgameSelection === option.key;
 
-                return (
-                  <Pressable
-                    key={option.key}
-                    accessibilityRole="button"
-                    onPress={() => setEndgameSelection(option.key)}
-                    style={({ pressed }) => [
-                      styles.endgameButton,
-                      {
-                        backgroundColor: isSelected ? toggleActiveBackground : 'transparent',
-                        borderColor: isSelected ? toggleActiveBackground : inputBorder,
-                      },
-                      pressed && styles.buttonPressed,
-                    ]}
-                  >
-                    <ThemedText
-                      type="defaultSemiBold"
-                      style={[
-                        styles.endgameButtonText,
-                        { color: isSelected ? toggleActiveTextColor : tabInactiveTextColor },
+                  return (
+                    <Pressable
+                      key={option.key}
+                      accessibilityRole="button"
+                      onPress={() => setEndgameSelection(option.key)}
+                      style={({ pressed }) => [
+                        styles.endgameButton,
+                        {
+                          backgroundColor: isSelected ? toggleActiveBackground : 'transparent',
+                          borderColor: isSelected ? toggleActiveBackground : inputBorder,
+                        },
+                        pressed && styles.buttonPressed,
                       ]}
                     >
-                      {option.label}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
+                      <ThemedText
+                        type="defaultSemiBold"
+                        style={[
+                          styles.endgameButtonText,
+                          { color: isSelected ? toggleActiveTextColor : tabInactiveTextColor },
+                        ]}
+                      >
+                        {option.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={styles.generalNotesSection}>
+                <ThemedText type="defaultSemiBold" style={styles.generalNotesLabel}>
+                  General Notes
+                </ThemedText>
+                <TextInput
+                  multiline
+                  numberOfLines={4}
+                  placeholder="Add any observations or notes about the match"
+                  placeholderTextColor="#94A3B8"
+                  value={generalNotes}
+                  onChangeText={setGeneralNotes}
+                  style={[
+                    styles.generalNotesInput,
+                    {
+                      backgroundColor: inputBackground,
+                      borderColor: inputBorder,
+                      color: textColor,
+                    },
+                  ]}
+                  textAlignVertical="top"
+                />
+              </View>
             </View>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.submitButton, pressed && styles.buttonPressed]}
+            >
+              <ThemedText type="defaultSemiBold" style={styles.submitButtonText}>
+                Submit Match
+              </ThemedText>
+            </Pressable>
           </View>
         ) : null}
       </View>
@@ -580,6 +681,10 @@ const styles = StyleSheet.create({
     minWidth: 150,
     flex: 1,
   },
+  tabTransitionControl: {
+    flex: 2,
+    minHeight: 160,
+  },
   counterLabel: {
     fontSize: 14,
     textAlign: 'center',
@@ -609,6 +714,12 @@ const styles = StyleSheet.create({
   counterButtonNegative: {
     flex: 1,
   },
+  tabTransitionBackButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   counterButtonText: {
     color: '#F8FAFC',
     fontSize: 20,
@@ -637,22 +748,64 @@ const styles = StyleSheet.create({
   },
   endgameSection: {
     gap: 16,
+    flex: 1,
+  },
+  endgameContent: {
+    gap: 16,
+    flex: 1,
   },
   endgameGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
   endgameButton: {
     borderRadius: 12,
     borderWidth: 1,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    minWidth: 140,
+    width: '48%',
     alignItems: 'center',
+    flexGrow: 1,
   },
   endgameButtonText: {
     fontSize: 16,
+  },
+  generalNotesSection: {
+    gap: 8,
+  },
+  generalNotesLabel: {
+    fontSize: 16,
+  },
+  generalNotesInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 120,
+  },
+  submitButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+  },
+  submitButtonText: {
+    color: '#F8FAFC',
+    fontSize: 18,
+  },
+  tabTransitionHeading: {
+    color: '#E2E8F0',
+    fontSize: 14,
+  },
+  tabTransitionLabel: {
+    color: '#F8FAFC',
+    fontSize: 24,
+    textAlign: 'center',
+  },
+  tabTransitionBackLabel: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
