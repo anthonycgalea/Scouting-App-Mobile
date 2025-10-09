@@ -211,15 +211,21 @@ export function MatchSchedule({
 const styles = StyleSheet.create({
   container: {
     gap: 16,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+    alignItems: 'center',
   },
   matchList: {
-    gap: 12,
+    width: '100%',
+    gap: 16,
+    alignItems: 'center',
   },
   matchCard: {
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
+    width: '100%',
+    marginVertical: 8,
   },
   matchLayout: {
     flexDirection: 'row',

@@ -203,11 +203,14 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   optionsGrid: {
-    flexDirection: 'column',
-    gap: 12,
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
   },
   teamOption: {
-    alignSelf: 'stretch',
+    width: '80%',
+    maxWidth: 480,
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderRadius: 16,
