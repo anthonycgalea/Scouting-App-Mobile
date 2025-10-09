@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -35,28 +35,23 @@ const createRowData = (
   playedMatches?: Set<string>,
   isValidationReady?: boolean
 ): RowData[] =>
-  matches.map((match) => {
-    const matchKey = createMatchKey(match.match_level, match.match_number);
+  [...matches]
+    .sort((a, b) => a.match_number - b.match_number)
+    .map((match) => {
+      const matchKey = createMatchKey(match.match_level, match.match_number);
 
-    return {
-      matchNumber: match.match_number,
-      matchLevel: match.match_level,
-      red1: match.red1_id,
-      red2: match.red2_id,
-      red3: match.red3_id,
-      blue1: match.blue1_id,
-      blue2: match.blue2_id,
-      blue3: match.blue3_id,
-      played: isValidationReady ? playedMatches?.has(matchKey) ?? false : undefined,
-    };
-  });
-
-function sortData(data: RowData[], payload: { reversed: boolean }) {
-  const sorted = [...data].sort((a, b) =>
-    payload.reversed ? b.matchNumber - a.matchNumber : a.matchNumber - b.matchNumber
-  );
-  return sorted;
-}
+      return {
+        matchNumber: match.match_number,
+        matchLevel: match.match_level,
+        red1: match.red1_id,
+        red2: match.red2_id,
+        red3: match.red3_id,
+        blue1: match.blue1_id,
+        blue2: match.blue2_id,
+        blue3: match.blue3_id,
+        played: isValidationReady ? playedMatches?.has(matchKey) ?? false : undefined,
+      };
+    });
 
 const renderTeamNumber = (value?: number | null) => (value === null || value === undefined ? '-' : value);
 
@@ -88,8 +83,6 @@ export function MatchSchedule({
   isValidationError = false,
   isValidationLoading = false,
 }: MatchScheduleProps) {
-  const [reverseSortDirection, setReverseSortDirection] = useState(false);
-
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const textColor = useThemeColor({}, 'text');
@@ -115,15 +108,6 @@ export function MatchSchedule({
     [matches, playedMatches, isValidationReady]
   );
 
-  const sortedData = useMemo(
-    () => sortData(schedule, { reversed: reverseSortDirection }),
-    [schedule, reverseSortDirection]
-  );
-
-  const toggleSortDirection = () => {
-    setReverseSortDirection((current) => !current);
-  };
-
   const dividerColor = isDark ? 'rgba(63, 63, 70, 0.6)' : 'rgba(226, 232, 240, 0.9)';
   const cardBackground = isDark ? 'rgba(24, 24, 27, 0.85)' : '#FFFFFF';
   const headerTextColor = isDark ? '#F8FAFC' : '#0F172A';
@@ -133,7 +117,7 @@ export function MatchSchedule({
   const blueCellText = '#F8FAFC';
   const pendingTextColor = isDark ? 'rgba(156, 163, 175, 0.8)' : 'rgba(107, 114, 128, 0.9)';
 
-  const rows = sortedData.map((row) => {
+  const rows = schedule.map((row) => {
     const matchLabel = `${getMatchLevelLabel(row.matchLevel)} ${row.matchNumber}`;
 
     return (
@@ -195,14 +179,6 @@ export function MatchSchedule({
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.sortControl}>
-        <PressableSortButton
-          label="Match #"
-          iconColor={headerTextColor}
-          isReversed={reverseSortDirection}
-          onPress={toggleSortDirection}
-        />
-      </View>
       {rows.length > 0 ? (
         <View style={styles.matchList}>{rows}</View>
       ) : (
@@ -216,56 +192,10 @@ export function MatchSchedule({
   );
 }
 
-interface PressableSortButtonProps {
-  label: string;
-  iconColor: string;
-  isReversed: boolean;
-  onPress: () => void;
-}
-
-function PressableSortButton({ label, iconColor, isReversed, onPress }: PressableSortButtonProps) {
-  return (
-    <View style={styles.sortButtonContainer}>
-      <Pressable
-        style={({ pressed }) => [styles.sortButton, pressed && styles.sortButtonPressed]}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`Sort by ${label}`}
-      >
-        <ThemedText style={[styles.sortButtonLabel, { color: iconColor }]}>{label}</ThemedText>
-        <Ionicons name={isReversed ? 'chevron-down' : 'chevron-up'} size={16} color={iconColor} />
-      </Pressable>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     gap: 16,
     paddingBottom: 24,
-  },
-  sortControl: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  sortButtonContainer: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  sortButtonPressed: {
-    opacity: 0.85,
-  },
-  sortButtonLabel: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   matchList: {
     gap: 12,
