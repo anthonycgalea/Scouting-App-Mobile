@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import type { ParamListBase } from '@react-navigation/native';
@@ -17,6 +17,17 @@ type BeginScoutingParams = {
   eventKey?: string | string[];
   driverStation?: string | string[];
   matchLevel?: string | string[];
+  allianceColor?: string | string[];
+  alliance_color?: string | string[];
+  stationPosition?: string | string[];
+  station_position?: string | string[];
+  driverStationPosition?: string | string[];
+  driver_station_position?: string | string[];
+  team_number?: string | string[];
+  match_number?: string | string[];
+  event_key?: string | string[];
+  match_level?: string | string[];
+  driver_station?: string | string[];
 };
 
 type PhaseCounts = {
@@ -50,8 +61,6 @@ const createInitialPhaseCounts = (): PhaseCounts => ({
   processor: 0,
 });
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
 const getMatchLevelLabel = (matchLevel: string | undefined) => {
   const normalized = matchLevel?.toLowerCase();
 
@@ -68,6 +77,63 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
       return matchLevel?.toUpperCase() ?? '';
   }
 };
+
+const toTitleCase = (value: string | undefined) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return trimmed[0].toUpperCase() + trimmed.slice(1).toLowerCase();
+};
+
+const buildDriverStationLabel = (
+  driverStation: string | undefined,
+  allianceColor: string | undefined,
+  stationPosition: string | undefined
+) => {
+  if (driverStation) {
+    return driverStation;
+  }
+
+  if (!allianceColor) {
+    return undefined;
+  }
+
+  const formattedColor = toTitleCase(allianceColor);
+  const trimmedPosition = stationPosition?.trim();
+
+  if (formattedColor && trimmedPosition) {
+    return `${formattedColor} ${trimmedPosition}`;
+  }
+
+  return formattedColor ?? undefined;
+};
+
+const formatMatchHeader = (
+  eventKey: string | undefined,
+  matchLevel: string | undefined,
+  matchNumber: string | undefined,
+  teamNumber: string | undefined,
+  driverStationLabel: string | undefined
+) => {
+  if (!eventKey || !matchNumber || !teamNumber || !driverStationLabel) {
+    return undefined;
+  }
+
+  const levelLabel = getMatchLevelLabel(matchLevel);
+  const matchPrefix = levelLabel || matchLevel;
+  const matchLabel = matchPrefix ? `${matchPrefix} Match ${matchNumber}` : `Match ${matchNumber}`;
+
+  return `${eventKey} ${matchLabel}: Team ${teamNumber} (${driverStationLabel})`;
+};
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 interface CounterControlProps {
   label: string;
@@ -128,11 +194,23 @@ export default function BeginScoutingRoute() {
   const params = useLocalSearchParams<BeginScoutingParams>();
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
 
-  const initialTeamNumber = toSingleValue(params.teamNumber) ?? '';
-  const initialMatchNumber = toSingleValue(params.matchNumber) ?? '';
-  const eventKey = toSingleValue(params.eventKey) ?? '';
-  const driverStation = toSingleValue(params.driverStation);
-  const matchLevel = toSingleValue(params.matchLevel);
+  const eventKey =
+    toSingleValue(params.eventKey) ?? toSingleValue(params.event_key) ?? '';
+  const matchLevel =
+    toSingleValue(params.matchLevel) ?? toSingleValue(params.match_level);
+  const initialMatchNumber =
+    toSingleValue(params.matchNumber) ?? toSingleValue(params.match_number) ?? '';
+  const initialTeamNumber =
+    toSingleValue(params.teamNumber) ?? toSingleValue(params.team_number) ?? '';
+  const driverStation = toSingleValue(params.driverStation) ?? toSingleValue(params.driver_station);
+  const allianceColor =
+    toSingleValue(params.allianceColor) ?? toSingleValue(params.alliance_color);
+  const stationPosition =
+    toSingleValue(params.stationPosition) ??
+    toSingleValue(params.station_position) ??
+    toSingleValue(params.driverStationPosition) ??
+    toSingleValue(params.driver_station_position);
+  const driverStationLabel = buildDriverStationLabel(driverStation, allianceColor, stationPosition);
 
   const [teamNumber, setTeamNumber] = useState(initialTeamNumber);
   const [matchNumber, setMatchNumber] = useState(initialMatchNumber);
@@ -149,31 +227,42 @@ export default function BeginScoutingRoute() {
 
   const currentCounts = isAuto ? autoCounts : teleCounts;
   const hasPrefilledDetails = useMemo(
-    () => Boolean(eventKey && initialMatchNumber && initialTeamNumber && driverStation),
-    [driverStation, eventKey, initialMatchNumber, initialTeamNumber]
+    () => Boolean(eventKey && initialMatchNumber && initialTeamNumber && driverStationLabel),
+    [driverStationLabel, eventKey, initialMatchNumber, initialTeamNumber]
   );
-  const matchDetailsTitle = useMemo(() => {
-    if (!hasPrefilledDetails) {
-      return '';
-    }
+  const matchDetailsTitle = useMemo(
+    () =>
+      formatMatchHeader(eventKey, matchLevel, initialMatchNumber, initialTeamNumber, driverStationLabel),
+    [driverStationLabel, eventKey, initialMatchNumber, initialTeamNumber, matchLevel]
+  );
 
-    const levelLabel = getMatchLevelLabel(matchLevel);
-    const matchPrefix = levelLabel || matchLevel;
-    const matchLabel = matchPrefix
-      ? `${matchPrefix} Match ${initialMatchNumber}`
-      : `Match ${initialMatchNumber}`;
+  useLayoutEffect(() => {
+    const headerTitle = matchDetailsTitle ?? 'match-scout';
+    const parentNavigation = navigation.getParent?.();
+    const drawerNavigation = parentNavigation?.getParent?.();
 
-    return `${eventKey} ${matchLabel}: Team ${initialTeamNumber} (${driverStation})`;
-  }, [driverStation, eventKey, hasPrefilledDetails, initialMatchNumber, initialTeamNumber, matchLevel]);
-
-  useEffect(() => {
-    const headerTitle = matchDetailsTitle || 'Match Scout';
     navigation.setOptions({
       headerTitle,
       title: headerTitle,
-      headerLargeTitle: false,
-      headerBackTitleVisible: false,
     });
+
+    parentNavigation?.setOptions?.({
+      headerTitle,
+      title: headerTitle,
+    });
+
+    drawerNavigation?.setOptions?.({
+      headerTitle,
+      title: headerTitle,
+    });
+
+    return () => {
+      const resetTitle = 'match-scout';
+
+      navigation.setOptions({ headerTitle: resetTitle, title: resetTitle });
+      parentNavigation?.setOptions?.({ headerTitle: resetTitle, title: resetTitle });
+      drawerNavigation?.setOptions?.({ headerTitle: resetTitle, title: resetTitle });
+    };
   }, [navigation, matchDetailsTitle]);
 
   const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {
