@@ -1,17 +1,20 @@
 import { useCallback, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, ActivityIndicator, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { updateGeneralData, type UpdateGeneralDataResult } from '../../services/general-data';
 import { pingBackend } from '../../services/api/ping';
 import { showToast } from '../../utils/showToast';
+import { ROUTES } from '@/constants/routes';
 
 export function AppSettingsScreen() {
   const [lastResult, setLastResult] = useState<UpdateGeneralDataResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pingLabel, setPingLabel] = useState('Ping');
+  const router = useRouter();
 
   const updateGeneralDataMutation = useMutation({
     mutationFn: updateGeneralData,
@@ -58,10 +61,22 @@ export function AppSettingsScreen() {
   const isUpdating = updateGeneralDataMutation.isPending;
   const isPinging = pingMutation.isPending;
 
+  const handleViewEventsPress = useCallback(() => {
+    router.push(ROUTES.eventsBrowser);
+  }, [router]);
+
   return (
     <ScreenContainer>
       <ThemedText type="title">App Settings</ThemedText>
       <ThemedText>Configure offline caching, data sync, and accessibility preferences.</ThemedText>
+      <Pressable
+        accessibilityRole="button"
+        onPress={handleViewEventsPress}
+        style={({ pressed }) => [styles.actionButton, styles.navigationButton, pressed ? styles.actionButtonPressed : null]}
+        testID="view-events-button"
+      >
+        <ThemedText style={styles.actionButtonLabel}>View Events</ThemedText>
+      </Pressable>
       <Switch value={true} disabled accessibilityLabel="Offline caching enabled" />
       <View style={styles.syncSection}>
         <Pressable
@@ -128,6 +143,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  navigationButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 32,
   },
   pingButton: {
     marginTop: 12,
