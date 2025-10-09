@@ -1,4 +1,4 @@
-import { MatchScoutScreen } from '@/screens';
+import { MatchScoutScreen } from '@/app/screens';
 
 export default function MatchScoutRoute() {
   return <MatchScoutScreen />;

@@ -1,7 +1,7 @@
 import { Redirect } from 'expo-router';
 
 import { ROUTES } from '@/constants/routes';
-import { LoginScreen } from '@/screens';
+import { LoginScreen } from '@/app/screens';
 import { useAuth } from '@/hooks/use-authentication';
 
 export default function LoginRoute() {
