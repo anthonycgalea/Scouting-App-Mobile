@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
-import type { DrawerNavigationOptions } from '@react-navigation/drawer';
 
 import { Colors } from '@/constants/theme';
 import { ROUTES } from '@/constants/routes';
@@ -13,18 +12,9 @@ export const DRAWER_ITEMS: {
   title: string;
   href: string;
   icon: IoniconName;
-  options?: DrawerNavigationOptions;
 }[] = [
   { name: 'pit-scout/index', title: 'Pit Scout', href: ROUTES.pitScout, icon: 'build-outline' },
-  {
-    name: 'match-scout/index',
-    title: 'Match Scout',
-    href: ROUTES.matchScout,
-    icon: 'trophy-outline',
-    options: {
-      headerShown: false,
-    },
-  },
+  { name: 'match-scout/index', title: 'Match Scout', href: ROUTES.matchScout, icon: 'trophy-outline' },
   { name: 'settings/index', title: 'App Settings', href: ROUTES.appSettings, icon: 'settings-outline' },
   {
     name: 'user-settings/index',

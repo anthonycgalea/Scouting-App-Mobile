@@ -18,7 +18,6 @@ export default function DrawerLayout() {
             drawerIcon: ({ color, size }: { color: string; size: number }) => (
               <Ionicons name={item.icon} size={size} color={color} />
             ),
-            ...(item.options ?? {}),
           }}
         />
       ))}

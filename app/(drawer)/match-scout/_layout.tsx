@@ -1,6 +1,52 @@
 import { Stack } from 'expo-router';
 
-import { buildMatchHeaderTitle, type MatchHeaderParams } from '../../utils/match-header';
+type BeginScoutingRouteParams = {
+  teamNumber?: string | string[];
+  matchNumber?: string | string[];
+  eventKey?: string | string[];
+  driverStation?: string | string[];
+  matchLevel?: string | string[];
+};
+
+const toSingleValue = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
+const getMatchLevelLabel = (matchLevel: string | undefined) => {
+  const normalized = matchLevel?.toLowerCase();
+
+  switch (normalized) {
+    case 'qm':
+      return 'Quals';
+    case 'sf':
+      return 'Semis';
+    case 'qf':
+      return 'Quarters';
+    case 'f':
+      return 'Finals';
+    default:
+      return matchLevel?.toUpperCase() ?? '';
+  }
+};
+
+const buildMatchHeaderTitle = (params: BeginScoutingRouteParams) => {
+  const eventKey = toSingleValue(params.eventKey);
+  const matchNumber = toSingleValue(params.matchNumber);
+  const teamNumber = toSingleValue(params.teamNumber);
+  const driverStation = toSingleValue(params.driverStation);
+  const matchLevel = toSingleValue(params.matchLevel);
+
+  const hasPrefilledDetails = Boolean(eventKey && matchNumber && teamNumber && driverStation);
+
+  if (!hasPrefilledDetails) {
+    return 'Match Scout';
+  }
+
+  const levelLabel = getMatchLevelLabel(matchLevel);
+  const matchPrefix = levelLabel || matchLevel;
+  const matchLabel = matchPrefix ? `${matchPrefix} Match ${matchNumber}` : `Match ${matchNumber}`;
+
+  return `${eventKey} ${matchLabel}: Team ${teamNumber} (${driverStation})`;
+};
 
 export default function MatchScoutLayout() {
   return (
@@ -10,14 +56,14 @@ export default function MatchScoutLayout() {
       <Stack.Screen
         name="begin-scouting"
         options={({ route }) => {
-          const headerTitle = buildMatchHeaderTitle(route.params as MatchHeaderParams | undefined);
+          const headerTitle = buildMatchHeaderTitle((route.params ?? {}) as BeginScoutingRouteParams);
 
           return {
             headerShown: true,
             headerTitle,
+            title: headerTitle,
             headerLargeTitle: false,
             headerBackTitleVisible: false,
-            headerBackTitle: '',
           };
         }}
       />
