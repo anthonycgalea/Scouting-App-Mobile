@@ -6,7 +6,6 @@ import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-import { MatchNumberButtonMenu } from './match-number-button-menu';
 import type { MatchScheduleEntry, TeamMatchValidationEntry } from './types';
 
 interface RowData {
@@ -95,6 +94,28 @@ function sortData(
 
 const renderTeamNumber = (value?: number | null) => (value === null || value === undefined ? '-' : value);
 
+const getMatchLevelLabel = (matchLevel: string) => {
+  const normalized = matchLevel?.toLowerCase();
+
+  if (normalized === 'qm') {
+    return 'Quals';
+  }
+
+  if (normalized === 'sf') {
+    return 'Semis';
+  }
+
+  if (normalized === 'qf') {
+    return 'Quarters';
+  }
+
+  if (normalized === 'f') {
+    return 'Finals';
+  }
+
+  return matchLevel.toUpperCase();
+};
+
 export function MatchSchedule({
   matches,
   validationEntries,
@@ -143,61 +164,74 @@ export function MatchSchedule({
   const placeholderColor = isDark ? 'rgba(148, 163, 184, 0.9)' : 'rgba(100, 116, 139, 0.9)';
   const inputBorderColor = isDark ? 'rgba(63, 63, 70, 0.8)' : 'rgba(209, 213, 219, 0.9)';
   const inputBackground = isDark ? 'rgba(39, 39, 42, 0.7)' : '#F9FAFB';
-  const dividerColor = isDark ? 'rgba(63, 63, 70, 0.8)' : 'rgba(229, 231, 235, 0.9)';
-  const headerBackground = isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(226, 232, 240, 0.8)';
-  const headerTextColor = isDark ? '#E2E8F0' : '#1E293B';
-  const redCellBackground = isDark ? 'rgba(127, 29, 29, 0.6)' : '#FEE2E2';
-  const redCellText = isDark ? '#FECACA' : '#7F1D1D';
-  const blueCellBackground = isDark ? 'rgba(30, 64, 175, 0.6)' : '#DBEAFE';
-  const blueCellText = isDark ? '#BFDBFE' : '#1E3A8A';
+  const dividerColor = isDark ? 'rgba(63, 63, 70, 0.6)' : 'rgba(226, 232, 240, 0.9)';
+  const cardBackground = isDark ? 'rgba(24, 24, 27, 0.85)' : '#FFFFFF';
+  const headerTextColor = isDark ? '#F8FAFC' : '#0F172A';
+  const redCellBackground = isDark ? 'rgba(127, 29, 29, 0.7)' : '#B91C1C';
+  const blueCellBackground = isDark ? 'rgba(30, 64, 175, 0.7)' : '#1D4ED8';
+  const redCellText = '#F8FAFC';
+  const blueCellText = '#F8FAFC';
   const pendingTextColor = isDark ? 'rgba(156, 163, 175, 0.8)' : 'rgba(107, 114, 128, 0.9)';
 
-  const rows = sortedData.map((row) => (
-    <View key={`${row.matchLevel}-${row.matchNumber}`} style={[styles.row, { borderColor: dividerColor }]}>
-      <View style={[styles.cell, styles.matchCell]}> 
-        <MatchNumberButtonMenu matchNumber={row.matchNumber} matchLevel={row.matchLevel} />
+  const rows = sortedData.map((row) => {
+    const matchLabel = `${getMatchLevelLabel(row.matchLevel)} ${row.matchNumber}`;
+
+    return (
+      <View
+        key={`${row.matchLevel}-${row.matchNumber}`}
+        style={[styles.matchCard, { backgroundColor: cardBackground, borderColor: dividerColor }]}
+      >
+        <View style={styles.matchCardHeader}>
+          <ThemedText type="defaultSemiBold" style={[styles.matchLabel, { color: headerTextColor }]}>
+            {matchLabel}
+          </ThemedText>
+          <View style={styles.matchStatusWrapper}>
+            {row.played === undefined ? (
+              <ThemedText style={[styles.statusText, { color: pendingTextColor }]}>Pending</ThemedText>
+            ) : row.played ? (
+              <View style={styles.statusIndicator}>
+                <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+                <ThemedText style={styles.statusSuccess}>Played</ThemedText>
+              </View>
+            ) : (
+              <View style={styles.statusIndicator}>
+                <Ionicons name="close-circle" size={20} color="#ef4444" />
+                <ThemedText style={styles.statusError}>Unplayed</ThemedText>
+              </View>
+            )}
+          </View>
+        </View>
+        <View style={[styles.allianceRow, { backgroundColor: redCellBackground }]}>
+          <ThemedText style={[styles.allianceLabel, { color: redCellText }]}>Red</ThemedText>
+          <View style={styles.teamList}>
+            <ThemedText style={[styles.teamNumber, { color: redCellText }]}>
+              {renderTeamNumber(row.red1)}
+            </ThemedText>
+            <ThemedText style={[styles.teamNumber, { color: redCellText }]}>
+              {renderTeamNumber(row.red2)}
+            </ThemedText>
+            <ThemedText style={[styles.teamNumber, { color: redCellText }]}>
+              {renderTeamNumber(row.red3)}
+            </ThemedText>
+          </View>
+        </View>
+        <View style={[styles.allianceRow, { backgroundColor: blueCellBackground }]}>
+          <ThemedText style={[styles.allianceLabel, { color: blueCellText }]}>Blue</ThemedText>
+          <View style={styles.teamList}>
+            <ThemedText style={[styles.teamNumber, { color: blueCellText }]}>
+              {renderTeamNumber(row.blue1)}
+            </ThemedText>
+            <ThemedText style={[styles.teamNumber, { color: blueCellText }]}>
+              {renderTeamNumber(row.blue2)}
+            </ThemedText>
+            <ThemedText style={[styles.teamNumber, { color: blueCellText }]}>
+              {renderTeamNumber(row.blue3)}
+            </ThemedText>
+          </View>
+        </View>
       </View>
-      <View style={[styles.cell, { backgroundColor: redCellBackground }]}> 
-        <ThemedText style={[styles.cellText, { color: redCellText }]}> 
-          {renderTeamNumber(row.red1)}
-        </ThemedText>
-      </View>
-      <View style={[styles.cell, { backgroundColor: redCellBackground }]}> 
-        <ThemedText style={[styles.cellText, { color: redCellText }]}> 
-          {renderTeamNumber(row.red2)}
-        </ThemedText>
-      </View>
-      <View style={[styles.cell, { backgroundColor: redCellBackground }]}> 
-        <ThemedText style={[styles.cellText, { color: redCellText }]}> 
-          {renderTeamNumber(row.red3)}
-        </ThemedText>
-      </View>
-      <View style={[styles.cell, { backgroundColor: blueCellBackground }]}> 
-        <ThemedText style={[styles.cellText, { color: blueCellText }]}> 
-          {renderTeamNumber(row.blue1)}
-        </ThemedText>
-      </View>
-      <View style={[styles.cell, { backgroundColor: blueCellBackground }]}> 
-        <ThemedText style={[styles.cellText, { color: blueCellText }]}> 
-          {renderTeamNumber(row.blue2)}
-        </ThemedText>
-      </View>
-      <View style={[styles.cell, { backgroundColor: blueCellBackground }]}> 
-        <ThemedText style={[styles.cellText, { color: blueCellText }]}> 
-          {renderTeamNumber(row.blue3)}
-        </ThemedText>
-      </View>
-      <View style={[styles.cell, styles.statusCell]}> 
-        {row.played === undefined ? (
-          <ThemedText style={[styles.statusText, { color: pendingTextColor }]}>N/A</ThemedText>
-        ) : row.played ? (
-          <Ionicons name="checkmark-circle" size={26} color="#22c55e" />
-        ) : (
-          <Ionicons name="close-circle" size={26} color="#ef4444" />
-        )}
-      </View>
-    </View>
-  ));
+    );
+  });
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -225,50 +259,23 @@ export function MatchSchedule({
           />
         </View>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={[styles.table, { borderColor: dividerColor }]}> 
-          <View style={[styles.row, styles.headerRow, { backgroundColor: headerBackground, borderColor: dividerColor }]}> 
-            <View style={[styles.cell, styles.headerCell, styles.matchCell]}> 
-              <PressableSortButton
-                label="Match #"
-                iconColor={headerTextColor}
-                isReversed={reverseSortDirection}
-                onPress={toggleSortDirection}
-              />
-            </View>
-            <View style={[styles.cell, styles.headerCell]}> 
-              <ThemedText style={[styles.headerText, { color: headerTextColor }]}>Red 1</ThemedText>
-            </View>
-            <View style={[styles.cell, styles.headerCell]}> 
-              <ThemedText style={[styles.headerText, { color: headerTextColor }]}>Red 2</ThemedText>
-            </View>
-            <View style={[styles.cell, styles.headerCell]}> 
-              <ThemedText style={[styles.headerText, { color: headerTextColor }]}>Red 3</ThemedText>
-            </View>
-            <View style={[styles.cell, styles.headerCell]}> 
-              <ThemedText style={[styles.headerText, { color: headerTextColor }]}>Blue 1</ThemedText>
-            </View>
-            <View style={[styles.cell, styles.headerCell]}> 
-              <ThemedText style={[styles.headerText, { color: headerTextColor }]}>Blue 2</ThemedText>
-            </View>
-            <View style={[styles.cell, styles.headerCell]}> 
-              <ThemedText style={[styles.headerText, { color: headerTextColor }]}>Blue 3</ThemedText>
-            </View>
-            <View style={[styles.cell, styles.headerCell, styles.statusCell]}> 
-              <ThemedText style={[styles.headerText, { color: headerTextColor }]}>Played</ThemedText>
-            </View>
-          </View>
-          {rows.length > 0 ? (
-            rows
-          ) : (
-            <View style={[styles.emptyState, { borderColor: dividerColor }]}> 
-              <ThemedText type="defaultSemiBold" style={[styles.emptyStateText, { color: textColor }]}> 
-                Nothing found
-              </ThemedText>
-            </View>
-          )}
+      <View style={styles.sortControl}>
+        <PressableSortButton
+          label="Match #"
+          iconColor={headerTextColor}
+          isReversed={reverseSortDirection}
+          onPress={toggleSortDirection}
+        />
+      </View>
+      {rows.length > 0 ? (
+        <View style={styles.matchList}>{rows}</View>
+      ) : (
+        <View style={[styles.emptyState, { borderColor: dividerColor }]}>
+          <ThemedText type="defaultSemiBold" style={[styles.emptyStateText, { color: textColor }]}>
+            Nothing found
+          </ThemedText>
         </View>
-      </ScrollView>
+      )}
     </ScrollView>
   );
 }
@@ -289,12 +296,8 @@ function PressableSortButton({ label, iconColor, isReversed, onPress }: Pressabl
         accessibilityRole="button"
         accessibilityLabel={`Sort by ${label}`}
       >
-        <ThemedText style={[styles.headerText, { color: iconColor }]}>{label}</ThemedText>
-        <Ionicons
-          name={isReversed ? 'chevron-down' : 'chevron-up'}
-          size={16}
-          color={iconColor}
-        />
+        <ThemedText style={[styles.sortButtonLabel, { color: iconColor }]}>{label}</ThemedText>
+        <Ionicons name={isReversed ? 'chevron-down' : 'chevron-up'} size={16} color={iconColor} />
       </Pressable>
     </View>
   );
@@ -323,64 +326,95 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
   },
-  table: {
-    borderWidth: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    minWidth: 640,
-  },
-  row: {
+  sortControl: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-  },
-  headerRow: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  cell: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 90,
-  },
-  matchCell: {
-    minWidth: 130,
-  },
-  headerCell: {
-    backgroundColor: 'transparent',
-  },
-  headerText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cellText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  statusCell: {
-    minWidth: 100,
-  },
-  statusText: {
-    fontSize: 14,
+    justifyContent: 'flex-end',
   },
   sortButtonContainer: {
-    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   sortButtonPressed: {
     opacity: 0.85,
+  },
+  sortButtonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  matchList: {
+    gap: 12,
+  },
+  matchCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  matchCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  matchLabel: {
+    fontSize: 18,
+  },
+  matchStatusWrapper: {
+    alignItems: 'flex-end',
+  },
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusText: {
+    fontSize: 14,
+  },
+  statusSuccess: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#22c55e',
+  },
+  statusError: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  allianceRow: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  allianceLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  teamList: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  teamNumber: {
+    fontSize: 18,
+    fontWeight: '700',
   },
   emptyState: {
     paddingVertical: 32,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopWidth: 1,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   emptyStateText: {
     textAlign: 'center',
