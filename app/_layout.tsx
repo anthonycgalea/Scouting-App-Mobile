@@ -16,18 +16,18 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <QueryProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <OrganizationProvider>
-          <AuthProvider>
+    <AuthProvider>
+      <QueryProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <OrganizationProvider>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(drawer)" />
               <Stack.Screen name="auth/login" />
             </Stack>
             <StatusBar style="auto" />
-          </AuthProvider>
-        </OrganizationProvider>
-      </ThemeProvider>
-    </QueryProvider>
+          </OrganizationProvider>
+        </ThemeProvider>
+      </QueryProvider>
+    </AuthProvider>
   );
 }
