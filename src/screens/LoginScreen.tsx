@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useAuth } from '../hooks/useAuth';
 
 const LoginScreen = () => {
-  const { signInWithDiscord, isLoading } = useAuth();
+  const { signInWithDiscord, isLoading, displayName } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,6 +44,10 @@ const LoginScreen = () => {
           <Text style={styles.buttonLabel}>Sign in with Discord</Text>
         )}
       </Pressable>
+
+      {displayName ? (
+        <Text style={styles.userInfo}>Session display name: {displayName}</Text>
+      ) : null}
 
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
     </View>
@@ -94,5 +98,11 @@ const styles = StyleSheet.create({
     color: '#ff8a80',
     marginTop: 16,
     textAlign: 'center',
+  },
+  userInfo: {
+    color: '#c6f6d5',
+    marginTop: 16,
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
