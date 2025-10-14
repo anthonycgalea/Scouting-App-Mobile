@@ -1,4 +1,6 @@
 import { apiRequest } from './api/client';
+import { getUserEvent } from './api/user';
+import { setActiveEvent } from './logged-in-event';
 import { getDbOrThrow, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 
@@ -45,6 +47,11 @@ type UpsertResult = {
 export type UpdateGeneralDataResult = {
   teams: UpsertResult;
   events: UpsertResult;
+  loggedInEvent: LoggedInEventSyncResult;
+};
+
+type LoggedInEventSyncResult = {
+  eventCode: string | null;
 };
 
 const normalizeTeam = (team: TeamRecordResponse) => ({
@@ -270,9 +277,20 @@ async function syncEvents(year: number): Promise<UpsertResult> {
   return { created, updated };
 }
 
+async function syncLoggedInEvent(): Promise<LoggedInEventSyncResult> {
+  const response = await getUserEvent();
+  const rawEventCode = typeof response.eventCode === 'string' ? response.eventCode.trim() : '';
+  const normalizedEventCode = rawEventCode.length > 0 ? rawEventCode : null;
+
+  setActiveEvent(normalizedEventCode);
+
+  return { eventCode: normalizedEventCode };
+}
+
 export async function updateGeneralData(): Promise<UpdateGeneralDataResult> {
   const teams = await syncTeams();
   const events = await syncEvents(2025);
+  const loggedInEvent = await syncLoggedInEvent();
 
-  return { teams, events };
+  return { teams, events, loggedInEvent };
 }
