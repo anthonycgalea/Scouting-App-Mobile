@@ -1,9 +1,15 @@
-import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo } from 'react';
+
+import {
+  AuthProvider as SupabaseAuthProvider,
+  useAuth as useSupabaseAuth,
+} from '@/src/hooks/useAuth';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
-  login: () => void;
-  logout: () => void;
+  isLoading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -12,27 +18,36 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export function AuthProvider({ children }: AuthProviderProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+function AuthContextBridge({ children }: AuthProviderProps) {
+  const { user, isLoading, signInWithDiscord, signOut } = useSupabaseAuth();
 
-  const login = useCallback(() => {
-    setIsAuthenticated(true);
-  }, []);
+  const login = useCallback(async () => {
+    await signInWithDiscord();
+  }, [signInWithDiscord]);
 
-  const logout = useCallback(() => {
-    setIsAuthenticated(false);
-  }, []);
+  const logout = useCallback(async () => {
+    await signOut();
+  }, [signOut]);
 
   const value = useMemo(
     () => ({
-      isAuthenticated,
+      isAuthenticated: Boolean(user),
+      isLoading,
       login,
       logout,
     }),
-    [isAuthenticated, login, logout],
+    [isLoading, login, logout, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  return (
+    <SupabaseAuthProvider>
+      <AuthContextBridge>{children}</AuthContextBridge>
+    </SupabaseAuthProvider>
+  );
 }
 
 export function useAuthContext() {

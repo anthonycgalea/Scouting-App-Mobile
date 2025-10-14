@@ -1,12 +1,20 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
-import { createContext } from 'react';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import type { Session, User } from '@supabase/supabase-js';
 
-import supabase from '../supabaseClient';
+import { supabase } from '../supabaseClient';
 
 const SESSION_KEY = 'supabase.session';
 const REFRESH_TOKEN_KEY = 'supabase.refresh_token';
@@ -229,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [isLoading, isSigningIn, session, signInWithDiscord, signOut, user]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return createElement(AuthContext.Provider, { value }, children);
 }
 
 export function useAuth(): AuthContextValue {
