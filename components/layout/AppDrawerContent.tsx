@@ -37,6 +37,14 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
     colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e6f6fb';
   const dividerColor = colorScheme === 'dark' ? '#2f3133' : '#d0d0d0';
 
+  const settingsItemNames = new Set([
+    'settings/index',
+    'user-settings/index',
+    'organization-select/index',
+  ]);
+  const primaryItems = DRAWER_ITEMS.filter((item) => !settingsItemNames.has(item.name));
+  const settingsItems = DRAWER_ITEMS.filter((item) => settingsItemNames.has(item.name));
+
   const handleAuthAction = () => {
     navigation.closeDrawer();
     if (isAuthenticated) {
@@ -54,6 +62,29 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
       : browsingLabel
     : browsingLabel;
 
+  const renderDrawerItem = (item: (typeof DRAWER_ITEMS)[number]) => {
+    const isActive = activeRouteName === item.name;
+
+    return (
+      <Pressable
+        key={item.name}
+        accessibilityRole="button"
+        accessibilityState={isActive ? { selected: true } : undefined}
+        onPress={() => {
+          router.navigate(item.href);
+          navigation.closeDrawer();
+        }}
+        style={[
+          styles.drawerItem,
+          isActive && { backgroundColor: activeItemBackground },
+        ]}
+      >
+        <Ionicons name={item.icon} size={20} color={isActive ? tint : inactiveIconColor} />
+        <ThemedText type={isActive ? 'defaultSemiBold' : 'default'}>{item.title}</ThemedText>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -61,31 +92,12 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
         <ThemedText type="subtitle">{subtitle}</ThemedText>
       </View>
       <View style={styles.content}>
-        {DRAWER_ITEMS.map((item) => {
-          const isActive = activeRouteName === item.name;
-          return (
-            <Pressable
-              key={item.name}
-              accessibilityRole="button"
-              accessibilityState={isActive ? { selected: true } : undefined}
-              onPress={() => {
-                router.navigate(item.href);
-                navigation.closeDrawer();
-              }}
-              style={[
-                styles.drawerItem,
-                isActive && { backgroundColor: activeItemBackground },
-              ]}
-            >
-              <Ionicons
-                name={item.icon}
-                size={20}
-                color={isActive ? tint : inactiveIconColor}
-              />
-              <ThemedText type={isActive ? 'defaultSemiBold' : 'default'}>{item.title}</ThemedText>
-            </Pressable>
-          );
-        })}
+        <View style={styles.primarySection}>{primaryItems.map(renderDrawerItem)}</View>
+        {settingsItems.length > 0 ? (
+          <View style={[styles.settingsSection, { borderTopColor: dividerColor }]}>
+            {settingsItems.map(renderDrawerItem)}
+          </View>
+        ) : null}
       </View>
       <Pressable
         accessibilityRole="button"
@@ -117,6 +129,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 8,
   },
+  primarySection: {
+    flexGrow: 1,
+  },
   drawerItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -125,6 +140,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     marginBottom: 4,
+  },
+  settingsSection: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 12,
+    paddingTop: 12,
   },
   authButton: {
     flexDirection: 'row',
