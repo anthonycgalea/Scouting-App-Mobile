@@ -1,8 +1,20 @@
 import type { ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { and, eq } from 'drizzle-orm';
 import { useLayoutEffect, useMemo, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, TouchableWithoutFeedback, View } from 'react-native';
+import {
+  Alert,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
+
+import { getDbOrThrow, schema } from '@/db';
+import { apiRequest } from '../../services/api';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -10,6 +22,22 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 
 const toSingleValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
+
+const parseInteger = (value: string | undefined) => {
+  if (!value) {
+    return Number.NaN;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return Number.NaN;
+  }
+
+  const parsed = Number.parseInt(trimmed, 10);
+
+  return Number.isNaN(parsed) ? Number.NaN : parsed;
+};
 
 type BeginScoutingParams = {
   teamNumber?: string | string[];
@@ -277,6 +305,7 @@ export default function BeginScoutingRoute() {
   const [teleCounts, setTeleCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
   const [endgameSelection, setEndgameSelection] = useState<'none' | 'park' | 'shallow' | 'deep'>('none');
   const [generalNotes, setGeneralNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const inputBackground = useThemeColor({ light: '#FFFFFF', dark: '#0F172A' }, 'background');
   const inputBorder = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
@@ -366,6 +395,141 @@ export default function BeginScoutingRoute() {
     { key: 'shallow', label: 'Shallow Climb' },
     { key: 'deep', label: 'Deep Climb' },
   ] as const;
+
+  const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    const normalizedEventKey = eventKey.trim();
+    const resolvedMatchLevel = matchLevel?.trim();
+    const resolvedTeamNumber = teamNumber || initialTeamNumber;
+    const resolvedMatchNumber = matchNumber || initialMatchNumber;
+
+    const parsedTeamNumber = parseInteger(resolvedTeamNumber);
+    const parsedMatchNumber = parseInteger(resolvedMatchNumber);
+
+    if (!normalizedEventKey || !resolvedMatchLevel) {
+      Alert.alert(
+        'Missing match details',
+        'An event key and match level are required before submitting match data.'
+      );
+      return;
+    }
+
+    if (Number.isNaN(parsedTeamNumber) || Number.isNaN(parsedMatchNumber)) {
+      Alert.alert(
+        'Invalid match details',
+        'Team number and match number must be valid numbers before submitting match data.'
+      );
+      return;
+    }
+
+    const noteValue = generalNotes.trim();
+    const normalizedNotes = noteValue.length > 0 ? noteValue : null;
+
+    const endgameMap = {
+      none: 'NONE',
+      park: 'PARK',
+      shallow: 'SHALLOW',
+      deep: 'DEEP',
+    } as const;
+
+    const endgameValue = endgameMap[endgameSelection];
+
+    const record: typeof schema.matchData2025.$inferInsert = {
+      eventKey: normalizedEventKey,
+      teamNumber: parsedTeamNumber,
+      matchNumber: parsedMatchNumber,
+      matchLevel: resolvedMatchLevel,
+      notes: normalizedNotes,
+      al4c: autoCounts.coralL4,
+      al3c: autoCounts.coralL3,
+      al2c: autoCounts.coralL2,
+      al1c: autoCounts.coralL1,
+      tl4c: teleCounts.coralL4,
+      tl3c: teleCounts.coralL3,
+      tl2c: teleCounts.coralL2,
+      tl1c: teleCounts.coralL1,
+      aProcessor: autoCounts.processor,
+      tProcessor: teleCounts.processor,
+      aNet: autoCounts.net,
+      tNet: teleCounts.net,
+      endgame: endgameValue,
+    };
+
+    setIsSubmitting(true);
+
+    try {
+      const db = getDbOrThrow();
+
+      await db
+        .insert(schema.matchData2025)
+        .values(record)
+        .onConflictDoUpdate({
+          target: [
+            schema.matchData2025.eventKey,
+            schema.matchData2025.teamNumber,
+            schema.matchData2025.matchNumber,
+            schema.matchData2025.matchLevel,
+          ],
+          set: {
+            notes: record.notes,
+            al4c: record.al4c,
+            al3c: record.al3c,
+            al2c: record.al2c,
+            al1c: record.al1c,
+            tl4c: record.tl4c,
+            tl3c: record.tl3c,
+            tl2c: record.tl2c,
+            tl1c: record.tl1c,
+            aProcessor: record.aProcessor,
+            tProcessor: record.tProcessor,
+            aNet: record.aNet,
+            tNet: record.tNet,
+            endgame: record.endgame,
+          },
+        })
+        .run();
+
+      const [row] = await db
+        .select()
+        .from(schema.matchData2025)
+        .where(
+          and(
+            eq(schema.matchData2025.eventKey, normalizedEventKey),
+            eq(schema.matchData2025.teamNumber, parsedTeamNumber),
+            eq(schema.matchData2025.matchNumber, parsedMatchNumber),
+            eq(schema.matchData2025.matchLevel, resolvedMatchLevel)
+          )
+        )
+        .limit(1);
+
+      if (!row) {
+        throw new Error('Failed to retrieve submitted match data.');
+      }
+
+      try {
+        await apiRequest('/scout/submit', {
+          method: 'POST',
+          body: JSON.stringify(row),
+        });
+
+        Alert.alert('Match submitted', 'Match data was saved and sent successfully.');
+      } catch (error) {
+        console.error('Failed to submit match data to API', error);
+        Alert.alert(
+          'Match saved locally',
+          'The match data was saved on this device but could not be sent to the server.'
+        );
+      }
+    } catch (error) {
+      console.error('Failed to save match data', error);
+      Alert.alert('Unable to save match', 'An error occurred while saving match data.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <ScreenContainer>
@@ -579,10 +743,16 @@ export default function BeginScoutingRoute() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                style={({ pressed }) => [styles.submitButton, pressed && styles.buttonPressed]}
+                disabled={isSubmitting}
+                onPress={handleSubmit}
+                style={({ pressed }) => [
+                  styles.submitButton,
+                  (pressed || isSubmitting) && styles.buttonPressed,
+                  isSubmitting && styles.submitButtonDisabled,
+                ]}
               >
                 <ThemedText type="defaultSemiBold" style={styles.submitButtonText}>
-                  Submit Match
+                  {isSubmitting ? 'Submitting…' : 'Submit Match'}
                 </ThemedText>
               </Pressable>
             </View>
@@ -780,6 +950,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     backgroundColor: '#2563EB',
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
   submitButtonText: {
     color: '#F8FAFC',
