@@ -1,38 +1,17 @@
-import {
-  createContext,
-  createElement,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import type { ReactNode } from 'react';
-import * as Linking from 'expo-linking';
-import Constants from 'expo-constants';
-import * as SecureStore from 'expo-secure-store';
 import type { Session, User } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
+import * as SecureStore from 'expo-secure-store';
+import * as WebBrowser from 'expo-web-browser'; // ✅ needed for Expo Go
+WebBrowser.maybeCompleteAuthSession();
 
+// eslint-disable-next-line import/first
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+// eslint-disable-next-line import/first
 import { supabase } from '../lib/supabase';
+
 
 const SESSION_KEY = 'supabase.session';
 const REFRESH_TOKEN_KEY = 'supabase.refresh_token';
-
-const expoConfig = Constants.expoConfig ?? Constants.manifest;
-const extra = (expoConfig as typeof expoConfig & { extra?: Record<string, unknown> })?.extra ?? {};
-const configuredRedirect = typeof extra?.supabaseRedirect === 'string' ? (extra.supabaseRedirect as string) : undefined;
-
-const expectedRedirectPath = (() => {
-  if (!configuredRedirect) {
-    return 'auth';
-  }
-
-  const parsed = Linking.parse(configuredRedirect);
-  return parsed.path ?? 'auth';
-})();
-
-const resolveRedirectUri = () => configuredRedirect ?? Linking.createURL('/auth');
 
 type AuthContextValue = {
   user: User | null;
@@ -60,190 +39,118 @@ async function persistSession(session: Session | null) {
   }
 }
 
-async function restoreStoredSession() {
+async function restoreSession() {
   const storedSession = await SecureStore.getItemAsync(SESSION_KEY);
-  const storedRefreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-
-  if (!storedSession || !storedRefreshToken) {
-    return null;
-  }
+  const storedRefresh = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  if (!storedSession || !storedRefresh) return null;
 
   try {
     const parsed = JSON.parse(storedSession) as Session;
     const { data, error } = await supabase.auth.setSession({
       access_token: parsed.access_token,
-      refresh_token: storedRefreshToken,
+      refresh_token: storedRefresh,
     });
-
-    if (error) {
-      console.warn('Failed to restore Supabase session:', error.message);
-      return null;
-    }
-
+    if (error) return null;
     return data.session;
-  } catch (error) {
-    console.warn('Unable to parse stored Supabase session:', error);
+  } catch {
     return null;
   }
 }
-
-type UrlEvent = { url: string };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const pendingCode = useRef<string | null>(null);
 
-  const handleAuthChange = useCallback(
-    async (_event: string, nextSession: Session | null) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      await persistSession(nextSession);
-      setIsLoading(false);
-    },
-    []
-  );
+  // Handle deep link callback (OAuth redirect)
+  const handleUrl = useCallback(async ({ url }: { url: string }) => {
+    const parsed = Linking.parse(url);
+    if (parsed.path !== '--/auth' || !parsed.queryParams?.code) return;
 
+    const code = String(parsed.queryParams.code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession({ code });
+    if (!error && data.session) {
+      await persistSession(data.session);
+      setSession(data.session);
+      setUser(data.session.user);
+    }
+  }, []);
+
+  // Initialize and restore session
   useEffect(() => {
-    let isMounted = true;
-
-    const initialize = async () => {
+    const init = async () => {
       setIsLoading(true);
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        if (!isMounted) return;
         setSession(data.session);
         setUser(data.session.user);
         await persistSession(data.session);
-        setIsLoading(false);
-        return;
+      } else {
+        const restored = await restoreSession();
+        if (restored) {
+          setSession(restored);
+          setUser(restored.user);
+        }
       }
-
-      const restored = await restoreStoredSession();
-      if (restored && isMounted) {
-        setSession(restored);
-        setUser(restored.user);
-      }
-
-      if (isMounted) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     };
 
-    initialize();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(handleAuthChange);
-
-    return () => {
-      isMounted = false;
-      listener?.subscription.unsubscribe();
-    };
-  }, [handleAuthChange]);
-
-  const handleUrl = useCallback(
-    async ({ url }: UrlEvent) => {
-      const parsed = Linking.parse(url);
-      if (!parsed?.path || parsed.path !== expectedRedirectPath) {
-        return;
-      }
-
-      const code = parsed.queryParams?.code;
-      if (typeof code !== 'string' || pendingCode.current === code) {
-        return;
-      }
-
-      pendingCode.current = code;
-      setIsSigningIn(true);
-      const { error, data } = await supabase.auth.exchangeCodeForSession({ code });
-      if (error) {
-        console.warn('Failed to exchange OAuth code:', error.message);
-      } else if (data.session) {
-        await persistSession(data.session);
-        setSession(data.session);
-        setUser(data.session.user);
-      }
-      pendingCode.current = null;
-      setIsSigningIn(false);
-    },
-    []
-  );
-
-  useEffect(() => {
-    const subscription = Linking.addEventListener('url', handleUrl);
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleUrl({ url });
-      }
+    init();
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      persistSession(nextSession);
     });
 
+    const listener = Linking.addEventListener('url', handleUrl);
+    Linking.getInitialURL().then((url) => url && handleUrl({ url }));
+
     return () => {
-      subscription.remove();
+      sub.subscription.unsubscribe();
+      listener.remove();
     };
   }, [handleUrl]);
 
+  // ✅ Discord OAuth flow (Expo Go compatible)
   const signInWithDiscord = useCallback(async () => {
-    setIsSigningIn(true);
     try {
+      console.log('App redirect (Linking.createURL):', Linking.createURL('/auth'));
+      const redirect = Linking.createURL('/--/auth');
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
-        options: {
-          redirectTo: resolveRedirectUri(),
-        },
+        options: { redirectTo: redirect },
       });
 
-      if (error) {
-        throw error;
-      }
-
+      if (error) throw error;
+      console.log('OAuth redirect URL:', data?.url); // 👈 paste this line here
       if (data?.url) {
-        await Linking.openURL(data.url);
+        await WebBrowser.openAuthSessionAsync(data.url, redirect);
       }
     } catch (error) {
       console.warn('Discord sign-in failed:', error);
-      throw error instanceof Error ? error : new Error('Discord sign-in failed');
-    } finally {
-      setIsSigningIn(false);
     }
   }, []);
 
   const signOut = useCallback(async () => {
-    setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        throw error;
-      }
-    } catch (error) {
-      console.warn('Sign-out failed:', error);
-      throw error instanceof Error ? error : new Error('Sign-out failed');
+      await supabase.auth.signOut();
     } finally {
       await persistSession(null);
       setSession(null);
       setUser(null);
-      setIsLoading(false);
     }
   }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      session,
-      isLoading: isLoading || isSigningIn,
-      signInWithDiscord,
-      signOut,
-    }),
-    [isLoading, isSigningIn, session, signInWithDiscord, signOut, user]
+  const value = useMemo(
+    () => ({ user, session, isLoading, signInWithDiscord, signOut }),
+    [user, session, isLoading, signInWithDiscord, signOut]
   );
 
-  return createElement(AuthContext.Provider, { value }, children);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  return ctx;
 }
