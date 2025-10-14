@@ -10,6 +10,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  displayName: string | null;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -19,7 +20,7 @@ interface AuthProviderProps {
 }
 
 function AuthContextBridge({ children }: AuthProviderProps) {
-  const { user, isLoading, signInWithDiscord, signOut } = useSupabaseAuth();
+  const { user, isLoading, signInWithDiscord, signOut, displayName } = useSupabaseAuth();
 
   const login = useCallback(async () => {
     await signInWithDiscord();
@@ -35,8 +36,9 @@ function AuthContextBridge({ children }: AuthProviderProps) {
       isLoading,
       login,
       logout,
+      displayName,
     }),
-    [isLoading, login, logout, user],
+    [displayName, isLoading, login, logout, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

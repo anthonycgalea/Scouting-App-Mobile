@@ -22,7 +22,7 @@ export type DrawerContentProps = {
 };
 
 export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, displayName } = useAuth();
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
   const colorScheme = useColorScheme();
   const activeRouteName = state.routes[state.index]?.name;
@@ -42,15 +42,16 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
     }
   };
 
+  const browsingLabel = `Browsing as ${displayName ?? 'guest'}`;
+  const subtitle = isAuthenticated
+    ? selectedOrganization ?? browsingLabel
+    : browsingLabel;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <ThemedText type="title">Scouting App</ThemedText>
-        <ThemedText type="subtitle">
-          {isAuthenticated
-            ? selectedOrganization ?? 'No organization selected'
-            : 'Browsing as guest'}
-        </ThemedText>
+        <ThemedText type="subtitle">{subtitle}</ThemedText>
       </View>
       <View style={styles.content}>
         {DRAWER_ITEMS.map((item) => {
