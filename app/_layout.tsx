@@ -1,3 +1,4 @@
+import * as SecureStore from 'expo-secure-store';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -5,8 +6,18 @@ import 'react-native-reanimated';
 
 import '@/db'; // Initialize the SQLite-backed storage on startup.
 
-import { AuthProvider, OrganizationProvider, QueryProvider } from '@/app/providers';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+// Normalize the export shape expected by @supabase/auth-js when running in Expo.
+// The library reaches for ExpoSecureStore.default, but the package only exposes
+// named exports in ESM environments. Assigning the module object to its own
+// default export ensures both patterns resolve to the same implementation.
+(SecureStore as typeof SecureStore & { default?: typeof SecureStore }).default ??= SecureStore;
+
+type ProvidersModule = typeof import('@/app/providers');
+const { AuthProvider, OrganizationProvider, QueryProvider } =
+  require('@/app/providers') as ProvidersModule;
+
+type UseColorSchemeModule = typeof import('@/hooks/use-color-scheme');
+const { useColorScheme } = require('@/hooks/use-color-scheme') as UseColorSchemeModule;
 
 export const unstable_settings = {
   initialRouteName: '(drawer)',
