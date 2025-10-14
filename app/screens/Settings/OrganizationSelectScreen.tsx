@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useOrganization } from '@/hooks/use-organization';
 import { getDbOrThrow, schema } from '@/db';
 import type { Organization } from '@/db/schema';
@@ -19,6 +20,13 @@ export function OrganizationSelectScreen() {
   const [userOrganizations, setUserOrganizations] = useState<UserOrganizationListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+  const accentColor = '#0a7ea4';
+  const optionBorderColor = isDarkMode ? '#3f3f46' : '#ccc';
+  const optionBackgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#fff';
+  const optionActiveBackgroundColor = isDarkMode ? 'rgba(10, 126, 164, 0.2)' : '#e6f6fb';
+  const secondaryTextColor = isDarkMode ? '#94a3b8' : '#475569';
 
   const fetchUserOrganizations = useCallback(async () => {
     const db = getDbOrThrow();
@@ -107,8 +115,13 @@ export function OrganizationSelectScreen() {
       <ThemedText>Select which team or organization you are scouting for.</ThemedText>
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator accessibilityLabel="Loading organizations" color="#0a7ea4" />
-          <ThemedText style={styles.loadingText}>Loading organizations…</ThemedText>
+          <ActivityIndicator
+            accessibilityLabel="Loading organizations"
+            color={accentColor}
+          />
+          <ThemedText style={[styles.loadingText, { color: secondaryTextColor }]}>
+            Loading organizations…
+          </ThemedText>
         </View>
       ) : errorMessage ? (
         <View style={styles.errorContainer}>
@@ -123,20 +136,32 @@ export function OrganizationSelectScreen() {
 
             return (
               <Pressable
-                style={[styles.option, isActive ? styles.optionActive : undefined]}
+                style={[
+                  styles.option,
+                  {
+                    borderColor: optionBorderColor,
+                    backgroundColor: optionBackgroundColor,
+                  },
+                  isActive && {
+                    borderColor: accentColor,
+                    backgroundColor: optionActiveBackgroundColor,
+                  },
+                ]}
                 onPress={() => setSelectedOrganization(item.organization)}
               >
                 <ThemedText type="defaultSemiBold">
                   Team {item.organization.teamNumber}
                 </ThemedText>
-                <ThemedText style={styles.optionSubtitle}>{item.organization.name}</ThemedText>
+                <ThemedText style={[styles.optionSubtitle, { color: secondaryTextColor }]}>
+                  {item.organization.name}
+                </ThemedText>
               </Pressable>
             );
           }}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <ThemedText type="defaultSemiBold">No organizations available</ThemedText>
-              <ThemedText style={styles.emptyStateHint}>
+              <ThemedText style={[styles.emptyStateHint, { color: secondaryTextColor }]}>
                 Sync general data from the App Settings screen to download your organizations.
               </ThemedText>
             </View>
@@ -152,25 +177,17 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ccc',
     marginBottom: 8,
-  },
-  optionActive: {
-    borderColor: '#0a7ea4',
-    backgroundColor: '#e6f6fb',
   },
   optionSubtitle: {
     marginTop: 4,
-    color: '#475569',
   },
   loadingContainer: {
     marginTop: 24,
     alignItems: 'center',
     gap: 12,
   },
-  loadingText: {
-    color: '#475569',
-  },
+  loadingText: {},
   errorContainer: {
     marginTop: 24,
     padding: 16,
@@ -186,7 +203,5 @@ const styles = StyleSheet.create({
     marginTop: 24,
     gap: 8,
   },
-  emptyStateHint: {
-    color: '#475569',
-  },
+  emptyStateHint: {},
 });
