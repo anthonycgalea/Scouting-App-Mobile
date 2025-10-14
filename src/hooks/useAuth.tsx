@@ -47,6 +47,18 @@ async function persistSession(session: Session | null, refreshTokenOverride?: st
       if (refreshTokenToStore) {
         await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshTokenToStore);
       }
+
+      // 🔍 Add this:
+      console.log(
+        '✅ Stored session in SecureStore:',
+        session.access_token?.slice(0, 12) + '...',
+        '\nRefresh:',
+        refreshTokenToStore ? 'yes' : 'no'
+      );
+
+      // Optional readback check
+      const verify = await SecureStore.getItemAsync(SESSION_KEY);
+      console.log('📦 Verify readback =', verify ? 'exists' : 'missing');
     } else {
       await SecureStore.deleteItemAsync(SESSION_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
@@ -64,6 +76,10 @@ async function persistSessionWithFallback(session: Session) {
 async function restoreSession() {
   const storedSession = await SecureStore.getItemAsync(SESSION_KEY);
   const storedRefresh = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  console.log('🔑 restoreSession() - found:', {
+    session: !!storedSession,
+    refresh: !!storedRefresh,
+  });
   if (!storedSession || !storedRefresh) return null;
 
   try {
@@ -173,33 +189,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Handle deep link callback (OAuth redirect)
   const handleUrl = useCallback(async ({ url }: { url: string }) => {
-    const parsed = Linking.parse(url);
-    if (parsed.path !== '--/auth' || !parsed.queryParams?.code) return;
+  console.log('🔗 handleUrl triggered:', url);
+  const parsed = Linking.parse(url);
+  const path = parsed.path?.replace(/^--\//, '').replace(/^\/+/, '');
 
-    const code = String(parsed.queryParams.code);
-    const { data, error } = await supabase.auth.exchangeCodeForSession({ code });
-    if (!error && data.session) {
-      await persistSessionWithFallback(data.session);
-      setSession(data.session);
-      setUser(data.session.user);
-    }
-  }, []);
+  if (!path?.startsWith('auth') || !parsed.queryParams?.code) {
+    console.log('🚫 handleUrl: no auth code found');
+    return;
+  }
+
+  const code = String(parsed.queryParams.code);
+  console.log('📨 Exchanging code for session...');
+  const { data, error } = await supabase.auth.exchangeCodeForSession({ code });
+
+  if (error) {
+    console.warn('❌ exchangeCodeForSession error:', error);
+  } else if (data.session) {
+    console.log('✅ Received session from Supabase');
+    await persistSessionWithFallback(data.session);
+    console.log('📦 persistSessionWithFallback complete');
+    setSession(data.session);
+    setUser(data.session.user);
+  }
+}, []);
+
 
   // Initialize and restore session
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
+      console.log('🚀 Initializing auth...');
       const { data } = await supabase.auth.getSession();
       if (data.session) {
+        console.log('🧠 Supabase already has active session');
         setSession(data.session);
         setUser(data.session.user);
         await persistSessionWithFallback(data.session);
       } else {
+        console.log('🔄 No active session, trying restoreSession()');
         const restored = await restoreSession();
         if (restored) {
           setSession(restored.session);
           setUser(restored.session.user);
           await persistSession(restored.session, restored.refreshToken);
+        } else {
+          console.log('❌ No stored session found');
         }
       }
       setIsLoading(false);
@@ -246,23 +280,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ✅ Discord OAuth flow (Expo Go compatible)
   const signInWithDiscord = useCallback(async () => {
-    try {
-      console.log('App redirect (Linking.createURL):', Linking.createURL('/auth'));
-      const redirect = Linking.createURL('/--/auth');
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'discord',
-        options: { redirectTo: redirect },
-      });
+  try {
+    const redirect = Linking.createURL('/auth'); // 👈 ensure the double-dash
+    console.log('🔗 Expo redirect:', redirect);
 
-      if (error) throw error;
-      console.log('OAuth redirect URL:', data?.url); // 👈 paste this line here
-      if (data?.url) {
-        await WebBrowser.openAuthSessionAsync(data.url, redirect);
-      }
-    } catch (error) {
-      console.warn('Discord sign-in failed:', error);
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'discord',
+      options: { redirectTo: redirect },
+    });
+
+    if (error) throw error;
+
+    if (data?.url) {
+      console.log('🔗 Using redirect:', redirect);
+      console.log('🌐 Full authorize URL:', data?.url);
+      await WebBrowser.openAuthSessionAsync(data.url, redirect);
     }
-  }, []);
+  } catch (error) {
+    console.warn('Discord sign-in failed:', error);
+  }
+}, []);
+
 
   const signOut = useCallback(async () => {
     try {

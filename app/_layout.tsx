@@ -1,9 +1,16 @@
 import * as SecureStore from 'expo-secure-store';
+import * as WebBrowser from 'expo-web-browser';
+WebBrowser.maybeCompleteAuthSession();
+// eslint-disable-next-line import/first
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+// eslint-disable-next-line import/first
 import { Stack } from 'expo-router';
+// eslint-disable-next-line import/first
 import { StatusBar } from 'expo-status-bar';
+// eslint-disable-next-line import/first
 import 'react-native-reanimated';
 
+// eslint-disable-next-line import/first
 import '@/db'; // Initialize the SQLite-backed storage on startup.
 
 // Normalize the export shape expected by @supabase/auth-js when running in Expo.
