@@ -145,3 +145,53 @@ export const userOrganizations = sqliteTable(
 
 export type UserOrganization = InferSelectModel<typeof userOrganizations>;
 export type NewUserOrganization = InferInsertModel<typeof userOrganizations>;
+
+export const pitData2025 = sqliteTable(
+  'pitdata2025',
+  {
+    eventKey: text('event_key').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    notes: text('notes'),
+    drivetrain: text('drivetrain'),
+    driveteam: text('driveteam'),
+    autoNotes: text('auto_notes'),
+    teleNotes: text('tele_notes'),
+    overallNotes: text('overall_notes'),
+    robotWeight: integer('robot_weight'),
+    autoCoralCount: integer('auto_coral_count').default(0),
+    autoAlgaeNet: integer('auto_algae_net').default(0),
+    autoAlgaeProcessor: integer('auto_algae_processor').default(0),
+    startPositionLeft: integer('start_position_left').notNull().default(0),
+    startPositionCenter: integer('start_position_center').notNull().default(0),
+    startPositionRight: integer('start_position_right').notNull().default(0),
+    autoL4Coral: integer('auto_l4_coral').notNull().default(0),
+    autoL3Coral: integer('auto_l3_coral').notNull().default(0),
+    autoL2Coral: integer('auto_l2_coral').notNull().default(0),
+    autoL1Coral: integer('auto_l1_coral').notNull().default(0),
+    teleL4Coral: integer('tele_l4_coral').notNull().default(0),
+    teleL3Coral: integer('tele_l3_coral').notNull().default(0),
+    teleL2Coral: integer('tele_l2_coral').notNull().default(0),
+    teleL1Coral: integer('tele_l1_coral').notNull().default(0),
+    pickupGround: integer('pickup_ground').notNull().default(0),
+    pickupFeeder: integer('pickup_feeder').notNull().default(0),
+    teleAlgaeNet: integer('tele_algae_net').notNull().default(0),
+    teleAlgaeProcessor: integer('tele_algae_processor').notNull().default(0),
+    endgame: text('endgame', { enum: ['NONE', 'SHALLOW', 'DEEP'] }).notNull().default('NONE'),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.eventKey, table.teamNumber] }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'pitdata2025_event_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'pitdata2025_team_fk',
+    }),
+  }),
+);
+
+export type PitData2025 = InferSelectModel<typeof pitData2025>;
+export type NewPitData2025 = InferInsertModel<typeof pitData2025>;
