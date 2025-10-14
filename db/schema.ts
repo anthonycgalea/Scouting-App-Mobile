@@ -195,3 +195,91 @@ export const pitData2025 = sqliteTable(
 
 export type PitData2025 = InferSelectModel<typeof pitData2025>;
 export type NewPitData2025 = InferInsertModel<typeof pitData2025>;
+
+export const matchData2025 = sqliteTable(
+  'matchdata2025',
+  {
+    eventKey: text('event_key').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    matchNumber: integer('match_number').notNull(),
+    matchLevel: text('match_level').notNull(),
+    notes: text('notes'),
+    al4c: integer('al4c').notNull().default(0),
+    al3c: integer('al3c').notNull().default(0),
+    al2c: integer('al2c').notNull().default(0),
+    al1c: integer('al1c').notNull().default(0),
+    tl4c: integer('tl4c').notNull().default(0),
+    tl3c: integer('tl3c').notNull().default(0),
+    tl2c: integer('tl2c').notNull().default(0),
+    tl1c: integer('tl1c').notNull().default(0),
+    aProcessor: integer('a_processor').notNull().default(0),
+    tProcessor: integer('t_processor').notNull().default(0),
+    aNet: integer('a_net').notNull().default(0),
+    tNet: integer('t_net').notNull().default(0),
+    endgame: text('endgame', { enum: ['NONE', 'PARK', 'SHALLOW', 'DEEP'] })
+      .notNull()
+      .default('NONE'),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.eventKey, table.teamNumber, table.matchNumber, table.matchLevel],
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'matchdata2025_event_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'matchdata2025_team_fk',
+    }),
+  }),
+);
+
+export type MatchData2025 = InferSelectModel<typeof matchData2025>;
+export type NewMatchData2025 = InferInsertModel<typeof matchData2025>;
+
+export const prescoutMatchData2025 = sqliteTable(
+  'prescoutmatchdata2025',
+  {
+    eventKey: text('event_key').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    matchNumber: integer('match_number').notNull(),
+    matchLevel: text('match_level').notNull(),
+    notes: text('notes'),
+    al4c: integer('al4c').notNull().default(0),
+    al3c: integer('al3c').notNull().default(0),
+    al2c: integer('al2c').notNull().default(0),
+    al1c: integer('al1c').notNull().default(0),
+    tl4c: integer('tl4c').notNull().default(0),
+    tl3c: integer('tl3c').notNull().default(0),
+    tl2c: integer('tl2c').notNull().default(0),
+    tl1c: integer('tl1c').notNull().default(0),
+    aProcessor: integer('a_processor').notNull().default(0),
+    tProcessor: integer('t_processor').notNull().default(0),
+    aNet: integer('a_net').notNull().default(0),
+    tNet: integer('t_net').notNull().default(0),
+    endgame: text('endgame', { enum: ['NONE', 'PARK', 'SHALLOW', 'DEEP'] })
+      .notNull()
+      .default('NONE'),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.eventKey, table.teamNumber, table.matchNumber, table.matchLevel],
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'prescoutmatchdata2025_event_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'prescoutmatchdata2025_team_fk',
+    }),
+  }),
+);
+
+export type PrescoutMatchData2025 = InferSelectModel<typeof prescoutMatchData2025>;
+export type NewPrescoutMatchData2025 = InferInsertModel<typeof prescoutMatchData2025>;
