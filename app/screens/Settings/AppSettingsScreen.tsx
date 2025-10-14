@@ -5,7 +5,14 @@ import { useRouter } from 'expo-router';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
-import { updateGeneralData, type UpdateGeneralDataResult } from '../../services/general-data';
+import {
+  updateGeneralData,
+  type UpdateGeneralDataResult,
+} from '../../services/general-data';
+import {
+  retrieveEventInfo,
+  type RetrieveEventInfoResult,
+} from '../../services/event-info';
 import { pingBackend } from '../../services/api/ping';
 import { showToast } from '../../utils/showToast';
 import { ROUTES } from '@/constants/routes';
@@ -13,7 +20,9 @@ import { ROUTES } from '@/constants/routes';
 export function AppSettingsScreen() {
   const [lastResult, setLastResult] = useState<UpdateGeneralDataResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [eventInfoError, setEventInfoError] = useState<string | null>(null);
   const [pingLabel, setPingLabel] = useState('Ping');
+  const [lastEventInfoResult, setLastEventInfoResult] = useState<RetrieveEventInfoResult | null>(null);
   const router = useRouter();
 
   const updateGeneralDataMutation = useMutation({
@@ -22,6 +31,10 @@ export function AppSettingsScreen() {
 
   const pingMutation = useMutation({
     mutationFn: pingBackend,
+  });
+
+  const retrieveEventInfoMutation = useMutation({
+    mutationFn: retrieveEventInfo,
   });
 
   const handleUpdatePress = useCallback(() => {
@@ -64,10 +77,34 @@ export function AppSettingsScreen() {
 
   const isUpdating = updateGeneralDataMutation.isPending;
   const isPinging = pingMutation.isPending;
+  const isRetrievingEventInfo = retrieveEventInfoMutation.isPending;
 
   const handleViewEventsPress = useCallback(() => {
     router.push(ROUTES.eventsBrowser);
   }, [router]);
+
+  const handleRetrieveEventInfoPress = useCallback(() => {
+    setEventInfoError(null);
+    setLastEventInfoResult(null);
+
+    retrieveEventInfoMutation.mutate(undefined, {
+      onSuccess: (result) => {
+        setLastEventInfoResult(result);
+
+        const { created, updated, removed, received } = result.matchSchedule;
+        const scheduleSummary = `${received} matches (${created} new, ${updated} updated, ${removed} removed)`;
+        const teamSummary = `${result.teamEvents.received} teams (${result.teamEvents.created} added, ${result.teamEvents.removed} removed)`;
+
+        showToast(`Synced ${scheduleSummary} and ${teamSummary} for ${result.eventCode}.`);
+      },
+      onError: (error) => {
+        console.error('Failed to retrieve event info', error);
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        setEventInfoError(message);
+        Alert.alert('Retrieve event info failed', message);
+      },
+    });
+  }, [retrieveEventInfoMutation]);
 
   return (
     <ScreenContainer>
@@ -114,11 +151,39 @@ export function AppSettingsScreen() {
         >
           <ThemedText style={styles.actionButtonLabel}>{pingLabel}</ThemedText>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isRetrievingEventInfo }}
+          disabled={isRetrievingEventInfo}
+          onPress={handleRetrieveEventInfoPress}
+          style={({ pressed }) => [
+            styles.actionButton,
+            styles.retrieveEventButton,
+            pressed && !isRetrievingEventInfo ? styles.actionButtonPressed : null,
+            isRetrievingEventInfo ? styles.actionButtonDisabled : null,
+          ]}
+          testID="retrieve-event-info-button"
+        >
+          <ThemedText style={styles.actionButtonLabel}>
+            {isRetrievingEventInfo ? 'Retrieving event info…' : 'Retrieve event info'}
+          </ThemedText>
+        </Pressable>
         {isUpdating ? (
           <View style={styles.progressRow}>
             <ActivityIndicator accessibilityLabel="Updating general data" color="#0a7ea4" />
             <ThemedText style={styles.progressText}>
               Fetching the latest teams, events, organizations, and user assignments…
+            </ThemedText>
+          </View>
+        ) : null}
+        {isRetrievingEventInfo ? (
+          <View style={styles.progressRow}>
+            <ActivityIndicator
+              accessibilityLabel="Retrieving event information"
+              color="#0a7ea4"
+            />
+            <ThemedText style={styles.progressText}>
+              Downloading match schedule and team list for the active event…
             </ThemedText>
           </View>
         ) : null}
@@ -132,9 +197,29 @@ export function AppSettingsScreen() {
             </ThemedText>
           </View>
         ) : null}
+        {lastEventInfoResult ? (
+          <View style={styles.statusBlock}>
+            <ThemedText>
+              Match schedule: received {lastEventInfoResult.matchSchedule.received} matches ({
+                lastEventInfoResult.matchSchedule.created
+              }{' '}
+              new, {lastEventInfoResult.matchSchedule.updated} updated,{' '}
+              {lastEventInfoResult.matchSchedule.removed} removed). Team list: received{' '}
+              {lastEventInfoResult.teamEvents.received} teams ({
+                lastEventInfoResult.teamEvents.created
+              }{' '}
+              added, {lastEventInfoResult.teamEvents.removed} removed).
+            </ThemedText>
+          </View>
+        ) : null}
         {errorMessage ? (
           <View style={styles.statusBlock}>
             <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
+          </View>
+        ) : null}
+        {eventInfoError ? (
+          <View style={styles.statusBlock}>
+            <ThemedText style={styles.errorText}>{eventInfoError}</ThemedText>
           </View>
         ) : null}
       </View>
@@ -157,6 +242,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   pingButton: {
+    marginTop: 12,
+  },
+  retrieveEventButton: {
     marginTop: 12,
   },
   actionButtonPressed: {
