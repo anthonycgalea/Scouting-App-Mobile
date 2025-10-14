@@ -65,6 +65,10 @@ function initializeExpoSqliteDb() {
       team_name TEXT NOT NULL,
       location TEXT
     );`,
+    `CREATE TABLE IF NOT EXISTS logged_in_event (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      event TEXT
+    );`,
     `CREATE TABLE IF NOT EXISTS frcevent (
       event_key TEXT PRIMARY KEY NOT NULL,
       event_name TEXT NOT NULL,
