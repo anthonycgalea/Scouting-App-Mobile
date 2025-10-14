@@ -10,6 +10,14 @@ export const teamRecords = sqliteTable('teamrecord', {
 export type TeamRecord = InferSelectModel<typeof teamRecords>;
 export type NewTeamRecord = InferInsertModel<typeof teamRecords>;
 
+export const loggedInEvents = sqliteTable('logged_in_event', {
+  id: integer('id').primaryKey(),
+  event: text('event'),
+});
+
+export type LoggedInEvent = InferSelectModel<typeof loggedInEvents>;
+export type NewLoggedInEvent = InferInsertModel<typeof loggedInEvents>;
+
 export const frcEvents = sqliteTable('frcevent', {
   eventKey: text('event_key').primaryKey(),
   eventName: text('event_name').notNull(),
