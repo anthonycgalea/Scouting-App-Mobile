@@ -25,6 +25,9 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "extra": {
+      "supabaseRedirect": "frcredzone://auth"
+    },
     "plugins": [
       "expo-router",
       [
