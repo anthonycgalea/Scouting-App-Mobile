@@ -16,7 +16,7 @@ const HomeScreen = () => (
 );
 
 const DrawerNavigator = () => {
-  const { user, signOut, isLoading } = useAuth();
+  const { user, signOut, isLoading, displayName, isFetchingUserInfo } = useAuth();
 
   return (
     <Drawer.Navigator
@@ -25,6 +25,21 @@ const DrawerNavigator = () => {
       }}
       drawerContent={(props) => (
         <DrawerContentScrollView {...props}>
+          <View style={styles.profileContainer}>
+            {user ? (
+              <>
+                <Text style={styles.profileHeading}>Signed in as</Text>
+                <Text style={styles.profileName}>
+                  {displayName?.trim() || user.email || 'Unknown user'}
+                </Text>
+                {isFetchingUserInfo ? (
+                  <Text style={styles.profileStatus}>Refreshing account details…</Text>
+                ) : null}
+              </>
+            ) : (
+              <Text style={styles.profileHeading}>You are browsing as a guest.</Text>
+            )}
+          </View>
           <DrawerItemList {...props} />
           {user ? (
             <DrawerItem
@@ -77,5 +92,26 @@ const styles = StyleSheet.create({
   homeCopy: {
     fontSize: 16,
     color: '#4a4a4a',
+  },
+  profileContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomColor: '#ececec',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 8,
+    gap: 4,
+  },
+  profileHeading: {
+    fontSize: 14,
+    color: '#555',
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111',
+  },
+  profileStatus: {
+    fontSize: 12,
+    color: '#888',
   },
 });
