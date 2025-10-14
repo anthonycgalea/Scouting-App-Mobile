@@ -107,6 +107,17 @@ function initializeExpoSqliteDb() {
       FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
       FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
     );`,
+    `CREATE TABLE IF NOT EXISTS organization (
+      id INTEGER PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      team_number INTEGER NOT NULL
+    );`,
+    `CREATE TABLE IF NOT EXISTS userorganization (
+      id INTEGER PRIMARY KEY NOT NULL,
+      organization_id INTEGER NOT NULL,
+      team_number INTEGER NOT NULL,
+      FOREIGN KEY (organization_id) REFERENCES organization(id)
+    );`,
   ];
 
   for (const statement of createStatements) {
