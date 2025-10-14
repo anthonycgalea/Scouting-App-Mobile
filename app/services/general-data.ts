@@ -27,8 +27,9 @@ type OrganizationResponse = {
 
 type UserOrganizationResponse = {
   id: number;
-  organization_id: number;
-  team_number: number;
+  organization_id?: number;
+  team_number?: number;
+  user_organization_id?: number;
 };
 
 type PaginatedResponseMeta = {
@@ -88,11 +89,42 @@ const normalizeOrganization = (organization: OrganizationResponse) => ({
   teamNumber: organization.team_number,
 });
 
-const normalizeUserOrganization = (userOrganization: UserOrganizationResponse) => ({
-  id: userOrganization.id,
-  organizationId: userOrganization.organization_id,
-  teamNumber: userOrganization.team_number,
-});
+type NormalizedUserOrganization = {
+  id: number;
+  organizationId: number;
+  teamNumber: number;
+};
+
+const normalizeUserOrganization = (
+  userOrganization: UserOrganizationResponse,
+): NormalizedUserOrganization | null => {
+  const id =
+    typeof userOrganization.user_organization_id === 'number'
+      ? userOrganization.user_organization_id
+      : typeof userOrganization.id === 'number' &&
+          typeof userOrganization.organization_id === 'number'
+        ? userOrganization.id
+        : null;
+
+  const organizationId =
+    typeof userOrganization.organization_id === 'number'
+      ? userOrganization.organization_id
+      : typeof userOrganization.id === 'number' &&
+          typeof userOrganization.user_organization_id === 'number'
+        ? userOrganization.id
+        : null;
+
+  const teamNumber =
+    typeof userOrganization.team_number === 'number'
+      ? userOrganization.team_number
+      : null;
+
+  if (id === null || organizationId === null || teamNumber === null) {
+    return null;
+  }
+
+  return { id, organizationId, teamNumber };
+};
 
 function extractItems<T>(response: PaginatedResponse<T>): T[] {
   if (Array.isArray(response)) {
@@ -411,20 +443,14 @@ async function syncUserOrganizations(): Promise<UpsertResult> {
     const receivedIds = new Set<number>();
 
     for (const userOrganization of userOrganizations) {
-      if (typeof userOrganization.id !== 'number') {
-        continue;
-      }
-
-      receivedIds.add(userOrganization.id);
-
-      if (
-        typeof userOrganization.organization_id !== 'number' ||
-        typeof userOrganization.team_number !== 'number'
-      ) {
-        continue;
-      }
-
       const normalized = normalizeUserOrganization(userOrganization);
+
+      if (!normalized) {
+        continue;
+      }
+
+      receivedIds.add(normalized.id);
+
       const existing = tx
         .select()
         .from(schema.userOrganizations)
