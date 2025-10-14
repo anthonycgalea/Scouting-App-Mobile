@@ -2,7 +2,9 @@ import type { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser'; // ✅ needed for Expo Go
-WebBrowser.maybeCompleteAuthSession();
+console.log('🚀 Calling WebBrowser.maybeCompleteAuthSession()...');
+const maybeCompletedAuthSession = WebBrowser.maybeCompleteAuthSession();
+console.log('📬 WebBrowser.maybeCompleteAuthSession() result:', maybeCompletedAuthSession);
 
 // eslint-disable-next-line import/first
 import {
@@ -104,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isFetchingUserInfo, setIsFetchingUserInfo] = useState(false);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isRefreshingRef = useRef(false);
+  const authFlowTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const clearRefreshTimeout = useCallback(() => {
     if (refreshTimeoutRef.current) {
@@ -188,30 +191,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   // Handle deep link callback (OAuth redirect)
-  const handleUrl = useCallback(async ({ url }: { url: string }) => {
-  console.log('🔗 handleUrl triggered:', url);
-  const parsed = Linking.parse(url);
-  const path = parsed.path?.replace(/^--\//, '').replace(/^\/+/, '');
+  const handleUrl = useCallback(
+    async ({ url }: { url: string }) => {
+      console.log('🔔 handleUrl triggered with URL:', url);
 
-  if (!path?.startsWith('auth') || !parsed.queryParams?.code) {
-    console.log('🚫 handleUrl: no auth code found');
-    return;
-  }
+      if (authFlowTimeoutRef.current) {
+        console.log('🛑 Clearing pending auth timeout because deep link arrived.');
+        clearTimeout(authFlowTimeoutRef.current);
+        authFlowTimeoutRef.current = null;
+      }
 
-  const code = String(parsed.queryParams.code);
-  console.log('📨 Exchanging code for session...');
-  const { data, error } = await supabase.auth.exchangeCodeForSession({ code });
+      try {
+        const parsed = Linking.parse(url);
+        const path = parsed.path?.replace(/^--\//, '').replace(/^\/+/, '');
+        console.log('🧭 Parsed deep link path & params:', {
+          path,
+          queryParams: parsed.queryParams,
+        });
 
-  if (error) {
-    console.warn('❌ exchangeCodeForSession error:', error);
-  } else if (data.session) {
-    console.log('✅ Received session from Supabase');
-    await persistSessionWithFallback(data.session);
-    console.log('📦 persistSessionWithFallback complete');
-    setSession(data.session);
-    setUser(data.session.user);
-  }
-}, []);
+        if (!path?.startsWith('auth') || !parsed.queryParams?.code) {
+          console.log('🚫 handleUrl: no auth code found in query params.');
+          return;
+        }
+
+        const code = String(parsed.queryParams.code);
+        console.log('📨 Exchanging authorization code for session with Supabase...');
+
+        const { data, error } = await supabase.auth.exchangeCodeForSession({ code });
+        console.log('📬 exchangeCodeForSession response:', {
+          hasSession: !!data?.session,
+          error,
+        });
+
+        if (error) {
+          console.warn('❌ exchangeCodeForSession encountered an error:', error);
+          return;
+        }
+
+        if (data.session) {
+          console.log('✅ Received session from Supabase. Persisting and updating state.');
+          await persistSessionWithFallback(data.session);
+          console.log('📦 persistSessionWithFallback complete');
+          setSession(data.session);
+          setUser(data.session.user);
+        } else {
+          console.log('⚠️ exchangeCodeForSession returned no session object.');
+        }
+      } catch (error) {
+        console.error('⚠️ handleUrl threw an exception:', error);
+      }
+    },
+    [],
+  );
 
 
   // Initialize and restore session
@@ -280,26 +311,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ✅ Discord OAuth flow (Expo Go compatible)
   const signInWithDiscord = useCallback(async () => {
-  try {
-    const redirect = Linking.createURL('/auth'); // 👈 ensure the double-dash
-    console.log('🔗 Expo redirect:', redirect);
+    console.log('🚀 Starting Discord OAuth sign-in flow...');
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'discord',
-      options: { redirectTo: redirect },
-    });
+    try {
+      const redirect = Linking.createURL('/auth');
+      console.log('🔗 Computed redirect URL for Expo Linking:', redirect);
 
-    if (error) throw error;
+      console.log('📨 Calling supabase.auth.signInWithOAuth for Discord...');
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: { redirectTo: redirect },
+      });
 
-    if (data?.url) {
-      console.log('🔗 Using redirect:', redirect);
-      console.log('🌐 Full authorize URL:', data?.url);
-      await WebBrowser.openAuthSessionAsync(data.url, redirect);
+      console.log('📬 signInWithOAuth response:', {
+        hasData: !!data,
+        authorizeUrl: data?.url,
+        error,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.url) {
+        console.log('⚠️ Supabase did not return an authorize URL. Aborting browser launch.');
+        return;
+      }
+
+      console.log('🌐 Opening WebBrowser auth session...');
+      const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirect);
+      console.log('🏁 WebBrowser auth session closed with result:', authResult);
+
+      if (authFlowTimeoutRef.current) {
+        clearTimeout(authFlowTimeoutRef.current);
+      }
+
+      authFlowTimeoutRef.current = setTimeout(() => {
+        console.log('⚠️ No auth callback received within 3 seconds after browser closed.');
+        authFlowTimeoutRef.current = null;
+      }, 3000);
+    } catch (error) {
+      console.error('❌ Discord sign-in failed with exception:', error);
     }
-  } catch (error) {
-    console.warn('Discord sign-in failed:', error);
-  }
-}, []);
+  }, []);
 
 
   const signOut = useCallback(async () => {
