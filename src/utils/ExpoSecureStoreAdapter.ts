@@ -1,12 +1,7 @@
+import type { SupportedStorage } from '@supabase/auth-js';
 import * as SecureStore from 'expo-secure-store';
 
-export interface AsyncStorageLike {
-  getItem(key: string): Promise<string | null>;
-  setItem(key: string, value: string): Promise<void>;
-  removeItem(key: string): Promise<void>;
-}
-
-const ExpoSecureStoreAdapter: AsyncStorageLike = {
+const ExpoSecureStoreAdapter: SupportedStorage = {
   async getItem(key) {
     try {
       return await SecureStore.getItemAsync(key);
