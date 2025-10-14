@@ -117,3 +117,31 @@ export const teamEvents = sqliteTable(
 
 export type TeamEvent = InferSelectModel<typeof teamEvents>;
 export type NewTeamEvent = InferInsertModel<typeof teamEvents>;
+
+export const organizations = sqliteTable('organization', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  teamNumber: integer('team_number').notNull(),
+});
+
+export type Organization = InferSelectModel<typeof organizations>;
+export type NewOrganization = InferInsertModel<typeof organizations>;
+
+export const userOrganizations = sqliteTable(
+  'userorganization',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    organizationId: integer('organization_id').notNull(),
+    teamNumber: integer('team_number').notNull(),
+  },
+  (table) => ({
+    organizationRef: foreignKey({
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+      name: 'userorganization_organization_fk',
+    }),
+  }),
+);
+
+export type UserOrganization = InferSelectModel<typeof userOrganizations>;
+export type NewUserOrganization = InferInsertModel<typeof userOrganizations>;
