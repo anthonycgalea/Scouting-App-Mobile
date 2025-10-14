@@ -14,7 +14,7 @@ import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import type { Session, User } from '@supabase/supabase-js';
 
-import { supabase } from '../supabaseClient';
+import { supabase } from '../lib/supabase';
 
 const SESSION_KEY = 'supabase.session';
 const REFRESH_TOKEN_KEY = 'supabase.refresh_token';
