@@ -19,6 +19,18 @@ type EventResponse = {
   week: number | null;
 };
 
+type OrganizationResponse = {
+  id: number;
+  name: string;
+  team_number: number;
+};
+
+type UserOrganizationResponse = {
+  id: number;
+  organization_id: number;
+  team_number: number;
+};
+
 type PaginatedResponseMeta = {
   page?: number | null;
   currentPage?: number | null;
@@ -47,6 +59,8 @@ type UpsertResult = {
 export type UpdateGeneralDataResult = {
   teams: UpsertResult;
   events: UpsertResult;
+  organizations: UpsertResult;
+  userOrganizations: UpsertResult;
   loggedInEvent: LoggedInEventSyncResult;
 };
 
@@ -66,6 +80,18 @@ const normalizeEvent = (event: EventResponse) => ({
   shortName: event.short_name ?? null,
   year: typeof event.year === 'number' ? event.year : 0,
   week: typeof event.week === 'number' && Number.isFinite(event.week) ? event.week : 0,
+});
+
+const normalizeOrganization = (organization: OrganizationResponse) => ({
+  id: organization.id,
+  name: organization.name,
+  teamNumber: organization.team_number,
+});
+
+const normalizeUserOrganization = (userOrganization: UserOrganizationResponse) => ({
+  id: userOrganization.id,
+  organizationId: userOrganization.organization_id,
+  teamNumber: userOrganization.team_number,
 });
 
 function extractItems<T>(response: PaginatedResponse<T>): T[] {
@@ -277,6 +303,170 @@ async function syncEvents(year: number): Promise<UpsertResult> {
   return { created, updated };
 }
 
+async function syncOrganizations(): Promise<UpsertResult> {
+  const db = getDbOrThrow();
+  let created = 0;
+  let updated = 0;
+
+  const data = await apiRequest<PaginatedResponse<OrganizationResponse>>('/organizations', {
+    method: 'GET',
+  });
+
+  const organizations = extractItems(data);
+
+  if (organizations.length === 0) {
+    db.transaction((tx) => {
+      const existing = tx.select().from(schema.organizations).all();
+
+      for (const organization of existing) {
+        tx.delete(schema.userOrganizations).where(eq(schema.userOrganizations.organizationId, organization.id)).run();
+        tx.delete(schema.organizations).where(eq(schema.organizations.id, organization.id)).run();
+      }
+    });
+
+    return { created, updated };
+  }
+
+  db.transaction((tx) => {
+    const receivedIds = new Set<number>();
+
+    for (const organization of organizations) {
+      if (typeof organization.id !== 'number') {
+        continue;
+      }
+
+      receivedIds.add(organization.id);
+
+      if (!organization.name || typeof organization.team_number !== 'number') {
+        continue;
+      }
+
+      const normalized = normalizeOrganization(organization);
+      const existing = tx
+        .select()
+        .from(schema.organizations)
+        .where(eq(schema.organizations.id, normalized.id))
+        .limit(1)
+        .all();
+
+      const existingRecord = existing[0];
+
+      if (!existingRecord) {
+        tx.insert(schema.organizations).values(normalized).run();
+        created += 1;
+        continue;
+      }
+
+      if (
+        existingRecord.name !== normalized.name ||
+        existingRecord.teamNumber !== normalized.teamNumber
+      ) {
+        tx
+          .update(schema.organizations)
+          .set(normalized)
+          .where(eq(schema.organizations.id, normalized.id))
+          .run();
+        updated += 1;
+      }
+    }
+
+    const existingOrganizations = tx.select().from(schema.organizations).all();
+    for (const existingOrganization of existingOrganizations) {
+      if (!receivedIds.has(existingOrganization.id)) {
+        tx
+          .delete(schema.userOrganizations)
+          .where(eq(schema.userOrganizations.organizationId, existingOrganization.id))
+          .run();
+        tx
+          .delete(schema.organizations)
+          .where(eq(schema.organizations.id, existingOrganization.id))
+          .run();
+      }
+    }
+  });
+
+  return { created, updated };
+}
+
+async function syncUserOrganizations(): Promise<UpsertResult> {
+  const db = getDbOrThrow();
+  let created = 0;
+  let updated = 0;
+
+  const data = await apiRequest<PaginatedResponse<UserOrganizationResponse>>('/user/organizations', {
+    method: 'GET',
+  });
+
+  const userOrganizations = extractItems(data);
+
+  if (userOrganizations.length === 0) {
+    db.transaction((tx) => {
+      tx.delete(schema.userOrganizations).run();
+    });
+
+    return { created, updated };
+  }
+
+  db.transaction((tx) => {
+    const receivedIds = new Set<number>();
+
+    for (const userOrganization of userOrganizations) {
+      if (typeof userOrganization.id !== 'number') {
+        continue;
+      }
+
+      receivedIds.add(userOrganization.id);
+
+      if (
+        typeof userOrganization.organization_id !== 'number' ||
+        typeof userOrganization.team_number !== 'number'
+      ) {
+        continue;
+      }
+
+      const normalized = normalizeUserOrganization(userOrganization);
+      const existing = tx
+        .select()
+        .from(schema.userOrganizations)
+        .where(eq(schema.userOrganizations.id, normalized.id))
+        .limit(1)
+        .all();
+
+      const existingRecord = existing[0];
+
+      if (!existingRecord) {
+        tx.insert(schema.userOrganizations).values(normalized).run();
+        created += 1;
+        continue;
+      }
+
+      if (
+        existingRecord.organizationId !== normalized.organizationId ||
+        existingRecord.teamNumber !== normalized.teamNumber
+      ) {
+        tx
+          .update(schema.userOrganizations)
+          .set(normalized)
+          .where(eq(schema.userOrganizations.id, normalized.id))
+          .run();
+        updated += 1;
+      }
+    }
+
+    const existingUserOrganizations = tx.select().from(schema.userOrganizations).all();
+    for (const existingUserOrganization of existingUserOrganizations) {
+      if (!receivedIds.has(existingUserOrganization.id)) {
+        tx
+          .delete(schema.userOrganizations)
+          .where(eq(schema.userOrganizations.id, existingUserOrganization.id))
+          .run();
+      }
+    }
+  });
+
+  return { created, updated };
+}
+
 async function syncLoggedInEvent(): Promise<LoggedInEventSyncResult> {
   const response = await getUserEvent();
   const rawEventCode = typeof response.eventCode === 'string' ? response.eventCode.trim() : '';
@@ -290,7 +480,9 @@ async function syncLoggedInEvent(): Promise<LoggedInEventSyncResult> {
 export async function updateGeneralData(): Promise<UpdateGeneralDataResult> {
   const teams = await syncTeams();
   const events = await syncEvents(2025);
+  const organizations = await syncOrganizations();
+  const userOrganizations = await syncUserOrganizations();
   const loggedInEvent = await syncLoggedInEvent();
 
-  return { teams, events, loggedInEvent };
+  return { teams, events, organizations, userOrganizations, loggedInEvent };
 }

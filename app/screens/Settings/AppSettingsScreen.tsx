@@ -33,7 +33,11 @@ export function AppSettingsScreen() {
         setLastResult(result);
         const addedTeamsCount = result.teams.created;
         const teamLabel = addedTeamsCount === 1 ? 'team' : 'teams';
-        showToast(`Added ${addedTeamsCount} new ${teamLabel}.`);
+        const addedOrganizationsCount = result.organizations.created;
+        const organizationLabel = addedOrganizationsCount === 1 ? 'organization' : 'organizations';
+        showToast(
+          `Added ${addedTeamsCount} new ${teamLabel} and ${addedOrganizationsCount} new ${organizationLabel}.`,
+        );
       },
       onError: (error) => {
         console.error('Failed to update general data', error);
@@ -113,14 +117,18 @@ export function AppSettingsScreen() {
         {isUpdating ? (
           <View style={styles.progressRow}>
             <ActivityIndicator accessibilityLabel="Updating general data" color="#0a7ea4" />
-            <ThemedText style={styles.progressText}>Fetching the latest teams and events…</ThemedText>
+            <ThemedText style={styles.progressText}>
+              Fetching the latest teams, events, organizations, and user assignments…
+            </ThemedText>
           </View>
         ) : null}
         {lastResult ? (
           <View style={styles.statusBlock}>
             <ThemedText>
-              Synced {lastResult.teams.created + lastResult.teams.updated} team records and{' '}
-              {lastResult.events.created + lastResult.events.updated} events.
+              Synced {lastResult.teams.created + lastResult.teams.updated} team records,{' '}
+              {lastResult.events.created + lastResult.events.updated} events,{' '}
+              {lastResult.organizations.created + lastResult.organizations.updated} organizations, and{' '}
+              {lastResult.userOrganizations.created + lastResult.userOrganizations.updated} user organization links.
             </ThemedText>
           </View>
         ) : null}
