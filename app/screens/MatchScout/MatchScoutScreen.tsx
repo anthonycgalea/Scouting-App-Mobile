@@ -1,5 +1,6 @@
-import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import {
@@ -10,261 +11,136 @@ import {
   SECTION_DEFINITIONS,
   groupMatchesBySection,
 } from '@/components/match-schedule';
+import { ThemedText } from '@/components/themed-text';
+import { getDbOrThrow, schema } from '@/db';
+import type { MatchSchedule as MatchScheduleRow } from '@/db/schema';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { retrieveEventInfo } from '@/app/services/event-info';
+import { getActiveEvent } from '@/app/services/logged-in-event';
+import { eq } from 'drizzle-orm';
 
-const MOCK_MATCHES: MatchScheduleEntry[] = [
-  // Qualification Matches
-  {
-    match_number: 1,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 111,
-    red2_id: 222,
-    red3_id: 333,
-    blue1_id: 444,
-    blue2_id: 555,
-    blue3_id: 666,
-  },
-  {
-    match_number: 2,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 777,
-    red2_id: 888,
-    red3_id: 999,
-    blue1_id: 1010,
-    blue2_id: 1111,
-    blue3_id: 1212,
-  },
-  {
-    match_number: 3,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 1313,
-    red2_id: 1414,
-    red3_id: 1515,
-    blue1_id: 1616,
-    blue2_id: 1717,
-    blue3_id: 1818,
-  },
-  {
-    match_number: 4,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 1919,
-    red2_id: 2020,
-    red3_id: 2121,
-    blue1_id: 2222,
-    blue2_id: 2323,
-    blue3_id: 2424,
-  },
-  {
-    match_number: 5,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 2525,
-    red2_id: 2626,
-    red3_id: 2727,
-    blue1_id: 2828,
-    blue2_id: 2929,
-    blue3_id: 3030,
-  },
-  {
-    match_number: 6,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 3131,
-    red2_id: 3232,
-    red3_id: 3333,
-    blue1_id: 3434,
-    blue2_id: 3535,
-    blue3_id: 3636,
-  },
-  {
-    match_number: 7,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 3737,
-    red2_id: 3838,
-    red3_id: 3939,
-    blue1_id: 4040,
-    blue2_id: 4141,
-    blue3_id: 4242,
-  },
-  {
-    match_number: 8,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 4343,
-    red2_id: 4444,
-    red3_id: 4545,
-    blue1_id: 4646,
-    blue2_id: 4747,
-    blue3_id: 4848,
-  },
-  {
-    match_number: 9,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 4949,
-    red2_id: 5050,
-    red3_id: 5151,
-    blue1_id: 5252,
-    blue2_id: 5353,
-    blue3_id: 5454,
-  },
-  {
-    match_number: 10,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 5555,
-    red2_id: 5656,
-    red3_id: 5757,
-    blue1_id: 5858,
-    blue2_id: 5959,
-    blue3_id: 6060,
-  },
-  {
-    match_number: 11,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 6161,
-    red2_id: 6262,
-    red3_id: 6363,
-    blue1_id: 6464,
-    blue2_id: 6565,
-    blue3_id: 6666,
-  },
-  {
-    match_number: 12,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 6767,
-    red2_id: 6868,
-    red3_id: 6969,
-    blue1_id: 7070,
-    blue2_id: 7171,
-    blue3_id: 7272,
-  },
-  {
-    match_number: 13,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 7373,
-    red2_id: 7474,
-    red3_id: 7575,
-    blue1_id: 7676,
-    blue2_id: 7777,
-    blue3_id: 7878,
-  },
-  {
-    match_number: 14,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 7979,
-    red2_id: 8080,
-    red3_id: 8181,
-    blue1_id: 8282,
-    blue2_id: 8383,
-    blue3_id: 8484,
-  },
-  {
-    match_number: 15,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 8585,
-    red2_id: 8686,
-    red3_id: 8787,
-    blue1_id: 8888,
-    blue2_id: 8989,
-    blue3_id: 9090,
-  },
-  {
-    match_number: 16,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 9191,
-    red2_id: 9292,
-    red3_id: 9393,
-    blue1_id: 9494,
-    blue2_id: 9595,
-    blue3_id: 9696,
-  },
-  {
-    match_number: 17,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 9797,
-    red2_id: 9898,
-    red3_id: 9999,
-    blue1_id: 10000,
-    blue2_id: 10101,
-    blue3_id: 10202,
-  },
-  {
-    match_number: 18,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 10303,
-    red2_id: 10404,
-    red3_id: 10505,
-    blue1_id: 10606,
-    blue2_id: 10707,
-    blue3_id: 10808,
-  },
-  {
-    match_number: 19,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 10909,
-    red2_id: 11010,
-    red3_id: 11111,
-    blue1_id: 11212,
-    blue2_id: 11313,
-    blue3_id: 11414,
-  },
-  {
-    match_number: 20,
-    match_level: 'qm',
-    event_key: '2024mock',
-    red1_id: 11515,
-    red2_id: 11616,
-    red3_id: 11717,
-    blue1_id: 11818,
-    blue2_id: 11919,
-    blue3_id: 12020,
-  },
+const matchRowToEntry = (row: MatchScheduleRow): MatchScheduleEntry => ({
+  match_number: row.matchNumber,
+  match_level: row.matchLevel,
+  event_key: row.eventKey,
+  red1_id: row.red1Id,
+  red2_id: row.red2Id,
+  red3_id: row.red3Id,
+  blue1_id: row.blue1Id,
+  blue2_id: row.blue2Id,
+  blue3_id: row.blue3Id,
+});
 
-  // Playoffs
-  {
-    match_number: 1,
-    match_level: 'sf',
-    event_key: '2024mock',
-    red1_id: 1313,
-    red2_id: 1414,
-    red3_id: 1515,
-    blue1_id: 1616,
-    blue2_id: 1717,
-    blue3_id: 1818,
-  },
-  {
-    match_number: 1,
-    match_level: 'f',
-    event_key: '2024mock',
-    red1_id: 1919,
-    red2_id: 2020,
-    red3_id: 2121,
-    blue1_id: 2222,
-    blue2_id: 2323,
-    blue3_id: 2424,
-  },
-];
-
+const SECTION_ORDER: MatchScheduleSection[] = ['qualification', 'playoffs', 'finals'];
 
 export function MatchScoutScreen() {
   const [selectedSection, setSelectedSection] = useState<MatchScheduleSection>('qualification');
+  const [matches, setMatches] = useState<MatchScheduleEntry[]>([]);
+  const [activeEventKey, setActiveEventKey] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
   const router = useRouter();
 
-  const groupedMatches = useMemo(() => groupMatchesBySection(MOCK_MATCHES), []);
+  const accentColor = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
+  const buttonTextColor = '#F8FAFC';
+  const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
+  const borderColor = useThemeColor({ light: 'rgba(15, 23, 42, 0.1)', dark: 'rgba(148, 163, 184, 0.25)' }, 'text');
+  const textColor = useThemeColor({}, 'text');
+  const mutedText = useThemeColor(
+    { light: 'rgba(15, 23, 42, 0.7)', dark: 'rgba(226, 232, 240, 0.7)' },
+    'text'
+  );
+
+  const loadMatchesFromDb = useCallback(() => {
+    const eventKey = getActiveEvent();
+
+    if (!eventKey) {
+      throw new Error('No event is currently selected. Please select an event to view its match schedule.');
+    }
+
+    const db = getDbOrThrow();
+    const rows = db
+      .select()
+      .from(schema.matchSchedules)
+      .where(eq(schema.matchSchedules.eventKey, eventKey))
+      .all();
+
+    return { eventKey, matches: rows.map(matchRowToEntry) };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(true);
+
+      try {
+        const { eventKey, matches: data } = loadMatchesFromDb();
+        setActiveEventKey(eventKey);
+        setMatches(data);
+        setErrorMessage(null);
+      } catch (error) {
+        console.error('Failed to load match schedule', error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred while loading the match schedule.';
+        setErrorMessage(message);
+        setActiveEventKey(null);
+        setMatches([]);
+      } finally {
+        setIsLoading(false);
+      }
+
+      return () => {};
+    }, [loadMatchesFromDb])
+  );
+
+  useEffect(() => {
+    if (matches.length === 0) {
+      if (selectedSection !== 'qualification') {
+        setSelectedSection('qualification');
+      }
+      return;
+    }
+
+    const grouped = groupMatchesBySection(matches);
+    if (grouped[selectedSection].length === 0) {
+      const fallback = SECTION_ORDER.find((section) => grouped[section].length > 0);
+      if (fallback && fallback !== selectedSection) {
+        setSelectedSection(fallback);
+      }
+    }
+  }, [matches, selectedSection]);
+
+  const groupedMatches = useMemo(() => groupMatchesBySection(matches), [matches]);
+
+  const handleDownloadPress = useCallback(async () => {
+    if (isDownloading) {
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      await retrieveEventInfo();
+      const { eventKey, matches: data } = loadMatchesFromDb();
+      setActiveEventKey(eventKey);
+      setMatches(data);
+      setErrorMessage(null);
+
+      if (data.length === 0) {
+        Alert.alert('No match schedule available', 'The event has not published a match schedule yet.');
+      }
+    } catch (error) {
+      console.error('Failed to download match schedule', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred while downloading the match schedule.';
+      Alert.alert('Download failed', message);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [isDownloading, loadMatchesFromDb]);
 
   const handleMatchPress = useCallback(
     (match: MatchScheduleEntry) => {
@@ -295,14 +171,104 @@ export function MatchScoutScreen() {
     [router]
   );
 
+  const hasMatches = matches.length > 0;
+
   return (
     <ScreenContainer>
-      <MatchScheduleToggle
-        value={selectedSection}
-        onChange={setSelectedSection}
-        options={SECTION_DEFINITIONS}
-      />
-      <MatchSchedule matches={groupedMatches[selectedSection]} onMatchPress={handleMatchPress} />
+      {isLoading ? (
+        <View style={styles.stateWrapper}>
+          <ActivityIndicator accessibilityLabel="Loading match schedule" color={accentColor} />
+          <ThemedText style={[styles.stateMessage, { color: mutedText }]}>Loading match schedule…</ThemedText>
+        </View>
+      ) : hasMatches ? (
+        <>
+          {activeEventKey ? (
+            <ThemedText style={[styles.eventCaption, { color: mutedText }]}>Viewing schedule for {activeEventKey}</ThemedText>
+          ) : null}
+          <MatchScheduleToggle
+            value={selectedSection}
+            onChange={setSelectedSection}
+            options={SECTION_DEFINITIONS}
+          />
+          <MatchSchedule matches={groupedMatches[selectedSection]} onMatchPress={handleMatchPress} />
+        </>
+      ) : (
+        <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>
+          <ThemedText type="defaultSemiBold" style={[styles.stateTitle, { color: textColor }]}>
+            {errorMessage ? 'Unable to load match schedule' : 'No match schedule downloaded'}
+          </ThemedText>
+          <ThemedText style={[styles.stateMessage, { color: mutedText }]}>
+            {errorMessage
+              ? errorMessage
+              : activeEventKey
+              ? `Download the latest schedule for ${activeEventKey} to get started.`
+              : 'Select an event to download its match schedule.'}
+          </ThemedText>
+          {activeEventKey ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleDownloadPress}
+              disabled={isDownloading}
+              style={({ pressed }) => [
+                styles.downloadButton,
+                { backgroundColor: accentColor },
+                pressed && !isDownloading ? styles.downloadButtonPressed : null,
+                isDownloading ? styles.downloadButtonDisabled : null,
+              ]}
+            >
+              <ThemedText style={[styles.downloadButtonLabel, { color: buttonTextColor }]}> 
+                {isDownloading ? 'Downloading…' : 'Download Match Schedule'}
+              </ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
+      )}
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  stateWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  stateCard: {
+    marginTop: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  stateTitle: {
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  stateMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  downloadButton: {
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    alignSelf: 'center',
+  },
+  downloadButtonPressed: {
+    opacity: 0.92,
+  },
+  downloadButtonDisabled: {
+    opacity: 0.7,
+  },
+  downloadButtonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  eventCaption: {
+    marginBottom: 12,
+    textAlign: 'center',
+    fontSize: 16,
+  },
+});
