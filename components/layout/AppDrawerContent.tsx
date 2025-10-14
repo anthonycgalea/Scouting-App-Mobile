@@ -9,6 +9,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/use-authentication';
 import { useOrganization } from '@/hooks/use-organization';
+import type { Organization } from '@/db/schema';
 
 export type DrawerContentProps = {
   state: {
@@ -20,6 +21,10 @@ export type DrawerContentProps = {
     closeDrawer: () => void;
   };
 };
+
+function formatOrganizationLabel(organization: Organization) {
+  return `Team ${organization.teamNumber} – ${organization.name}`;
+}
 
 export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
   const { isAuthenticated, logout, displayName } = useAuth();
@@ -44,7 +49,9 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
 
   const browsingLabel = `Browsing as ${displayName ?? 'guest'}`;
   const subtitle = isAuthenticated
-    ? selectedOrganization ?? browsingLabel
+    ? selectedOrganization
+      ? formatOrganizationLabel(selectedOrganization)
+      : browsingLabel
     : browsingLabel;
 
   return (

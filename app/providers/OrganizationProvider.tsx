@@ -1,8 +1,10 @@
 import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
 
+import type { Organization } from '@/db/schema';
+
 interface OrganizationContextValue {
-  selectedOrganization: string | null;
-  setSelectedOrganization: (organization: string | null) => void;
+  selectedOrganization: Organization | null;
+  setSelectedOrganization: (organization: Organization | null) => void;
 }
 
 const OrganizationContext = createContext<OrganizationContextValue | undefined>(undefined);
@@ -12,7 +14,7 @@ interface OrganizationProviderProps {
 }
 
 export function OrganizationProvider({ children }: OrganizationProviderProps) {
-  const [selectedOrganization, setSelectedOrganization] = useState<string | null>(null);
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
 
   const value = useMemo(
     () => ({
