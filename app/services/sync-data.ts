@@ -13,6 +13,7 @@ export type SyncDataWithServerResult = {
   eventInfo: RetrieveEventInfoResult;
   matchDataSent: number;
   pitDataSent: number;
+  prescoutDataSent: number;
   alreadyScoutedUpdated: number;
   alreadyPitScoutedUpdated: number;
 };
@@ -68,6 +69,19 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     });
   }
 
+  const prescoutRows = db
+    .select()
+    .from(schema.prescoutMatchData2025)
+    .where(eq(schema.prescoutMatchData2025.eventKey, remoteEventCode))
+    .all();
+
+  if (prescoutRows.length > 0) {
+    await apiRequest('/scout/prescout/batch', {
+      method: 'POST',
+      body: JSON.stringify(prescoutRows),
+    });
+  }
+
   const alreadyScoutedUpdated = await syncAlreadyScoutedEntries(organizationId);
   const alreadyPitScoutedUpdated = await syncAlreadyPitScoutedEntries(organizationId);
 
@@ -77,6 +91,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     eventInfo,
     matchDataSent: matchRows.length,
     pitDataSent: pitRows.length,
+    prescoutDataSent: prescoutRows.length,
     alreadyScoutedUpdated,
     alreadyPitScoutedUpdated,
   };
