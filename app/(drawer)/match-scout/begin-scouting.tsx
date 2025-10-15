@@ -326,8 +326,8 @@ interface CounterControlProps {
 }
 
 function CounterControl({ label, value, onIncrement, onDecrement }: CounterControlProps) {
-  const positiveBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
-  const negativeBackground = useThemeColor({ light: '#DC2626', dark: '#B91C1C' }, 'tint');
+  const positiveBackground = useThemeColor({ light: '#475569', dark: '#1F2937' }, 'background');
+  const negativeBackground = useThemeColor({ light: '#334155', dark: '#111827' }, 'background');
 
   return (
     <View style={styles.counterControl}>
@@ -384,9 +384,9 @@ function TabTransitionControl({
   onIncrement,
   onDecrement,
 }: TabTransitionControlProps) {
-  const positiveBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
-  const negativeBackground = useThemeColor({ light: '#F8FAFC', dark: '#0F172A' }, 'background');
-  const negativeText = useThemeColor({ light: '#2563EB', dark: '#60A5FA' }, 'tint');
+  const positiveBackground = useThemeColor({ light: '#475569', dark: '#1F2937' }, 'background');
+  const negativeBackground = useThemeColor({ light: '#CBD5F5', dark: '#0F172A' }, 'background');
+  const negativeText = useThemeColor({ light: '#1F2937', dark: '#CBD5F5' }, 'text');
 
   return (
     <View style={[styles.counterControl, styles.tabTransitionControl]}>
@@ -1123,7 +1123,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   counterButtonAuxText: {
-    color: '#BFDBFE',
+    color: '#E2E8F0',
     fontSize: 18,
   },
   buttonPressed: {
