@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { DRAWER_ITEMS } from '@/app/navigation';
 import { ROUTES } from '@/constants/routes';
@@ -10,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/use-authentication';
 import { useOrganization } from '@/hooks/use-organization';
 import type { Organization } from '@/db/schema';
+import { syncDataWithServer } from '@/app/services/sync-data';
 
 export type DrawerContentProps = {
   state: {
@@ -36,6 +38,7 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
   const activeItemBackground =
     colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e6f6fb';
   const dividerColor = colorScheme === 'dark' ? '#2f3133' : '#d0d0d0';
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const settingsItemNames = new Set([
     'settings/index',
@@ -85,6 +88,57 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
     );
   };
 
+  const handleSyncPress = useCallback(async () => {
+    if (isSyncing) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      Alert.alert('Sign in required', 'Sign in before syncing data with the server.');
+      return;
+    }
+
+    if (!selectedOrganization) {
+      Alert.alert(
+        'Select an organization',
+        'Choose the organization you are scouting for before syncing data.',
+      );
+      return;
+    }
+
+    setIsSyncing(true);
+
+    try {
+      const result = await syncDataWithServer(selectedOrganization.id);
+
+      navigation.closeDrawer();
+
+      const eventInfoSummary = [
+        `Match schedule: received ${result.eventInfo.matchSchedule.received}, created ${result.eventInfo.matchSchedule.created}, updated ${result.eventInfo.matchSchedule.updated}, removed ${result.eventInfo.matchSchedule.removed}`,
+        `Team list: received ${result.eventInfo.teamEvents.received}, created ${result.eventInfo.teamEvents.created}, removed ${result.eventInfo.teamEvents.removed}`,
+      ].join('\n');
+
+      const alreadyScoutedSummary = `Already scouted updates: matches ${result.alreadyScoutedUpdated}, pit ${result.alreadyPitScoutedUpdated}`;
+
+      const submissionSummary = `Submitted ${result.matchDataSent} match entries and ${result.pitDataSent} pit entries.`;
+
+      const title = result.eventChanged ? 'Event synchronized' : 'Sync complete';
+      const message = [`Event: ${result.eventCode}`, submissionSummary, eventInfoSummary, alreadyScoutedSummary].join('\n\n');
+
+      Alert.alert(title, message);
+    } catch (error) {
+      console.error('Failed to sync data with server', error);
+      Alert.alert(
+        'Sync failed',
+        error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred while syncing data with the server.',
+      );
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isAuthenticated, isSyncing, navigation, selectedOrganization]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -95,6 +149,20 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
         <View style={styles.primarySection}>{primaryItems.map(renderDrawerItem)}</View>
         {settingsItems.length > 0 ? (
           <View style={[styles.settingsSection, { borderTopColor: dividerColor }]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={isSyncing ? { busy: true, disabled: true } : undefined}
+              onPress={handleSyncPress}
+              disabled={isSyncing}
+              style={[styles.drawerItem, styles.syncButton, isSyncing && styles.disabledItem]}
+            >
+              <Ionicons
+                name="cloud-upload-outline"
+                size={20}
+                color={tint}
+              />
+              <ThemedText type="defaultSemiBold">Sync Data with Server</ThemedText>
+            </Pressable>
             {settingsItems.map(renderDrawerItem)}
           </View>
         ) : null}
@@ -146,6 +214,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
   },
+  syncButton: {
+    marginBottom: 12,
+  },
   authButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -153,5 +224,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  disabledItem: {
+    opacity: 0.5,
   },
 });
