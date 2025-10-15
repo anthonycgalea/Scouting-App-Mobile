@@ -152,6 +152,7 @@ export const userOrganizations = sqliteTable(
     id: integer('id').primaryKey({ autoIncrement: true }),
     organizationId: integer('organization_id').notNull(),
     teamNumber: integer('team_number').notNull(),
+    role: text('role'),
   },
   (table) => ({
     organizationRef: foreignKey({
