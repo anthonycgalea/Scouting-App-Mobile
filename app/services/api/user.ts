@@ -31,3 +31,29 @@ export const getUserOrganization = async () => {
     method: 'GET',
   });
 };
+
+export const updateUserOrganizationSelection = async (userOrganizationId: number) => {
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => {
+    abortController.abort();
+  }, 5_000);
+
+  try {
+    return await apiRequest<UserOrganizationSelectionResponse>('/user/organization', {
+      method: 'PATCH',
+      body: JSON.stringify({ user_organization_id: userOrganizationId }),
+      signal: abortController.signal,
+    });
+  } catch (error) {
+    if (
+      (error instanceof DOMException && error.name === 'AbortError') ||
+      (error instanceof Error && error.name === 'AbortError')
+    ) {
+      throw new Error('Request timed out after 5 seconds');
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
