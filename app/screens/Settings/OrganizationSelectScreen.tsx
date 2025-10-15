@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { eq } from 'drizzle-orm';
 
@@ -8,18 +8,59 @@ import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useOrganization } from '@/hooks/use-organization';
 import { getDbOrThrow, schema } from '@/db';
+import { syncDataWithServer } from '@/app/services/sync-data';
+import { updateUserOrganizationSelection } from '@/app/services/api/user';
+import type { SyncDataWithServerResult } from '@/app/services/sync-data';
 import type { Organization } from '@/db/schema';
+import type { UserOrganizationSelectionResponse } from '@/app/services/api/user';
 
 interface UserOrganizationListItem {
   id: number;
   organization: Organization;
 }
 
+const extractOrganizationId = (
+  response: UserOrganizationSelectionResponse | null | undefined,
+): number => {
+  const possibleValues = [response?.organizationId, response?.organization_id];
+
+  for (const value of possibleValues) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number.parseInt(value, 10);
+
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  throw new Error('Server response did not include a valid organization id.');
+};
+
+const showSyncSuccessAlert = (result: SyncDataWithServerResult) => {
+  const eventInfoSummary = [
+    `Match schedule: received ${result.eventInfo.matchSchedule.received}, created ${result.eventInfo.matchSchedule.created}, updated ${result.eventInfo.matchSchedule.updated}, removed ${result.eventInfo.matchSchedule.removed}`,
+    `Team list: received ${result.eventInfo.teamEvents.received}, created ${result.eventInfo.teamEvents.created}, removed ${result.eventInfo.teamEvents.removed}`,
+  ].join('\n');
+
+  const alreadyScoutedSummary = `Already scouted updates: matches ${result.alreadyScoutedUpdated}, pit ${result.alreadyPitScoutedUpdated}`;
+  const submissionSummary = `Submitted ${result.matchDataSent} match entries and ${result.pitDataSent} pit entries.`;
+  const title = result.eventChanged ? 'Event synchronized' : 'Sync complete';
+  const message = [`Event: ${result.eventCode}`, submissionSummary, eventInfoSummary, alreadyScoutedSummary].join('\n\n');
+
+  Alert.alert(title, message);
+};
+
 export function OrganizationSelectScreen() {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
   const [userOrganizations, setUserOrganizations] = useState<UserOrganizationListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingUserOrganizationId, setPendingUserOrganizationId] = useState<number | null>(null);
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   const accentColor = '#0a7ea4';
@@ -109,6 +150,58 @@ export function OrganizationSelectScreen() {
     }
   }, [userOrganizations, selectedOrganization, setSelectedOrganization]);
 
+  const handleOrganizationPress = useCallback(
+    async (item: UserOrganizationListItem) => {
+      if (pendingUserOrganizationId !== null) {
+        return;
+      }
+
+      if (selectedOrganization?.id === item.organization.id) {
+        return;
+      }
+
+      setPendingUserOrganizationId(item.id);
+
+      try {
+        const response = await updateUserOrganizationSelection(item.id);
+        const newOrganizationId = extractOrganizationId(response);
+        const matchingOrganization = userOrganizations.find(
+          (org) => org.organization.id === newOrganizationId,
+        );
+
+        if (!matchingOrganization) {
+          throw new Error('Selected organization was not found locally. Sync general data and try again.');
+        }
+
+        setSelectedOrganization(matchingOrganization.organization);
+
+        try {
+          const syncResult = await syncDataWithServer(newOrganizationId);
+          showSyncSuccessAlert(syncResult);
+        } catch (syncError) {
+          console.error('Failed to sync data with server after switching organization', syncError);
+          Alert.alert(
+            'Sync failed',
+            syncError instanceof Error
+              ? syncError.message
+              : 'An unexpected error occurred while syncing data with the server.',
+          );
+        }
+      } catch (error) {
+        console.error('Failed to switch organization', error);
+        Alert.alert(
+          'Organization switch failed',
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred while switching organizations.',
+        );
+      } finally {
+        setPendingUserOrganizationId(null);
+      }
+    },
+    [pendingUserOrganizationId, selectedOrganization, setSelectedOrganization, userOrganizations],
+  );
+
   return (
     <ScreenContainer>
       <ThemedText type="title">Organization</ThemedText>
@@ -134,9 +227,13 @@ export function OrganizationSelectScreen() {
           keyExtractor={(item) => `${item.id}`}
           renderItem={({ item }) => {
             const isActive = item.organization.id === selectedOrganization?.id;
+            const isPending = item.id === pendingUserOrganizationId;
+            const isDisabled = pendingUserOrganizationId !== null;
 
             return (
               <Pressable
+                accessibilityState={{ selected: isActive, busy: isPending || undefined }}
+                disabled={isDisabled}
                 style={[
                   styles.option,
                   {
@@ -147,8 +244,9 @@ export function OrganizationSelectScreen() {
                     borderColor: accentColor,
                     backgroundColor: optionActiveBackgroundColor,
                   },
+                  isDisabled && !isPending && styles.disabledOption,
                 ]}
-                onPress={() => setSelectedOrganization(item.organization)}
+                onPress={() => handleOrganizationPress(item)}
               >
                 <ThemedText type="defaultSemiBold">
                   Team {item.organization.teamNumber}
@@ -156,6 +254,13 @@ export function OrganizationSelectScreen() {
                 <ThemedText style={[styles.optionSubtitle, { color: secondaryTextColor }]}>
                   {item.organization.name}
                 </ThemedText>
+                {isPending ? (
+                  <ActivityIndicator
+                    accessibilityLabel="Switching organization"
+                    color={accentColor}
+                    style={styles.optionLoadingIndicator}
+                  />
+                ) : null}
               </Pressable>
             );
           }}
@@ -180,8 +285,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
+  disabledOption: {
+    opacity: 0.6,
+  },
   optionSubtitle: {
     marginTop: 4,
+  },
+  optionLoadingIndicator: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
   },
   loadingContainer: {
     marginTop: 24,
