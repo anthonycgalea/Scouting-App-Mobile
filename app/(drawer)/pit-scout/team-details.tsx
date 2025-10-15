@@ -105,13 +105,15 @@ const parseCountValue = (value: string) => {
   return parsed ?? 0;
 };
 
+const normalizeNoteField = (value: string) => value.trim();
+
 export default function PitScoutTeamDetailsScreen() {
   const params = useLocalSearchParams<{ teamNumber?: string | string[]; teamName?: string | string[] }>();
   const router = useRouter();
   const { selectedOrganization } = useOrganization();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTab, setSelectedTab] = useState<TabKey>('general');
-  const [drivetrain, setDrivetrain] = useState<string | null>(null);
+  const [drivetrain, setDrivetrain] = useState<(typeof DRIVETRAIN_OPTIONS)[number]['value']>('SWERVE');
   const [showDrivetrainOptions, setShowDrivetrainOptions] = useState(false);
   const [robotWeight, setRobotWeight] = useState('');
   const [driveTeam, setDriveTeam] = useState('');
@@ -155,13 +157,9 @@ export default function PitScoutTeamDetailsScreen() {
   const placeholderColor = useThemeColor({ light: '#64748B', dark: '#94A3B8' }, 'text');
 
   const drivetrainLabel = useMemo(() => {
-    if (!drivetrain) {
-      return 'Select a drivetrain';
-    }
-
     const match = DRIVETRAIN_OPTIONS.find((option) => option.value === drivetrain);
 
-    return match?.label ?? 'Select a drivetrain';
+    return match?.label ?? 'Swerve';
   }, [drivetrain]);
 
   const handleTabSelect = (tab: TabKey) => {
@@ -222,13 +220,13 @@ export default function PitScoutTeamDetailsScreen() {
       const pitDataValues: NewPitData2025 = {
         eventKey,
         teamNumber: parsedTeamNumber,
-        notes: null,
+        notes: '',
         drivetrain,
         driveteam: driveTeam.trim() ? driveTeam.trim() : null,
         robotWeight: parseOptionalInteger(robotWeight),
-        autoNotes: autoNotes.trim() ? autoNotes.trim() : null,
-        teleNotes: teleNotes.trim() ? teleNotes.trim() : null,
-        overallNotes: overallNotes.trim() ? overallNotes.trim() : null,
+        autoNotes: normalizeNoteField(autoNotes),
+        teleNotes: normalizeNoteField(teleNotes),
+        overallNotes: normalizeNoteField(overallNotes),
         autoCoralCount: parseCountValue(autoCoralCount),
         autoAlgaeNet: parseCountValue(autoAlgaeNet),
         autoAlgaeProcessor: parseCountValue(autoAlgaeProcessor),
@@ -377,7 +375,7 @@ export default function PitScoutTeamDetailsScreen() {
                     <ThemedText
                       style={[
                         styles.dropdownText,
-                        { color: drivetrain ? textColor : placeholderColor },
+                        { color: textColor },
                       ]}
                     >
                       {drivetrainLabel}
