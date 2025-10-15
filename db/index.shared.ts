@@ -112,6 +112,11 @@ function initializeExpoSqliteDb() {
       name TEXT NOT NULL,
       team_number INTEGER NOT NULL
     );`,
+    `CREATE TABLE IF NOT EXISTS logged_in_organization (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      organization_id INTEGER,
+      FOREIGN KEY (organization_id) REFERENCES organization(id)
+    );`,
     `CREATE TABLE IF NOT EXISTS userorganization (
       id INTEGER PRIMARY KEY NOT NULL,
       organization_id INTEGER NOT NULL,
