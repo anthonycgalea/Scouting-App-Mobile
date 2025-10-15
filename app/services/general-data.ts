@@ -31,6 +31,12 @@ type UserOrganizationResponse = {
   organization_id?: number;
   team_number?: number;
   user_organization_id?: number;
+  role?: string | null;
+  user_role?: string | null;
+  organization_role?: string | null;
+  status?: string | null;
+  membership_status?: string | null;
+  membershipStatus?: string | null;
 };
 
 type PaginatedResponseMeta = {
@@ -104,6 +110,7 @@ type NormalizedUserOrganization = {
   id: number;
   organizationId: number;
   teamNumber: number;
+  role: string | null;
 };
 
 const normalizeUserOrganization = (
@@ -130,11 +137,33 @@ const normalizeUserOrganization = (
       ? userOrganization.team_number
       : null;
 
+  const possibleRoles = [
+    userOrganization.role,
+    userOrganization.user_role,
+    userOrganization.organization_role,
+    userOrganization.status,
+    userOrganization.membership_status,
+    userOrganization.membershipStatus,
+  ];
+
+  let role: string | null = null;
+
+  for (const possibleRole of possibleRoles) {
+    if (typeof possibleRole === 'string') {
+      const normalizedRole = possibleRole.trim();
+
+      if (normalizedRole.length > 0) {
+        role = normalizedRole.toUpperCase();
+        break;
+      }
+    }
+  }
+
   if (id === null || organizationId === null || teamNumber === null) {
     return null;
   }
 
-  return { id, organizationId, teamNumber };
+  return { id, organizationId, teamNumber, role };
 };
 
 function extractItems<T>(response: PaginatedResponse<T>): T[] {
@@ -479,7 +508,8 @@ async function syncUserOrganizations(): Promise<UpsertResult> {
 
       if (
         existingRecord.organizationId !== normalized.organizationId ||
-        existingRecord.teamNumber !== normalized.teamNumber
+        existingRecord.teamNumber !== normalized.teamNumber ||
+        existingRecord.role !== normalized.role
       ) {
         tx
           .update(schema.userOrganizations)

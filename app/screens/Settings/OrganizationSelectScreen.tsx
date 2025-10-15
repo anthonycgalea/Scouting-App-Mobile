@@ -17,6 +17,7 @@ import type { UserOrganizationSelectionResponse } from '@/app/services/api/user'
 
 interface UserOrganizationListItem {
   id: number;
+  role: string | null;
   organization: Organization;
 }
 
@@ -80,6 +81,7 @@ export function OrganizationSelectScreen() {
         organizationId: schema.organizations.id,
         name: schema.organizations.name,
         teamNumber: schema.organizations.teamNumber,
+        role: schema.userOrganizations.role,
       })
       .from(schema.userOrganizations)
       .innerJoin(
@@ -89,14 +91,23 @@ export function OrganizationSelectScreen() {
       .all();
 
     return rows
-      .map((row) => ({
-        id: row.id,
-        organization: {
-          id: row.organizationId,
-          name: row.name,
-          teamNumber: row.teamNumber,
-        },
-      }))
+      .map((row): UserOrganizationListItem => {
+        const role =
+          typeof row.role === 'string' && row.role.trim().length > 0
+            ? row.role.trim().toUpperCase()
+            : null;
+
+        return {
+          id: row.id,
+          role,
+          organization: {
+            id: row.organizationId,
+            name: row.name,
+            teamNumber: row.teamNumber,
+          },
+        };
+      })
+      .filter((row) => row.role !== 'PENDING')
       .sort((a, b) => a.organization.teamNumber - b.organization.teamNumber);
   }, []);
 
