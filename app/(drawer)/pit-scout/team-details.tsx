@@ -105,6 +105,8 @@ const parseCountValue = (value: string) => {
   return parsed ?? 0;
 };
 
+const normalizeNoteField = (value: string) => value.trim();
+
 export default function PitScoutTeamDetailsScreen() {
   const params = useLocalSearchParams<{ teamNumber?: string | string[]; teamName?: string | string[] }>();
   const router = useRouter();
@@ -219,16 +221,20 @@ export default function PitScoutTeamDetailsScreen() {
     try {
       const db = getDbOrThrow();
 
+      const selectedDrivetrain = drivetrain
+        ? DRIVETRAIN_OPTIONS.find((option) => option.value === drivetrain)
+        : undefined;
+
       const pitDataValues: NewPitData2025 = {
         eventKey,
         teamNumber: parsedTeamNumber,
-        notes: null,
-        drivetrain,
+        notes: '',
+        drivetrain: selectedDrivetrain?.label ?? null,
         driveteam: driveTeam.trim() ? driveTeam.trim() : null,
         robotWeight: parseOptionalInteger(robotWeight),
-        autoNotes: autoNotes.trim() ? autoNotes.trim() : null,
-        teleNotes: teleNotes.trim() ? teleNotes.trim() : null,
-        overallNotes: overallNotes.trim() ? overallNotes.trim() : null,
+        autoNotes: normalizeNoteField(autoNotes),
+        teleNotes: normalizeNoteField(teleNotes),
+        overallNotes: normalizeNoteField(overallNotes),
         autoCoralCount: parseCountValue(autoCoralCount),
         autoAlgaeNet: parseCountValue(autoAlgaeNet),
         autoAlgaeProcessor: parseCountValue(autoAlgaeProcessor),
