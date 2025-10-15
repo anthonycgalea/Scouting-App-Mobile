@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { eq } from 'drizzle-orm';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
@@ -61,6 +61,7 @@ export function OrganizationSelectScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingUserOrganizationId, setPendingUserOrganizationId] = useState<number | null>(null);
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   const accentColor = '#0a7ea4';
@@ -204,7 +205,18 @@ export function OrganizationSelectScreen() {
 
   return (
     <ScreenContainer>
-      <ThemedText type="title">Organization</ThemedText>
+      <View style={styles.header}>
+        <ThemedText type="title" style={styles.headerTitle}>
+          Organization
+        </ThemedText>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/(drawer)/organization-select/apply')}
+          style={[styles.applyButton, { backgroundColor: accentColor }]}
+        >
+          <ThemedText style={styles.applyButtonText}>Apply to Organization</ThemedText>
+        </Pressable>
+      </View>
       <ThemedText>Select which team or organization you are scouting for.</ThemedText>
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -279,6 +291,26 @@ export function OrganizationSelectScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  headerTitle: {
+    flexShrink: 1,
+  },
+  applyButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  applyButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
   option: {
     padding: 12,
     borderRadius: 8,
