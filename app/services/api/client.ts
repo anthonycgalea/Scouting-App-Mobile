@@ -74,10 +74,8 @@ export async function apiRequest<TResponse>(path: string, options: ApiRequestOpt
     if (authHeader) {
       const [, token] = authHeader.split(' ');
       const preview = token ? `${token.slice(0, 8)}…` : 'missing-token';
-      // eslint-disable-next-line no-console
       console.debug(`[apiRequest] ${method} ${url} → using bearer ${preview}`);
-    } else {
-      // eslint-disable-next-line no-console
+    } else {  
       console.warn(`[apiRequest] ${method} ${url} → no Authorization header set`);
     }
   }
