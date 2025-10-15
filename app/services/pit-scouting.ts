@@ -1,7 +1,7 @@
 import { apiRequest } from './api';
 import { getDbOrThrow, schema } from '@/db';
 
-type AlreadyPitScoutedResponse = {
+export type AlreadyPitScoutedResponse = {
   event_code?: string | null;
   team_number?: number | string | null;
   organization_id?: number | string | null;
