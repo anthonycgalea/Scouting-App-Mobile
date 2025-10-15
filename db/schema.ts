@@ -18,6 +18,7 @@ export const loggedInEvents = sqliteTable('logged_in_event', {
 export type LoggedInEvent = InferSelectModel<typeof loggedInEvents>;
 export type NewLoggedInEvent = InferInsertModel<typeof loggedInEvents>;
 
+
 export const frcEvents = sqliteTable('frcevent', {
   eventKey: text('event_key').primaryKey(),
   eventName: text('event_name').notNull(),
@@ -126,6 +127,24 @@ export const organizations = sqliteTable('organization', {
 
 export type Organization = InferSelectModel<typeof organizations>;
 export type NewOrganization = InferInsertModel<typeof organizations>;
+
+export const loggedInOrganizations = sqliteTable(
+  'logged_in_organization',
+  {
+    id: integer('id').primaryKey(),
+    organizationId: integer('organization_id'),
+  },
+  (table) => ({
+    organizationRef: foreignKey({
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+      name: 'logged_in_organization_organization_fk',
+    }),
+  }),
+);
+
+export type LoggedInOrganization = InferSelectModel<typeof loggedInOrganizations>;
+export type NewLoggedInOrganization = InferInsertModel<typeof loggedInOrganizations>;
 
 export const userOrganizations = sqliteTable(
   'userorganization',

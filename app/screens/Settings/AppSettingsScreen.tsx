@@ -48,8 +48,12 @@ export function AppSettingsScreen() {
         const teamLabel = addedTeamsCount === 1 ? 'team' : 'teams';
         const addedOrganizationsCount = result.organizations.created;
         const organizationLabel = addedOrganizationsCount === 1 ? 'organization' : 'organizations';
+        const loggedInOrganizationMessage =
+          result.loggedInOrganization.organizationId !== null
+            ? 'Updated active organization selection.'
+            : 'No active organization selected.';
         showToast(
-          `Added ${addedTeamsCount} new ${teamLabel} and ${addedOrganizationsCount} new ${organizationLabel}.`,
+          `Added ${addedTeamsCount} new ${teamLabel} and ${addedOrganizationsCount} new ${organizationLabel}. ${loggedInOrganizationMessage}`,
         );
       },
       onError: (error) => {
@@ -176,7 +180,7 @@ export function AppSettingsScreen() {
           <View style={styles.progressRow}>
             <ActivityIndicator accessibilityLabel="Updating general data" color="#0a7ea4" />
             <ThemedText style={styles.progressText}>
-              Fetching the latest teams, events, organizations, and user assignments…
+              Fetching the latest teams, events, organizations, user assignments, and logged-in organization…
             </ThemedText>
           </View>
         ) : null}
@@ -198,6 +202,8 @@ export function AppSettingsScreen() {
               {lastResult.events.created + lastResult.events.updated} events,{' '}
               {lastResult.organizations.created + lastResult.organizations.updated} organizations, and{' '}
               {lastResult.userOrganizations.created + lastResult.userOrganizations.updated} user organization links.
+              {'\n'}Logged-in organization ID:{' '}
+              {lastResult.loggedInOrganization.organizationId ?? 'None'}
             </ThemedText>
           </View>
         ) : null}
