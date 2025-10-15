@@ -130,6 +130,7 @@ export function OrganizationSelectScreen() {
       ) : (
         <FlatList
           data={userOrganizations}
+          extraData={selectedOrganization?.id}
           keyExtractor={(item) => `${item.id}`}
           renderItem={({ item }) => {
             const isActive = item.organization.id === selectedOrganization?.id;
