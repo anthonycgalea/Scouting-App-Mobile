@@ -146,7 +146,6 @@ export function MatchSchedule({
   const blueCellText = '#F8FAFC';
   const scoutedCellBackground = isDark ? 'rgba(63, 63, 70, 0.55)' : 'rgba(226, 232, 240, 0.85)';
   const scoutedCellText = isDark ? '#E5E7EB' : '#1F2937';
-  const pendingTextColor = isDark ? 'rgba(156, 163, 175, 0.8)' : 'rgba(107, 114, 128, 0.9)';
 
   const activeRows = schedule.filter((row) => !row.isFullyScouted);
   const completedRows = schedule.filter((row) => row.isFullyScouted);
@@ -199,9 +198,7 @@ export function MatchSchedule({
               {matchLabel}
             </ThemedText>
             <View style={styles.matchStatusWrapper}>
-              {row.played === undefined ? (
-                <ThemedText style={[styles.statusText, { color: pendingTextColor }]}>Pending</ThemedText>
-              ) : row.played ? (
+              {row.played === undefined ? null : row.played ? (
                 <View style={styles.statusIndicator}>
                   <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
                   <ThemedText style={styles.statusSuccess}>Played</ThemedText>
@@ -328,10 +325,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  statusText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   statusSuccess: {
     fontSize: 14,
