@@ -1,4 +1,6 @@
 import { apiRequest } from './api/client';
+import type { AlreadyScoutedResponse } from './already-scouted';
+import type { AlreadyPitScoutedResponse } from './pit-scouting';
 import { getActiveEvent } from './logged-in-event';
 import { getDbOrThrow, schema } from '@/db';
 import { and, eq } from 'drizzle-orm';
@@ -15,6 +17,14 @@ export type RetrieveEventInfoResult = {
     received: number;
     created: number;
     removed: number;
+  };
+  alreadyScouted: {
+    received: number;
+    created: number;
+  };
+  alreadyPitScouted: {
+    received: number;
+    created: number;
   };
 };
 
@@ -51,6 +61,9 @@ type NormalizedTeamEvent = {
   eventKey: string;
   teamNumber: number;
 };
+
+type NormalizedAlreadyScouted = typeof schema.alreadyScouteds.$inferInsert;
+type NormalizedAlreadyPitScouted = typeof schema.alreadyPitScouteds.$inferInsert;
 
 const normalizeNumber = (value: number | string | null | undefined): number | null => {
   if (typeof value === 'number') {
@@ -118,6 +131,46 @@ const normalizeTeamEvent = (
   return { eventKey: eventCode, teamNumber };
 };
 
+const normalizeAlreadyScoutedEntry = (
+  item: AlreadyScoutedResponse,
+): NormalizedAlreadyScouted | null => {
+  const eventCode = typeof item.event_code === 'string' ? item.event_code.trim() : '';
+  const matchLevel = typeof item.match_level === 'string' ? item.match_level.trim() : '';
+  const teamNumber = normalizeNumber(item.team_number);
+  const matchNumber = normalizeNumber(item.match_number);
+  const organizationId = normalizeNumber(item.organization_id);
+
+  if (!eventCode || !matchLevel || teamNumber === null || matchNumber === null || organizationId === null) {
+    return null;
+  }
+
+  return {
+    eventCode,
+    teamNumber,
+    matchNumber,
+    matchLevel,
+    organizationId,
+  };
+};
+
+const normalizeAlreadyPitScoutedEntry = (
+  item: AlreadyPitScoutedResponse,
+): NormalizedAlreadyPitScouted | null => {
+  const eventCode = typeof item.event_code === 'string' ? item.event_code.trim() : '';
+  const teamNumber = normalizeNumber(item.team_number);
+  const organizationId = normalizeNumber(item.organization_id);
+
+  if (!eventCode || teamNumber === null || organizationId === null) {
+    return null;
+  }
+
+  return {
+    eventCode,
+    teamNumber,
+    organizationId,
+  };
+};
+
 export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
   const eventCode = getActiveEvent();
 
@@ -125,11 +178,17 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     throw new Error('No event is currently selected. Please select an event and try again.');
   }
 
-  const [rawMatchSchedules, rawTeamEvents] = await Promise.all([
+  const [rawMatchSchedules, rawTeamEvents, rawAlreadyScouted, rawAlreadyPitScouted] = await Promise.all([
     apiRequest<MatchScheduleResponse[]>(`/public/matchSchedule/${eventCode}`, {
       method: 'GET',
     }),
     apiRequest<TeamEventResponse[]>(`/public/event/teams/${eventCode}`, {
+      method: 'GET',
+    }),
+    apiRequest<AlreadyScoutedResponse[]>('/scout/scouted', {
+      method: 'GET',
+    }),
+    apiRequest<AlreadyPitScoutedResponse[]>('/scout/pitscouted', {
       method: 'GET',
     }),
   ]);
@@ -163,6 +222,50 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
   }
 
   const db = getDbOrThrow();
+  const organizationRows = db.select({ id: schema.organizations.id }).from(schema.organizations).all();
+  const organizationIdSet = new Set(
+    organizationRows
+      .map((row) => row.id)
+      .filter((id): id is number => typeof id === 'number' && Number.isFinite(id)),
+  );
+
+  const normalizedAlreadyScoutedMap = new Map<string, NormalizedAlreadyScouted>();
+  for (const item of rawAlreadyScouted ?? []) {
+    const normalized = normalizeAlreadyScoutedEntry(item);
+
+    if (!normalized) {
+      continue;
+    }
+
+    if (normalized.eventCode !== eventCode || !organizationIdSet.has(normalized.organizationId)) {
+      continue;
+    }
+
+    const key = `${normalized.eventCode}#${normalized.matchLevel}#${normalized.matchNumber}#${normalized.teamNumber}#${normalized.organizationId}`;
+
+    if (!normalizedAlreadyScoutedMap.has(key)) {
+      normalizedAlreadyScoutedMap.set(key, normalized);
+    }
+  }
+
+  const normalizedAlreadyPitScoutedMap = new Map<string, NormalizedAlreadyPitScouted>();
+  for (const item of rawAlreadyPitScouted ?? []) {
+    const normalized = normalizeAlreadyPitScoutedEntry(item);
+
+    if (!normalized) {
+      continue;
+    }
+
+    if (normalized.eventCode !== eventCode || !organizationIdSet.has(normalized.organizationId)) {
+      continue;
+    }
+
+    const key = `${normalized.eventCode}#${normalized.teamNumber}#${normalized.organizationId}`;
+
+    if (!normalizedAlreadyPitScoutedMap.has(key)) {
+      normalizedAlreadyPitScoutedMap.set(key, normalized);
+    }
+  }
 
   const matchScheduleResult: RetrieveEventInfoResult['matchSchedule'] = {
     received: normalizedMatchMap.size,
@@ -175,6 +278,16 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     received: normalizedTeamSet.size,
     created: 0,
     removed: 0,
+  };
+
+  const alreadyScoutedResult: RetrieveEventInfoResult['alreadyScouted'] = {
+    received: normalizedAlreadyScoutedMap.size,
+    created: 0,
+  };
+
+  const alreadyPitScoutedResult: RetrieveEventInfoResult['alreadyPitScouted'] = {
+    received: normalizedAlreadyPitScoutedMap.size,
+    created: 0,
   };
 
   db.transaction((tx) => {
@@ -269,11 +382,37 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
         .run();
       teamEventsResult.removed += 1;
     }
+
+    for (const normalized of normalizedAlreadyScoutedMap.values()) {
+      const result = tx
+        .insert(schema.alreadyScouteds)
+        .values(normalized)
+        .onConflictDoNothing()
+        .run();
+
+      if (result.rowsAffected > 0) {
+        alreadyScoutedResult.created += 1;
+      }
+    }
+
+    for (const normalized of normalizedAlreadyPitScoutedMap.values()) {
+      const result = tx
+        .insert(schema.alreadyPitScouteds)
+        .values(normalized)
+        .onConflictDoNothing()
+        .run();
+
+      if (result.rowsAffected > 0) {
+        alreadyPitScoutedResult.created += 1;
+      }
+    }
   });
 
   return {
     eventCode,
     matchSchedule: matchScheduleResult,
     teamEvents: teamEventsResult,
+    alreadyScouted: alreadyScoutedResult,
+    alreadyPitScouted: alreadyPitScoutedResult,
   };
 }

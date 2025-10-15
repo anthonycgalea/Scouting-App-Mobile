@@ -94,8 +94,12 @@ export function AppSettingsScreen() {
         const { created, updated, removed, received } = result.matchSchedule;
         const scheduleSummary = `${received} matches (${created} new, ${updated} updated, ${removed} removed)`;
         const teamSummary = `${result.teamEvents.received} teams (${result.teamEvents.created} added, ${result.teamEvents.removed} removed)`;
+        const scoutedSummary = `${result.alreadyScouted.received} already-scouted matches (${result.alreadyScouted.created} added)`;
+        const pitSummary = `${result.alreadyPitScouted.received} already pit-scouted teams (${result.alreadyPitScouted.created} added)`;
 
-        showToast(`Synced ${scheduleSummary} and ${teamSummary} for ${result.eventCode}.`);
+        showToast(
+          `Synced ${scheduleSummary}, ${teamSummary}, ${scoutedSummary}, and ${pitSummary} for ${result.eventCode}.`,
+        );
       },
       onError: (error) => {
         console.error('Failed to retrieve event info', error);
@@ -204,11 +208,19 @@ export function AppSettingsScreen() {
                 lastEventInfoResult.matchSchedule.created
               }{' '}
               new, {lastEventInfoResult.matchSchedule.updated} updated,{' '}
-              {lastEventInfoResult.matchSchedule.removed} removed). Team list: received{' '}
-              {lastEventInfoResult.teamEvents.received} teams ({
+              {lastEventInfoResult.matchSchedule.removed} removed).
+              {'\n'}Team list: received {lastEventInfoResult.teamEvents.received} teams ({
                 lastEventInfoResult.teamEvents.created
               }{' '}
               added, {lastEventInfoResult.teamEvents.removed} removed).
+              {'\n'}Already scouted matches: received {lastEventInfoResult.alreadyScouted.received} matches ({
+                lastEventInfoResult.alreadyScouted.created
+              }{' '}
+              added).
+              {'\n'}Already pit-scouted teams: received {
+                lastEventInfoResult.alreadyPitScouted.received
+              }{' '}
+              teams ({lastEventInfoResult.alreadyPitScouted.created} added).
             </ThemedText>
           </View>
         ) : null}
