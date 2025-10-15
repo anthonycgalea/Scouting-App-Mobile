@@ -49,7 +49,8 @@ const showSyncSuccessAlert = (result: SyncDataWithServerResult) => {
   ].join('\n');
 
   const alreadyScoutedSummary = `Already scouted updates: matches ${result.alreadyScoutedUpdated}, pit ${result.alreadyPitScoutedUpdated}`;
-  const submissionSummary = `Submitted ${result.matchDataSent} match entries and ${result.pitDataSent} pit entries.`;
+  const submissionSummary =
+    `Submitted ${result.matchDataSent} match entries, ${result.pitDataSent} pit entries, and ${result.prescoutDataSent} prescout entries.`;
   const title = result.eventChanged ? 'Event synchronized' : 'Sync complete';
   const message = [`Event: ${result.eventCode}`, submissionSummary, eventInfoSummary, alreadyScoutedSummary].join('\n\n');
 

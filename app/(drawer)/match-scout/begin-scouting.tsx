@@ -2,7 +2,7 @@ import type { ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { and, eq } from 'drizzle-orm';
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -17,6 +17,7 @@ import { getDbOrThrow, schema } from '@/db';
 import type { MatchSchedule } from '@/db/schema';
 import { apiRequest } from '../../services/api';
 import { syncAlreadyScoutedEntries } from '../../services/already-scouted';
+import { getActiveEvent } from '../../services/logged-in-event';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -43,6 +44,7 @@ const parseInteger = (value: string | undefined) => {
 };
 
 type BeginScoutingParams = {
+  mode?: string | string[];
   teamNumber?: string | string[];
   matchNumber?: string | string[];
   eventKey?: string | string[];
@@ -436,6 +438,8 @@ export default function BeginScoutingRoute() {
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
   const router = useRouter();
 
+  const mode = toSingleValue(params.mode);
+  const isPrescoutMode = mode === 'prescout';
   const eventKey =
     toSingleValue(params.eventKey) ?? toSingleValue(params.event_key) ?? '';
   const matchLevel =
@@ -453,6 +457,10 @@ export default function BeginScoutingRoute() {
     toSingleValue(params.driverStationPosition) ??
     toSingleValue(params.driver_station_position);
   const driverStationLabel = buildDriverStationLabel(driverStation, allianceColor, stationPosition);
+
+  const [activeEventFallback] = useState(() => getActiveEvent() ?? '');
+  const resolvedEventKey = eventKey || activeEventFallback;
+  const resolvedMatchLevelForDisplay = isPrescoutMode ? 'qm' : matchLevel;
 
   const [teamNumber, setTeamNumber] = useState(initialTeamNumber);
   const [matchNumber, setMatchNumber] = useState(initialMatchNumber);
@@ -475,15 +483,51 @@ export default function BeginScoutingRoute() {
   const isAutoTab = selectedTab === 'auto';
   const isTeleopTab = selectedTab === 'teleop';
   const currentCounts = isAutoTab ? autoCounts : teleCounts;
-  const hasPrefilledDetails = useMemo(
-    () => Boolean(eventKey && initialMatchNumber && initialTeamNumber && driverStationLabel),
-    [driverStationLabel, eventKey, initialMatchNumber, initialTeamNumber]
-  );
-  const matchDetailsTitle = useMemo(
-    () =>
-      formatMatchHeader(eventKey, matchLevel, initialMatchNumber, initialTeamNumber, driverStationLabel),
-    [driverStationLabel, eventKey, initialMatchNumber, initialTeamNumber, matchLevel]
-  );
+  const hasPrefilledDetails = useMemo(() => {
+    if (isPrescoutMode) {
+      return Boolean(
+        resolvedEventKey &&
+          (matchNumber || initialMatchNumber) &&
+          (teamNumber || initialTeamNumber),
+      );
+    }
+
+    return Boolean(
+      resolvedEventKey && initialMatchNumber && initialTeamNumber && driverStationLabel,
+    );
+  }, [
+    driverStationLabel,
+    initialMatchNumber,
+    initialTeamNumber,
+    isPrescoutMode,
+    matchNumber,
+    resolvedEventKey,
+    teamNumber,
+  ]);
+  const matchDetailsTitle = useMemo(() => {
+    const matchNumberForHeader = isPrescoutMode
+      ? matchNumber || initialMatchNumber
+      : initialMatchNumber;
+    const teamNumberForHeader = teamNumber || initialTeamNumber;
+    const matchLevelForHeader = resolvedMatchLevelForDisplay;
+
+    return formatMatchHeader(
+      resolvedEventKey,
+      matchLevelForHeader,
+      matchNumberForHeader,
+      teamNumberForHeader,
+      driverStationLabel,
+    );
+  }, [
+    driverStationLabel,
+    initialMatchNumber,
+    initialTeamNumber,
+    isPrescoutMode,
+    matchNumber,
+    resolvedEventKey,
+    resolvedMatchLevelForDisplay,
+    teamNumber,
+  ]);
 
   useLayoutEffect(() => {
     const headerTitle = matchDetailsTitle ?? 'match-scout';
@@ -537,7 +581,7 @@ export default function BeginScoutingRoute() {
   const infoDetails = [
     { label: 'Team Number', value: infoTeamNumber },
     { label: 'Match Number', value: infoMatchNumber },
-    { label: 'Event', value: eventKey || 'Not specified' },
+    { label: 'Event', value: resolvedEventKey || 'Not specified' },
     { label: 'Driver Station', value: driverStationLabel ?? 'Not specified' },
   ];
   const tabOptions = [
@@ -553,12 +597,57 @@ export default function BeginScoutingRoute() {
     { key: 'deep', label: 'Deep Climb' },
   ] as const;
 
+  useEffect(() => {
+    if (!isPrescoutMode) {
+      return;
+    }
+
+    const normalizedEventKey = resolvedEventKey.trim();
+    const teamNumberCandidate = (teamNumber || initialTeamNumber).trim();
+
+    if (!normalizedEventKey || !teamNumberCandidate) {
+      return;
+    }
+
+    const parsedTeamNumber = parseInteger(teamNumberCandidate);
+
+    if (Number.isNaN(parsedTeamNumber)) {
+      return;
+    }
+
+    const db = getDbOrThrow();
+    const existingMatches = db
+      .select({ matchNumber: schema.prescoutMatchData2025.matchNumber })
+      .from(schema.prescoutMatchData2025)
+      .where(
+        and(
+          eq(schema.prescoutMatchData2025.eventKey, normalizedEventKey),
+          eq(schema.prescoutMatchData2025.teamNumber, parsedTeamNumber),
+        ),
+      )
+      .all();
+
+    const nextMatchNumber =
+      existingMatches.reduce((max, row) => Math.max(max, row.matchNumber ?? 0), 0) + 1;
+    const nextMatchNumberValue = String(nextMatchNumber);
+
+    if (matchNumber !== nextMatchNumberValue) {
+      setMatchNumber(nextMatchNumberValue);
+    }
+  }, [
+    initialTeamNumber,
+    isPrescoutMode,
+    matchNumber,
+    resolvedEventKey,
+    teamNumber,
+  ]);
+
   const handleSubmit = async () => {
     if (isSubmitting) {
       return;
     }
 
-    if (!selectedOrganization) {
+    if (!selectedOrganization && !isPrescoutMode) {
       Alert.alert(
         'Select an organization',
         'Choose the organization you are scouting for before submitting match data.'
@@ -566,23 +655,40 @@ export default function BeginScoutingRoute() {
       return;
     }
 
-    const normalizedEventKey = eventKey.trim();
-    const resolvedMatchLevel = matchLevel?.trim();
+    const normalizedEventKey = resolvedEventKey.trim();
+    const resolvedMatchLevel = isPrescoutMode ? 'qm' : matchLevel?.trim();
     const resolvedTeamNumber = teamNumber || initialTeamNumber;
-    const resolvedMatchNumber = matchNumber || initialMatchNumber;
 
     const parsedTeamNumber = parseInteger(resolvedTeamNumber);
-    const parsedMatchNumber = parseInteger(resolvedMatchNumber);
+    const parsedMatchNumber = parseInteger(matchNumber || initialMatchNumber);
 
-    if (!normalizedEventKey || !resolvedMatchLevel) {
+    if (!normalizedEventKey) {
       Alert.alert(
-        'Missing match details',
-        'An event key and match level are required before submitting match data.'
+        isPrescoutMode ? 'No event selected' : 'Missing match details',
+        isPrescoutMode
+          ? 'Select an event before submitting prescout data.'
+          : 'An event key and match level are required before submitting match data.',
       );
       return;
     }
 
-    if (Number.isNaN(parsedTeamNumber) || Number.isNaN(parsedMatchNumber)) {
+    if (!resolvedMatchLevel) {
+      Alert.alert(
+        'Missing match details',
+        'A match level is required before submitting match data.'
+      );
+      return;
+    }
+
+    if (Number.isNaN(parsedTeamNumber)) {
+      Alert.alert(
+        'Invalid match details',
+        'Team number must be a valid number before submitting match data.'
+      );
+      return;
+    }
+
+    if (!isPrescoutMode && Number.isNaN(parsedMatchNumber)) {
       Alert.alert(
         'Invalid match details',
         'Team number and match number must be valid numbers before submitting match data.'
@@ -602,31 +708,137 @@ export default function BeginScoutingRoute() {
 
     const endgameValue = endgameMap[endgameSelection];
 
-    const record: typeof schema.matchData2025.$inferInsert = {
-      eventKey: normalizedEventKey,
-      teamNumber: parsedTeamNumber,
-      matchNumber: parsedMatchNumber,
-      matchLevel: resolvedMatchLevel,
-      notes: normalizedNotes,
-      al4c: autoCounts.coralL4,
-      al3c: autoCounts.coralL3,
-      al2c: autoCounts.coralL2,
-      al1c: autoCounts.coralL1,
-      tl4c: teleCounts.coralL4,
-      tl3c: teleCounts.coralL3,
-      tl2c: teleCounts.coralL2,
-      tl1c: teleCounts.coralL1,
-      aProcessor: autoCounts.processor,
-      tProcessor: teleCounts.processor,
-      aNet: autoCounts.net,
-      tNet: teleCounts.net,
-      endgame: endgameValue,
-    };
-
     setIsSubmitting(true);
 
     try {
       const db = getDbOrThrow();
+      const sharedRecordFields = {
+        eventKey: normalizedEventKey,
+        teamNumber: parsedTeamNumber,
+        matchLevel: resolvedMatchLevel,
+        notes: normalizedNotes,
+        al4c: autoCounts.coralL4,
+        al3c: autoCounts.coralL3,
+        al2c: autoCounts.coralL2,
+        al1c: autoCounts.coralL1,
+        tl4c: teleCounts.coralL4,
+        tl3c: teleCounts.coralL3,
+        tl2c: teleCounts.coralL2,
+        tl1c: teleCounts.coralL1,
+        aProcessor: autoCounts.processor,
+        tProcessor: teleCounts.processor,
+        aNet: autoCounts.net,
+        tNet: teleCounts.net,
+        endgame: endgameValue,
+      } as const;
+
+      if (isPrescoutMode) {
+        const existingMatches = db
+          .select({ matchNumber: schema.prescoutMatchData2025.matchNumber })
+          .from(schema.prescoutMatchData2025)
+          .where(
+            and(
+              eq(schema.prescoutMatchData2025.eventKey, normalizedEventKey),
+              eq(schema.prescoutMatchData2025.teamNumber, parsedTeamNumber),
+            ),
+          )
+          .all();
+
+        const nextMatchNumber =
+          existingMatches.reduce((max, row) => Math.max(max, row.matchNumber ?? 0), 0) + 1;
+
+        const prescoutRecord: typeof schema.prescoutMatchData2025.$inferInsert = {
+          ...sharedRecordFields,
+          matchNumber: nextMatchNumber,
+        };
+
+        await db
+          .insert(schema.prescoutMatchData2025)
+          .values(prescoutRecord)
+          .onConflictDoUpdate({
+            target: [
+              schema.prescoutMatchData2025.eventKey,
+              schema.prescoutMatchData2025.teamNumber,
+              schema.prescoutMatchData2025.matchNumber,
+              schema.prescoutMatchData2025.matchLevel,
+            ],
+            set: {
+              notes: prescoutRecord.notes,
+              al4c: prescoutRecord.al4c,
+              al3c: prescoutRecord.al3c,
+              al2c: prescoutRecord.al2c,
+              al1c: prescoutRecord.al1c,
+              tl4c: prescoutRecord.tl4c,
+              tl3c: prescoutRecord.tl3c,
+              tl2c: prescoutRecord.tl2c,
+              tl1c: prescoutRecord.tl1c,
+              aProcessor: prescoutRecord.aProcessor,
+              tProcessor: prescoutRecord.tProcessor,
+              aNet: prescoutRecord.aNet,
+              tNet: prescoutRecord.tNet,
+              endgame: prescoutRecord.endgame,
+            },
+          })
+          .run();
+
+        const [row] = await db
+          .select()
+          .from(schema.prescoutMatchData2025)
+          .where(
+            and(
+              eq(schema.prescoutMatchData2025.eventKey, normalizedEventKey),
+              eq(schema.prescoutMatchData2025.teamNumber, parsedTeamNumber),
+              eq(schema.prescoutMatchData2025.matchNumber, nextMatchNumber),
+              eq(schema.prescoutMatchData2025.matchLevel, resolvedMatchLevel),
+            ),
+          )
+          .limit(1);
+
+        if (!row) {
+          throw new Error('Failed to retrieve submitted prescout data.');
+        }
+
+        try {
+          const abortController = new AbortController();
+          const timeoutId = setTimeout(() => abortController.abort(), 5000);
+
+          try {
+            await apiRequest('/scout/prescout', {
+              method: 'POST',
+              body: JSON.stringify(row),
+              signal: abortController.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
+
+          Alert.alert('Prescout submitted', 'Prescout data was saved and sent successfully.', [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/(drawer)/prescout'),
+            },
+          ]);
+        } catch (error) {
+          console.error('Failed to submit prescout data to API', error);
+          Alert.alert(
+            'Prescout saved locally',
+            'The prescout data was saved on this device but could not be sent to the server.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/(drawer)/prescout'),
+              },
+            ],
+          );
+        }
+
+        return;
+      }
+
+      const record: typeof schema.matchData2025.$inferInsert = {
+        ...sharedRecordFields,
+        matchNumber: parsedMatchNumber,
+      };
 
       await db
         .insert(schema.matchData2025)
@@ -822,9 +1034,9 @@ export default function BeginScoutingRoute() {
         {isAutoTab || isTeleopTab ? (
           <View style={styles.scoringContent}>
             <View style={styles.detailsSection}>
-              {!matchDetailsTitle && eventKey ? (
+              {!matchDetailsTitle && resolvedEventKey ? (
                 <View style={styles.header}>
-                  <ThemedText type="defaultSemiBold">Event: {eventKey}</ThemedText>
+                  <ThemedText type="defaultSemiBold">Event: {resolvedEventKey}</ThemedText>
                 </View>
               ) : null}
 
