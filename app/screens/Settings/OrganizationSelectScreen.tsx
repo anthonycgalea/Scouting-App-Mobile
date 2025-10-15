@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useOrganization } from '@/hooks/use-organization';
 import { getDbOrThrow, schema } from '@/db';
+import { refreshUserOrganizations } from '@/app/services/general-data';
 import { syncDataWithServer } from '@/app/services/sync-data';
 import { updateUserOrganizationSelection } from '@/app/services/api/user';
 import type { SyncDataWithServerResult } from '@/app/services/sync-data';
@@ -102,17 +103,27 @@ export function OrganizationSelectScreen() {
     useCallback(() => {
       let isActive = true;
 
-      setIsLoading(true);
-      setErrorMessage(null);
+      const loadUserOrganizations = async () => {
+        if (!isActive) {
+          return;
+        }
 
-      fetchUserOrganizations()
-        .then((items) => {
+        setIsLoading(true);
+        setErrorMessage(null);
+
+        try {
+          await refreshUserOrganizations();
+        } catch (error) {
+          console.error('Failed to refresh user organizations from API', error);
+        }
+
+        try {
+          const items = await fetchUserOrganizations();
           if (!isActive) {
             return;
           }
           setUserOrganizations(items);
-        })
-        .catch((error) => {
+        } catch (error) {
           if (!isActive) {
             return;
           }
@@ -123,13 +134,15 @@ export function OrganizationSelectScreen() {
               : 'An unexpected error occurred while loading organizations.';
           setErrorMessage(message);
           setUserOrganizations([]);
-        })
-        .finally(() => {
+        } finally {
           if (!isActive) {
             return;
           }
           setIsLoading(false);
-        });
+        }
+      };
+
+      void loadUserOrganizations();
 
       return () => {
         isActive = false;
