@@ -39,11 +39,13 @@ export const updateUserOrganizationSelection = async (userOrganizationId: number
   }, 5_000);
 
   try {
-    return await apiRequest<UserOrganizationSelectionResponse>('/user/organization', {
+    await apiRequest<UserOrganizationSelectionResponse>('/user/organization', {
       method: 'PATCH',
       body: JSON.stringify({ user_organization_id: userOrganizationId }),
       signal: abortController.signal,
     });
+
+    return await getUserOrganization();
   } catch (error) {
     if (
       (error instanceof DOMException && error.name === 'AbortError') ||
