@@ -1,6 +1,7 @@
 import { apiRequest } from './api/client';
-import { getUserEvent } from './api/user';
+import { getUserEvent, getUserOrganization } from './api/user';
 import { setActiveEvent } from './logged-in-event';
+import { setActiveOrganization } from './logged-in-organization';
 import { getDbOrThrow, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 
@@ -63,10 +64,15 @@ export type UpdateGeneralDataResult = {
   organizations: UpsertResult;
   userOrganizations: UpsertResult;
   loggedInEvent: LoggedInEventSyncResult;
+  loggedInOrganization: LoggedInOrganizationSyncResult;
 };
 
 type LoggedInEventSyncResult = {
   eventCode: string | null;
+};
+
+type LoggedInOrganizationSyncResult = {
+  organizationId: number | null;
 };
 
 const normalizeTeam = (team: TeamRecordResponse) => ({
@@ -493,6 +499,33 @@ async function syncUserOrganizations(): Promise<UpsertResult> {
   return { created, updated };
 }
 
+async function syncLoggedInOrganization(): Promise<LoggedInOrganizationSyncResult> {
+  const response = await getUserOrganization();
+
+  const possibleValues = [response?.organizationId, response?.organization_id];
+  let normalizedOrganizationId: number | null = null;
+
+  for (const value of possibleValues) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      normalizedOrganizationId = value;
+      break;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number.parseInt(value, 10);
+
+      if (Number.isFinite(parsed)) {
+        normalizedOrganizationId = parsed;
+        break;
+      }
+    }
+  }
+
+  setActiveOrganization(normalizedOrganizationId);
+
+  return { organizationId: normalizedOrganizationId };
+}
+
 async function syncLoggedInEvent(): Promise<LoggedInEventSyncResult> {
   const response = await getUserEvent();
   const rawEventCode = typeof response.eventCode === 'string' ? response.eventCode.trim() : '';
@@ -508,7 +541,8 @@ export async function updateGeneralData(): Promise<UpdateGeneralDataResult> {
   const events = await syncEvents(2025);
   const organizations = await syncOrganizations();
   const userOrganizations = await syncUserOrganizations();
+  const loggedInOrganization = await syncLoggedInOrganization();
   const loggedInEvent = await syncLoggedInEvent();
 
-  return { teams, events, organizations, userOrganizations, loggedInEvent };
+  return { teams, events, organizations, userOrganizations, loggedInOrganization, loggedInEvent };
 }
