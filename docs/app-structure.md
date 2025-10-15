@@ -7,8 +7,8 @@ live alongside supporting hooks, while shared UI primitives are kept in the glob
 
 - **Navigation** – Expo Router drives navigation with a left-side drawer that supports swipe gestures and burger-icon toggles.
   Navigation metadata (routes, drawer items) resides in `app/navigation/`, and custom drawer content lives in `components/layout/`.
-- **Providers** – `AuthProvider` and `OrganizationProvider` wrap the app in `app/_layout.tsx`, giving every screen access to
-  authentication status and organization context.
+- **Providers** – `AuthProvider`, `OrganizationProvider`, and `ColorSchemeProvider` wrap the app in `app/_layout.tsx`, giving
+  every screen access to authentication status, organization context, and the current theme preference.
 - **Screens** – Feature folders in `app/screens/` expose typed React components for the drawer routes (Pit Scout, Match Scout,
   settings flows, and OAuth login). Expo Router route files import these components to keep domain logic co-located.
 - **State & Services** – Reserved directories (`app/services/`, `app/store/`, `app/utils/`) provide dedicated homes for
@@ -28,9 +28,7 @@ app/
 │   │   └── index.tsx
 │   ├── pit-scout/
 │   │   └── index.tsx
-│   ├── settings/
-│   │   └── index.tsx
-│   └── user-settings/
+│   └── settings/
 │       └── index.tsx
 ├── _layout.tsx
 ├── auth/
@@ -51,8 +49,7 @@ app/
 │   │   └── PitScoutScreen.tsx
 │   ├── Settings/
 │   │   ├── AppSettingsScreen.tsx
-│   │   ├── OrganizationSelectScreen.tsx
-│   │   └── UserSettingsScreen.tsx
+│   │   └── OrganizationSelectScreen.tsx
 │   ├── Shared/
 │   └── index.ts
 ├── services/
@@ -90,7 +87,7 @@ tests/
 1. **Login** – `/auth/login` renders `LoginScreen`, presenting a mocked OAuth button. Successful login updates both the
    authentication state and the default organization selection.
 2. **Drawer** – Authenticated users are redirected to the drawer (`/(drawer)`), which lists Pit Scout, Match Scout, App
-   Settings, User Settings, and Organization Select. The drawer supports both burger-menu toggles and swipe gestures.
+   Settings, and Organization Select. The drawer supports both burger-menu toggles and swipe gestures.
 3. **Feature Screens** – Each drawer route renders a dedicated screen component from `app/screens/`, keeping UI and feature
    logic co-located.
 

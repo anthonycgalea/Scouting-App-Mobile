@@ -18,12 +18,6 @@ export const DRAWER_ITEMS: {
   { name: 'prescout/index', title: 'Prescout', href: ROUTES['prescout'], icon: 'search-outline' },
   { name: 'settings/index', title: 'App Settings', href: ROUTES.appSettings, icon: 'settings-outline' },
   {
-    name: 'user-settings/index',
-    title: 'User Settings',
-    href: ROUTES.userSettings,
-    icon: 'person-circle-outline',
-  },
-  {
     name: 'organization-select/index',
     title: 'Organization Select',
     href: ROUTES.organizationSelect,
@@ -33,7 +27,7 @@ export const DRAWER_ITEMS: {
 
 export function useDrawerScreenOptions() {
   const colorScheme = useColorScheme();
-  const scheme = colorScheme ?? 'light';
+  const scheme = colorScheme;
 
   return {
     drawerActiveTintColor: Colors[scheme].tint,

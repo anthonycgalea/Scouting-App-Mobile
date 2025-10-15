@@ -5,7 +5,6 @@ export const ROUTES = {
   prescout: '/(drawer)/prescout' as const,
   appSettings: '/(drawer)/settings' as const,
   eventsBrowser: '/(drawer)/settings/events' as const,
-  userSettings: '/(drawer)/user-settings' as const,
   organizationSelect: '/(drawer)/organization-select' as const,
 };
 

@@ -33,8 +33,8 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
   const colorScheme = useColorScheme();
   const activeRouteName = state.routes[state.index]?.name;
-  const tint = Colors[colorScheme ?? 'light'].tint;
-  const inactiveIconColor = Colors[colorScheme ?? 'light'].icon;
+  const tint = Colors[colorScheme].tint;
+  const inactiveIconColor = Colors[colorScheme].icon;
   const activeItemBackground =
     colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e6f6fb';
   const dividerColor = colorScheme === 'dark' ? '#2f3133' : '#d0d0d0';
@@ -42,7 +42,6 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
 
   const settingsItemNames = new Set([
     'settings/index',
-    'user-settings/index',
     'organization-select/index',
   ]);
   const primaryItems = DRAWER_ITEMS.filter((item) => !settingsItemNames.has(item.name));
