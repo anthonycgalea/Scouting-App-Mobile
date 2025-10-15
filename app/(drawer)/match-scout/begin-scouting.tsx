@@ -16,6 +16,7 @@ import {
 import { getDbOrThrow, schema } from '@/db';
 import type { MatchSchedule } from '@/db/schema';
 import { apiRequest } from '../../services/api';
+import { syncAlreadyScoutedEntries } from '../../services/already-scouted';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -737,6 +738,12 @@ export default function BeginScoutingRoute() {
           method: 'POST',
           body: JSON.stringify(row),
         });
+
+        try {
+          await syncAlreadyScoutedEntries(selectedOrganization.id);
+        } catch (syncError) {
+          console.error('Failed to refresh already scouted entries from API', syncError);
+        }
 
         showNextMatchAlert('Match submitted', 'Match data was saved and sent successfully.');
       } catch (error) {
