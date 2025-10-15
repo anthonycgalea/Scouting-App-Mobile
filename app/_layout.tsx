@@ -20,7 +20,7 @@ import '@/db'; // Initialize the SQLite-backed storage on startup.
 (SecureStore as typeof SecureStore & { default?: typeof SecureStore }).default ??= SecureStore;
 
 type ProvidersModule = typeof import('@/app/providers');
-const { AuthProvider, OrganizationProvider, QueryProvider } =
+const { AuthProvider, OrganizationProvider, QueryProvider, ColorSchemeProvider } =
   require('@/app/providers') as ProvidersModule;
 
 type UseColorSchemeModule = typeof import('@/hooks/use-color-scheme');
@@ -31,6 +31,14 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  return (
+    <ColorSchemeProvider>
+      <ThemedRootLayout />
+    </ColorSchemeProvider>
+  );
+}
+
+function ThemedRootLayout() {
   const colorScheme = useColorScheme();
 
   return (
