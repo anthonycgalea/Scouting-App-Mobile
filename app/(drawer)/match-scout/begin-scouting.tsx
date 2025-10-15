@@ -20,6 +20,7 @@ import { apiRequest } from '../../services/api';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useOrganization } from '@/hooks/use-organization';
 
 const toSingleValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -460,6 +461,7 @@ export default function BeginScoutingRoute() {
   const [endgameSelection, setEndgameSelection] = useState<'none' | 'park' | 'shallow' | 'deep'>('none');
   const [generalNotes, setGeneralNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { selectedOrganization } = useOrganization();
 
   const inputBackground = useThemeColor({ light: '#FFFFFF', dark: '#0F172A' }, 'background');
   const inputBorder = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
@@ -555,6 +557,14 @@ export default function BeginScoutingRoute() {
       return;
     }
 
+    if (!selectedOrganization) {
+      Alert.alert(
+        'Select an organization',
+        'Choose the organization you are scouting for before submitting match data.'
+      );
+      return;
+    }
+
     const normalizedEventKey = eventKey.trim();
     const resolvedMatchLevel = matchLevel?.trim();
     const resolvedTeamNumber = teamNumber || initialTeamNumber;
@@ -644,6 +654,18 @@ export default function BeginScoutingRoute() {
             endgame: record.endgame,
           },
         })
+        .run();
+
+      await db
+        .insert(schema.alreadyScouteds)
+        .values({
+          eventCode: normalizedEventKey,
+          teamNumber: parsedTeamNumber,
+          matchNumber: parsedMatchNumber,
+          matchLevel: resolvedMatchLevel,
+          organizationId: selectedOrganization.id,
+        })
+        .onConflictDoNothing()
         .run();
 
       const [row] = await db

@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 
 import { Stack, useFocusEffect } from 'expo-router';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useOrganization } from '@/hooks/use-organization';
 import { getDbOrThrow, schema } from '@/db';
 import { retrieveEventInfo } from '@/app/services/event-info';
 import { getActiveEvent } from '@/app/services/logged-in-event';
@@ -28,6 +29,7 @@ export interface TeamListItem {
 export interface TeamListScreenProps {
   title: string;
   onTeamPress?: (team: TeamListItem) => void;
+  showPitScoutingStatus?: boolean;
 }
 
 const normalizeText = (value: string) =>
@@ -36,13 +38,14 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-export function TeamListScreen({ title, onTeamPress }: TeamListScreenProps) {
+export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = false }: TeamListScreenProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [teams, setTeams] = useState<TeamListItem[]>([]);
   const [activeEventKey, setActiveEventKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [scoutedTeamNumbers, setScoutedTeamNumbers] = useState<number[]>([]);
 
   const backgroundCard = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
   const searchBackground = useThemeColor({ light: '#F1F5F9', dark: '#1F2937' }, 'background');
@@ -58,6 +61,10 @@ export function TeamListScreen({ title, onTeamPress }: TeamListScreenProps) {
   const inputTextColor = useThemeColor({}, 'text');
   const accentColor = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
   const buttonTextColor = '#F8FAFC';
+  const scoutedRowBackground = useThemeColor({ light: '#E2E8F0', dark: '#1F2937' }, 'background');
+  const scoutedRowTextColor = useThemeColor({ light: '#475569', dark: '#CBD5F5' }, 'text');
+  const { selectedOrganization } = useOrganization();
+  const selectedOrganizationId = selectedOrganization?.id ?? null;
 
   const loadTeamsFromDb = useCallback(() => {
     const eventKey = getActiveEvent();
@@ -89,17 +96,35 @@ export function TeamListScreen({ title, onTeamPress }: TeamListScreenProps) {
       }))
       .sort((a, b) => a.number - b.number);
 
-    return { eventKey, teams: mapped };
-  }, []);
+    let alreadyScoutedTeams: number[] = [];
+
+    if (showPitScoutingStatus && selectedOrganizationId !== null) {
+      const scoutedRows = db
+        .select({ teamNumber: schema.alreadyPitScouteds.teamNumber })
+        .from(schema.alreadyPitScouteds)
+        .where(
+          and(
+            eq(schema.alreadyPitScouteds.eventCode, eventKey),
+            eq(schema.alreadyPitScouteds.organizationId, selectedOrganizationId)
+          )
+        )
+        .all();
+
+      alreadyScoutedTeams = scoutedRows.map((row) => row.teamNumber);
+    }
+
+    return { eventKey, teams: mapped, alreadyScoutedTeams };
+  }, [showPitScoutingStatus, selectedOrganizationId]);
 
   useFocusEffect(
     useCallback(() => {
       setIsLoading(true);
 
       try {
-        const { eventKey, teams: data } = loadTeamsFromDb();
+        const { eventKey, teams: data, alreadyScoutedTeams } = loadTeamsFromDb();
         setActiveEventKey(eventKey);
         setTeams(data);
+        setScoutedTeamNumbers(alreadyScoutedTeams);
         setErrorMessage(null);
       } catch (error) {
         console.error('Failed to load team list', error);
@@ -110,6 +135,7 @@ export function TeamListScreen({ title, onTeamPress }: TeamListScreenProps) {
         setErrorMessage(message);
         setActiveEventKey(null);
         setTeams([]);
+        setScoutedTeamNumbers([]);
       } finally {
         setIsLoading(false);
       }
@@ -140,6 +166,27 @@ export function TeamListScreen({ title, onTeamPress }: TeamListScreenProps) {
     });
   }, [searchTerm, teams]);
 
+  const scoutedTeamSet = useMemo(() => new Set(scoutedTeamNumbers), [scoutedTeamNumbers]);
+
+  const organizedTeams = useMemo(() => {
+    if (!showPitScoutingStatus) {
+      return { available: filteredTeams, scouted: [] as TeamListItem[] };
+    }
+
+    const available: TeamListItem[] = [];
+    const scouted: TeamListItem[] = [];
+
+    filteredTeams.forEach((team) => {
+      if (scoutedTeamSet.has(team.number)) {
+        scouted.push(team);
+      } else {
+        available.push(team);
+      }
+    });
+
+    return { available, scouted };
+  }, [filteredTeams, scoutedTeamSet, showPitScoutingStatus]);
+
   const handleDownloadPress = useCallback(async () => {
     if (isDownloading) {
       return;
@@ -148,9 +195,10 @@ export function TeamListScreen({ title, onTeamPress }: TeamListScreenProps) {
     try {
       setIsDownloading(true);
       await retrieveEventInfo();
-      const { eventKey, teams: data } = loadTeamsFromDb();
+      const { eventKey, teams: data, alreadyScoutedTeams } = loadTeamsFromDb();
       setActiveEventKey(eventKey);
       setTeams(data);
+      setScoutedTeamNumbers(alreadyScoutedTeams);
       setErrorMessage(null);
 
       if (data.length === 0) {
@@ -169,7 +217,11 @@ export function TeamListScreen({ title, onTeamPress }: TeamListScreenProps) {
   }, [isDownloading, loadTeamsFromDb]);
 
   const hasTeams = teams.length > 0;
-  const hasFilteredTeams = filteredTeams.length > 0;
+  const availableTeams = organizedTeams.available;
+  const alreadyScoutedTeamsList = organizedTeams.scouted;
+  const hasFilteredTeams = showPitScoutingStatus
+    ? availableTeams.length + alreadyScoutedTeamsList.length > 0
+    : filteredTeams.length > 0;
   const isInteractive = typeof onTeamPress === 'function';
 
   return (
@@ -204,36 +256,116 @@ export function TeamListScreen({ title, onTeamPress }: TeamListScreenProps) {
 
           <View style={styles.listContainer}>
             {hasFilteredTeams ? (
-              filteredTeams.map((team) => (
-                <Pressable
-                  key={team.number}
-                  accessibilityRole={isInteractive ? 'button' : undefined}
-                  disabled={!isInteractive}
-                  onPress={isInteractive ? () => onTeamPress(team) : undefined}
-                  style={({ pressed }) => [
-                    styles.teamRow,
-                    {
-                      backgroundColor: backgroundCard,
-                      borderColor,
-                      opacity: pressed && isInteractive ? 0.95 : 1,
-                    },
-                  ]}
-                >
-                  <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
-                    {team.number}
-                  </ThemedText>
-                  <View style={styles.teamDetails}>
-                    <ThemedText type="defaultSemiBold" style={styles.teamName}>
-                      {team.name}
+              showPitScoutingStatus ? (
+                <>
+                  {availableTeams.map((team) => (
+                    <Pressable
+                      key={`available-${team.number}`}
+                      accessibilityRole={isInteractive ? 'button' : undefined}
+                      disabled={!isInteractive}
+                      onPress={isInteractive ? () => onTeamPress(team) : undefined}
+                      style={({ pressed }) => [
+                        styles.teamRow,
+                        {
+                          backgroundColor: backgroundCard,
+                          borderColor,
+                          opacity: pressed && isInteractive ? 0.95 : 1,
+                        },
+                      ]}
+                    >
+                      <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
+                        {team.number}
+                      </ThemedText>
+                      <View style={styles.teamDetails}>
+                        <ThemedText type="defaultSemiBold" style={styles.teamName}>
+                          {team.name}
+                        </ThemedText>
+                        <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}>
+                          {team.location}
+                        </ThemedText>
+                      </View>
+                    </Pressable>
+                  ))}
+                  {alreadyScoutedTeamsList.length > 0 ? (
+                    <>
+                      <View style={styles.alreadyScoutedHeader}>
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={[styles.alreadyScoutedHeaderText, { color: mutedTextColor }]}
+                        >
+                          Already Scouted
+                        </ThemedText>
+                      </View>
+                      {alreadyScoutedTeamsList.map((team) => (
+                        <Pressable
+                          key={`scouted-${team.number}`}
+                          accessibilityRole={isInteractive ? 'button' : undefined}
+                          disabled={!isInteractive}
+                          onPress={isInteractive ? () => onTeamPress(team) : undefined}
+                          style={({ pressed }) => [
+                            styles.teamRow,
+                            styles.scoutedTeamRow,
+                            {
+                              backgroundColor: scoutedRowBackground,
+                              borderColor,
+                            },
+                            pressed && isInteractive ? styles.scoutedTeamRowPressed : null,
+                          ]}
+                        >
+                          <ThemedText
+                            type="defaultSemiBold"
+                            style={[styles.teamNumber, { color: scoutedRowTextColor }]}
+                          >
+                            {team.number}
+                          </ThemedText>
+                          <View style={styles.teamDetails}>
+                            <ThemedText
+                              type="defaultSemiBold"
+                              style={[styles.teamName, { color: scoutedRowTextColor }]}
+                            >
+                              {team.name}
+                            </ThemedText>
+                            <ThemedText style={[styles.teamLocation, { color: scoutedRowTextColor }]}>
+                              {team.location}
+                            </ThemedText>
+                          </View>
+                        </Pressable>
+                      ))}
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                filteredTeams.map((team) => (
+                  <Pressable
+                    key={team.number}
+                    accessibilityRole={isInteractive ? 'button' : undefined}
+                    disabled={!isInteractive}
+                    onPress={isInteractive ? () => onTeamPress(team) : undefined}
+                    style={({ pressed }) => [
+                      styles.teamRow,
+                      {
+                        backgroundColor: backgroundCard,
+                        borderColor,
+                        opacity: pressed && isInteractive ? 0.95 : 1,
+                      },
+                    ]}
+                  >
+                    <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
+                      {team.number}
                     </ThemedText>
-                    <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}>
-                      {team.location}
-                    </ThemedText>
-                  </View>
-                </Pressable>
-              ))
+                    <View style={styles.teamDetails}>
+                      <ThemedText type="defaultSemiBold" style={styles.teamName}>
+                        {team.name}
+                      </ThemedText>
+                      <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}> 
+                        {team.location}
+                      </ThemedText>
+                    </View>
+                  </Pressable>
+                ))
+              )
             ) : (
-              <View style={[styles.noResultsCard, { borderColor }]}>
+              <View style={[styles.noResultsCard, { borderColor }]}> 
                 <ThemedText style={[styles.noResultsText, { color: mutedTextColor }]}>No teams match your search.</ThemedText>
               </View>
             )}
@@ -293,6 +425,15 @@ const styles = StyleSheet.create({
   listContainer: {
     gap: 12,
   },
+  alreadyScoutedHeader: {
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  alreadyScoutedHeaderText: {
+    textTransform: 'uppercase',
+    fontSize: 14,
+    letterSpacing: 0.6,
+  },
   teamRow: {
     borderRadius: 12,
     borderWidth: 1,
@@ -301,6 +442,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+  },
+  scoutedTeamRow: {
+    opacity: 0.85,
+  },
+  scoutedTeamRowPressed: {
+    opacity: 0.7,
   },
   teamNumber: {
     fontSize: 20,

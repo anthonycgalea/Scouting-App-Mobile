@@ -15,9 +15,10 @@ import { ThemedText } from '@/components/themed-text';
 import { getDbOrThrow, schema } from '@/db';
 import type { MatchSchedule as MatchScheduleRow } from '@/db/schema';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useOrganization } from '@/hooks/use-organization';
 import { retrieveEventInfo } from '@/app/services/event-info';
 import { getActiveEvent } from '@/app/services/logged-in-event';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 const matchRowToEntry = (row: MatchScheduleRow): MatchScheduleEntry => ({
   match_number: row.matchNumber,
@@ -31,6 +32,9 @@ const matchRowToEntry = (row: MatchScheduleRow): MatchScheduleEntry => ({
   blue3_id: row.blue3Id,
 });
 
+const createTeamMatchKey = (matchLevel: string, matchNumber: number, teamNumber: number) =>
+  `${matchLevel.toLowerCase()}-${matchNumber}-${teamNumber}`;
+
 const SECTION_ORDER: MatchScheduleSection[] = ['qualification', 'playoffs', 'finals'];
 
 export function MatchScoutScreen() {
@@ -40,7 +44,9 @@ export function MatchScoutScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [scoutedEntries, setScoutedEntries] = useState<typeof schema.alreadyScouteds.$inferSelect[]>([]);
   const router = useRouter();
+  const { selectedOrganization } = useOrganization();
 
   const accentColor = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
   const buttonTextColor = '#F8FAFC';
@@ -66,17 +72,31 @@ export function MatchScoutScreen() {
       .where(eq(schema.matchSchedules.eventKey, eventKey))
       .all();
 
-    return { eventKey, matches: rows.map(matchRowToEntry) };
-  }, []);
+    const scoutedRows = selectedOrganization
+      ? db
+          .select()
+          .from(schema.alreadyScouteds)
+          .where(
+            and(
+              eq(schema.alreadyScouteds.eventCode, eventKey),
+              eq(schema.alreadyScouteds.organizationId, selectedOrganization.id)
+            )
+          )
+          .all()
+      : [];
+
+    return { eventKey, matches: rows.map(matchRowToEntry), scoutedRows };
+  }, [selectedOrganization]);
 
   useFocusEffect(
     useCallback(() => {
       setIsLoading(true);
 
       try {
-        const { eventKey, matches: data } = loadMatchesFromDb();
+        const { eventKey, matches: data, scoutedRows } = loadMatchesFromDb();
         setActiveEventKey(eventKey);
         setMatches(data);
+        setScoutedEntries(scoutedRows);
         setErrorMessage(null);
       } catch (error) {
         console.error('Failed to load match schedule', error);
@@ -87,6 +107,7 @@ export function MatchScoutScreen() {
         setErrorMessage(message);
         setActiveEventKey(null);
         setMatches([]);
+        setScoutedEntries([]);
       } finally {
         setIsLoading(false);
       }
@@ -114,6 +135,16 @@ export function MatchScoutScreen() {
 
   const groupedMatches = useMemo(() => groupMatchesBySection(matches), [matches]);
 
+  const scoutedTeamMatches = useMemo(() => {
+    const set = new Set<string>();
+
+    scoutedEntries.forEach((entry) => {
+      set.add(createTeamMatchKey(entry.matchLevel, entry.matchNumber, entry.teamNumber));
+    });
+
+    return set;
+  }, [scoutedEntries]);
+
   const handleDownloadPress = useCallback(async () => {
     if (isDownloading) {
       return;
@@ -122,9 +153,10 @@ export function MatchScoutScreen() {
     try {
       setIsDownloading(true);
       await retrieveEventInfo();
-      const { eventKey, matches: data } = loadMatchesFromDb();
+      const { eventKey, matches: data, scoutedRows } = loadMatchesFromDb();
       setActiveEventKey(eventKey);
       setMatches(data);
+      setScoutedEntries(scoutedRows);
       setErrorMessage(null);
 
       if (data.length === 0) {
@@ -190,7 +222,11 @@ export function MatchScoutScreen() {
             onChange={setSelectedSection}
             options={SECTION_DEFINITIONS}
           />
-          <MatchSchedule matches={groupedMatches[selectedSection]} onMatchPress={handleMatchPress} />
+          <MatchSchedule
+            matches={groupedMatches[selectedSection]}
+            onMatchPress={handleMatchPress}
+            scoutedTeamMatches={scoutedTeamMatches}
+          />
         </>
       ) : (
         <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>

@@ -240,6 +240,78 @@ export const matchData2025 = sqliteTable(
 export type MatchData2025 = InferSelectModel<typeof matchData2025>;
 export type NewMatchData2025 = InferInsertModel<typeof matchData2025>;
 
+export const alreadyScouteds = sqliteTable(
+  'already_scouted',
+  {
+    eventCode: text('event_code').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    matchNumber: integer('match_number').notNull(),
+    matchLevel: text('match_level').notNull(),
+    organizationId: integer('organization_id').notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [
+        table.eventCode,
+        table.teamNumber,
+        table.matchNumber,
+        table.matchLevel,
+        table.organizationId,
+      ],
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventCode],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'already_scouted_event_fk',
+    }),
+    organizationRef: foreignKey({
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+      name: 'already_scouted_organization_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'already_scouted_team_fk',
+    }),
+  })
+);
+
+export type AlreadyScouted = InferSelectModel<typeof alreadyScouteds>;
+export type NewAlreadyScouted = InferInsertModel<typeof alreadyScouteds>;
+
+export const alreadyPitScouteds = sqliteTable(
+  'already_pit_scouted',
+  {
+    eventCode: text('event_code').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    organizationId: integer('organization_id').notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.eventCode, table.teamNumber, table.organizationId],
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventCode],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'already_pit_scouted_event_fk',
+    }),
+    organizationRef: foreignKey({
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+      name: 'already_pit_scouted_organization_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'already_pit_scouted_team_fk',
+    }),
+  })
+);
+
+export type AlreadyPitScouted = InferSelectModel<typeof alreadyPitScouteds>;
+export type NewAlreadyPitScouted = InferInsertModel<typeof alreadyPitScouteds>;
+
 export const prescoutMatchData2025 = sqliteTable(
   'prescoutmatchdata2025',
   {
