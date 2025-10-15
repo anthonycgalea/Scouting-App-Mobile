@@ -132,20 +132,38 @@ export function MatchTeamSelectScreen({
       teamNumber: String(selectedOption.teamNumber),
     };
 
+    const allianceColorValue = selectedOption.alliance;
+    params.allianceColor = allianceColorValue;
+    params.alliance_color = allianceColorValue;
+
+    const stationPositionMatch = selectedOption.key.match(/(\d)/);
+
+    if (stationPositionMatch) {
+      const position = stationPositionMatch[1];
+      params.stationPosition = position;
+      params.station_position = position;
+      params.driverStationPosition = position;
+      params.driver_station_position = position;
+    }
+
     if (driverStationLabel) {
       params.driverStation = driverStationLabel;
+      params.driver_station = driverStationLabel;
     }
 
     if (matchNumber !== undefined) {
       params.matchNumber = String(matchNumber);
+      params.match_number = String(matchNumber);
     }
 
     if (eventKey) {
       params.eventKey = eventKey;
+      params.event_key = eventKey;
     }
 
     if (matchLevel) {
       params.matchLevel = matchLevel;
+      params.match_level = matchLevel;
     }
 
     router.push({ pathname: '/(drawer)/match-scout/begin-scouting', params });
