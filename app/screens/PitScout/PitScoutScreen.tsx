@@ -15,5 +15,11 @@ export function PitScoutScreen() {
     });
   };
 
-  return <TeamListScreen title="Pit Scout" onTeamPress={handleTeamPress} />;
+  return (
+    <TeamListScreen
+      title="Pit Scout"
+      onTeamPress={handleTeamPress}
+      showPitScoutingStatus
+    />
+  );
 }

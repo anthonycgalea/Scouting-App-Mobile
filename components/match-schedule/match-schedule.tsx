@@ -12,12 +12,11 @@ interface RowData {
   match: MatchScheduleEntry;
   matchNumber: number;
   matchLevel: string;
-  red1?: number | null;
-  red2?: number | null;
-  red3?: number | null;
-  blue1?: number | null;
-  blue2?: number | null;
-  blue3?: number | null;
+  redTeams: (number | null | undefined)[];
+  blueTeams: (number | null | undefined)[];
+  redScouted: boolean[];
+  blueScouted: boolean[];
+  isFullyScouted: boolean;
   played?: boolean;
 }
 
@@ -27,31 +26,56 @@ interface MatchScheduleProps {
   isValidationLoading?: boolean;
   isValidationError?: boolean;
   onMatchPress?: (match: MatchScheduleEntry) => void;
+  scoutedTeamMatches?: Set<string>;
 }
 
 const createMatchKey = (matchLevel: string, matchNumber: number) =>
   `${matchLevel.toLowerCase()}-${matchNumber}`;
 
+const createTeamMatchKey = (matchLevel: string, matchNumber: number, teamNumber: number) =>
+  `${matchLevel.toLowerCase()}-${matchNumber}-${teamNumber}`;
+
 const createRowData = (
   matches: MatchScheduleEntry[],
   playedMatches?: Set<string>,
-  isValidationReady?: boolean
+  isValidationReady?: boolean,
+  scoutedTeamMatches?: Set<string>
 ): RowData[] =>
   [...matches]
     .sort((a, b) => a.match_number - b.match_number)
     .map((match) => {
       const matchKey = createMatchKey(match.match_level, match.match_number);
+      const redTeams = [match.red1_id, match.red2_id, match.red3_id];
+      const blueTeams = [match.blue1_id, match.blue2_id, match.blue3_id];
+
+      const computeScouted = (teamNumber: number | null | undefined) => {
+        if (typeof teamNumber !== 'number') {
+          return false;
+        }
+
+        if (!scoutedTeamMatches) {
+          return false;
+        }
+
+        return scoutedTeamMatches.has(
+          createTeamMatchKey(match.match_level, match.match_number, teamNumber)
+        );
+      };
+
+      const redScouted = redTeams.map(computeScouted);
+      const blueScouted = blueTeams.map(computeScouted);
+
+      const isFullyScouted = [...redScouted, ...blueScouted].every(Boolean);
 
       return {
         match,
         matchNumber: match.match_number,
         matchLevel: match.match_level,
-        red1: match.red1_id,
-        red2: match.red2_id,
-        red3: match.red3_id,
-        blue1: match.blue1_id,
-        blue2: match.blue2_id,
-        blue3: match.blue3_id,
+        redTeams,
+        blueTeams,
+        redScouted,
+        blueScouted,
+        isFullyScouted,
         played: isValidationReady ? playedMatches?.has(matchKey) ?? false : undefined,
       };
     });
@@ -86,6 +110,7 @@ export function MatchSchedule({
   isValidationError = false,
   isValidationLoading = false,
   onMatchPress,
+  scoutedTeamMatches,
 }: MatchScheduleProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -108,8 +133,8 @@ export function MatchSchedule({
   }, [validationEntries, isValidationReady]);
 
   const schedule = useMemo(
-    () => createRowData(matches, playedMatches, isValidationReady),
-    [matches, playedMatches, isValidationReady]
+    () => createRowData(matches, playedMatches, isValidationReady, scoutedTeamMatches),
+    [matches, playedMatches, isValidationReady, scoutedTeamMatches]
   );
 
   const dividerColor = isDark ? 'rgba(63, 63, 70, 0.6)' : 'rgba(226, 232, 240, 0.9)';
@@ -119,12 +144,39 @@ export function MatchSchedule({
   const blueCellBackground = isDark ? 'rgba(30, 64, 175, 0.7)' : '#1D4ED8';
   const redCellText = '#F8FAFC';
   const blueCellText = '#F8FAFC';
+  const scoutedCellBackground = isDark ? 'rgba(63, 63, 70, 0.55)' : 'rgba(226, 232, 240, 0.85)';
+  const scoutedCellText = isDark ? '#E5E7EB' : '#1F2937';
   const pendingTextColor = isDark ? 'rgba(156, 163, 175, 0.8)' : 'rgba(107, 114, 128, 0.9)';
 
-  const rows = schedule.map((row) => {
+  const activeRows = schedule.filter((row) => !row.isFullyScouted);
+  const completedRows = schedule.filter((row) => row.isFullyScouted);
+
+  const renderMatchRow = (row: RowData, useAllianceColors: boolean) => {
     const matchLabel = `${getMatchLevelLabel(row.matchLevel)} ${row.matchNumber}`;
-    const redTeams = [row.red1, row.red2, row.red3];
-    const blueTeams = [row.blue1, row.blue2, row.blue3];
+
+    const renderAllianceRow = (
+      teams: (number | null | undefined)[],
+      scouted: boolean[],
+      allianceColor: 'red' | 'blue'
+    ) => {
+      const baseBackground = allianceColor === 'red' ? redCellBackground : blueCellBackground;
+      const baseTextColor = allianceColor === 'red' ? redCellText : blueCellText;
+
+      return teams.map((team, index) => {
+        const isScouted = scouted[index];
+        const useGrey = isScouted && !useAllianceColors;
+        const backgroundColor = useGrey ? scoutedCellBackground : baseBackground;
+        const textColor = useGrey ? scoutedCellText : baseTextColor;
+
+        return (
+          <View key={`${allianceColor}-${index}`} style={[styles.teamCell, { backgroundColor }]}>
+            <ThemedText style={[styles.teamNumber, { color: textColor }]}>
+              {renderTeamNumber(team)}
+            </ThemedText>
+          </View>
+        );
+      });
+    };
 
     return (
       <Pressable
@@ -164,39 +216,38 @@ export function MatchSchedule({
           </View>
           <View style={styles.allianceGrid}>
             <View style={styles.allianceGridRow}>
-              {redTeams.map((team, index) => (
-                <View
-                  key={`red-${index}`}
-                  style={[styles.teamCell, { backgroundColor: redCellBackground }]}
-                >
-                  <ThemedText style={[styles.teamNumber, { color: redCellText }]}>
-                    {renderTeamNumber(team)}
-                  </ThemedText>
-                </View>
-              ))}
+              {renderAllianceRow(row.redTeams, row.redScouted, 'red')}
             </View>
             <View style={styles.allianceGridRow}>
-              {blueTeams.map((team, index) => (
-                <View
-                  key={`blue-${index}`}
-                  style={[styles.teamCell, { backgroundColor: blueCellBackground }]}
-                >
-                  <ThemedText style={[styles.teamNumber, { color: blueCellText }]}>
-                    {renderTeamNumber(team)}
-                  </ThemedText>
-                </View>
-              ))}
+              {renderAllianceRow(row.blueTeams, row.blueScouted, 'blue')}
             </View>
           </View>
         </View>
       </Pressable>
     );
-  });
+  };
+
+  const hasRows = schedule.length > 0;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {rows.length > 0 ? (
-        <View style={styles.matchList}>{rows}</View>
+      {hasRows ? (
+        <View style={styles.matchList}>
+          {activeRows.map((row) => renderMatchRow(row, false))}
+          {completedRows.length > 0 ? (
+            <>
+              <View style={styles.completedHeaderContainer}>
+                <ThemedText
+                  type="defaultSemiBold"
+                  style={[styles.completedHeaderText, { color: headerTextColor }]}
+                >
+                  Already Scouted
+                </ThemedText>
+              </View>
+              {completedRows.map((row) => renderMatchRow(row, true))}
+            </>
+          ) : null}
+        </View>
       ) : (
         <View style={[styles.emptyState, { borderColor: dividerColor }]}>
           <ThemedText type="defaultSemiBold" style={[styles.emptyStateText, { color: textColor }]}>
@@ -226,6 +277,16 @@ const styles = StyleSheet.create({
     padding: 16,
     width: '100%',
     marginVertical: 8,
+  },
+  completedHeaderContainer: {
+    width: '100%',
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  completedHeaderText: {
+    fontSize: 14,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   matchLayout: {
     flexDirection: 'row',
