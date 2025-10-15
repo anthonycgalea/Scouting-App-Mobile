@@ -67,6 +67,22 @@ export async function apiRequest<TResponse>(path: string, options: ApiRequestOpt
     initHeaders.set('Authorization', `Bearer ${authorizationToken}`);
   }
 
+  if (__DEV__) {
+    const method = (rest.method ?? 'GET').toUpperCase();
+    const authHeader = initHeaders.get('Authorization');
+    const logPrefix = `[apiRequest] ${method} ${url}`;
+
+    /* eslint-disable no-console */
+    if (authHeader) {
+      const [, token] = authHeader.split(' ');
+      const preview = token ? `${token.slice(0, 8)}…` : 'missing-token';
+      console.log(`${logPrefix} → using bearer ${preview}`);
+    } else {
+      console.log(`${logPrefix} → no Authorization header set`);
+    }
+    /* eslint-enable no-console */
+  }
+
   const response = await fetch(url, {
     body,
     headers: initHeaders,
