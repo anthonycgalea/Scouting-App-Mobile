@@ -734,10 +734,18 @@ export default function BeginScoutingRoute() {
       };
 
       try {
-        await apiRequest('/scout/submit', {
-          method: 'POST',
-          body: JSON.stringify(row),
-        });
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController.abort(), 5000);
+
+        try {
+          await apiRequest('/scout/submit', {
+            method: 'POST',
+            body: JSON.stringify(row),
+            signal: abortController.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         try {
           await syncAlreadyScoutedEntries(selectedOrganization.id);
