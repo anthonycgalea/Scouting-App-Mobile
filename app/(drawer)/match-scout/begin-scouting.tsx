@@ -1,6 +1,6 @@
 import type { ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { and, eq } from 'drizzle-orm';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { getDbOrThrow, schema } from '@/db';
+import type { MatchSchedule } from '@/db/schema';
 import { apiRequest } from '../../services/api';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
@@ -163,6 +164,158 @@ const formatMatchHeader = (
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+const DRIVER_STATION_SLOTS = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'] as const;
+type DriverStationSlot = (typeof DRIVER_STATION_SLOTS)[number];
+type DriverStationColumn = keyof Pick<
+  MatchSchedule,
+  'red1Id' | 'red2Id' | 'red3Id' | 'blue1Id' | 'blue2Id' | 'blue3Id'
+>;
+
+const DRIVER_STATION_COLUMN_MAP: Record<DriverStationSlot, DriverStationColumn> = {
+  red1: 'red1Id',
+  red2: 'red2Id',
+  red3: 'red3Id',
+  blue1: 'blue1Id',
+  blue2: 'blue2Id',
+  blue3: 'blue3Id',
+};
+
+const isDriverStationSlot = (value: string): value is DriverStationSlot =>
+  DRIVER_STATION_SLOTS.includes(value as DriverStationSlot);
+
+const formatDriverStationLabelFromSlot = (slot: DriverStationSlot) => {
+  const color = slot.startsWith('red') ? 'Red' : 'Blue';
+  const position = slot.slice(-1);
+
+  return `${color} ${position}`;
+};
+
+const parseDriverStationSlot = ({
+  driverStationLabel,
+  allianceColor,
+  stationPosition,
+}: {
+  driverStationLabel?: string;
+  allianceColor?: string | null;
+  stationPosition?: string | null;
+}): DriverStationSlot | undefined => {
+  const normalizedAlliance = allianceColor?.trim().toLowerCase();
+  const normalizedPosition = stationPosition?.trim().match(/\d/);
+
+  if (normalizedAlliance && normalizedPosition) {
+    const candidate = `${normalizedAlliance}${normalizedPosition[0]}`;
+
+    if (isDriverStationSlot(candidate)) {
+      return candidate;
+    }
+  }
+
+  const normalizedLabel = driverStationLabel?.trim().toLowerCase();
+
+  if (normalizedLabel) {
+    const labelMatch = normalizedLabel.match(/(red|blue)\s*([123])/);
+
+    if (labelMatch) {
+      const candidate = `${labelMatch[1]}${labelMatch[2]}`;
+
+      if (isDriverStationSlot(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const MATCH_LEVEL_SORT_ORDER = ['qm', 'ef', 'of', 'qf', 'sf', 'f'] as const;
+
+const getMatchLevelPriority = (matchLevel: string) => {
+  const normalized = (matchLevel ?? '').trim().toLowerCase();
+  const index = MATCH_LEVEL_SORT_ORDER.indexOf(normalized as (typeof MATCH_LEVEL_SORT_ORDER)[number]);
+
+  return index === -1 ? MATCH_LEVEL_SORT_ORDER.length : index;
+};
+
+const buildNextMatchParams = (
+  schedule: MatchSchedule[],
+  {
+    eventKey,
+    currentMatchLevel,
+    currentMatchNumber,
+    driverStationSlot,
+    driverStationLabel,
+  }: {
+    eventKey: string;
+    currentMatchLevel: string;
+    currentMatchNumber: number;
+    driverStationSlot: DriverStationSlot;
+    driverStationLabel?: string;
+  },
+) => {
+  const relevantMatches = schedule
+    .filter((match) => match.eventKey === eventKey)
+    .sort((a, b) => {
+      const levelDelta = getMatchLevelPriority(a.matchLevel) - getMatchLevelPriority(b.matchLevel);
+
+      if (levelDelta !== 0) {
+        return levelDelta;
+      }
+
+      return a.matchNumber - b.matchNumber;
+    });
+
+  const normalizedCurrentLevel = (currentMatchLevel ?? '').trim().toLowerCase();
+  const currentIndex = relevantMatches.findIndex(
+    (match) =>
+      match.matchNumber === currentMatchNumber &&
+      (match.matchLevel ?? '').trim().toLowerCase() === normalizedCurrentLevel,
+  );
+
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  const columnKey = DRIVER_STATION_COLUMN_MAP[driverStationSlot];
+
+  for (let index = currentIndex + 1; index < relevantMatches.length; index += 1) {
+    const candidate = relevantMatches[index];
+    const candidateLevel = (candidate.matchLevel ?? '').trim().toLowerCase();
+
+    if (candidateLevel !== normalizedCurrentLevel) {
+      break;
+    }
+
+    const teamNumber = candidate[columnKey];
+
+    if (typeof teamNumber === 'number' && Number.isFinite(teamNumber)) {
+      const allianceColor = driverStationSlot.startsWith('red') ? 'red' : 'blue';
+      const stationPosition = driverStationSlot.slice(-1);
+      const label = driverStationLabel ?? formatDriverStationLabelFromSlot(driverStationSlot);
+
+      return {
+        eventKey: candidate.eventKey,
+        event_key: candidate.eventKey,
+        matchLevel: candidate.matchLevel,
+        match_level: candidate.matchLevel,
+        matchNumber: String(candidate.matchNumber),
+        match_number: String(candidate.matchNumber),
+        teamNumber: String(teamNumber),
+        team_number: String(teamNumber),
+        driverStation: label,
+        driver_station: label,
+        allianceColor,
+        alliance_color: allianceColor,
+        stationPosition,
+        station_position: stationPosition,
+        driverStationPosition: stationPosition,
+        driver_station_position: stationPosition,
+      } satisfies Record<string, string>;
+    }
+  }
+
+  return null;
+};
+
 interface CounterControlProps {
   label: string;
   value: number;
@@ -279,6 +432,7 @@ function TabTransitionControl({
 export default function BeginScoutingRoute() {
   const params = useLocalSearchParams<BeginScoutingParams>();
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
+  const router = useRouter();
 
   const eventKey =
     toSingleValue(params.eventKey) ?? toSingleValue(params.event_key) ?? '';
@@ -509,18 +663,65 @@ export default function BeginScoutingRoute() {
         throw new Error('Failed to retrieve submitted match data.');
       }
 
+      const driverStationSlot = parseDriverStationSlot({
+        driverStationLabel,
+        allianceColor,
+        stationPosition,
+      });
+
+      let nextMatchParams: Record<string, string> | null = null;
+
+      if (driverStationSlot) {
+        const scheduleRows = await db
+          .select()
+          .from(schema.matchSchedules)
+          .where(eq(schema.matchSchedules.eventKey, normalizedEventKey));
+
+        nextMatchParams = buildNextMatchParams(scheduleRows, {
+          eventKey: normalizedEventKey,
+          currentMatchLevel: resolvedMatchLevel,
+          currentMatchNumber: parsedMatchNumber,
+          driverStationSlot,
+          driverStationLabel,
+        });
+      }
+
+      const navigateToNextMatch = () => {
+        if (nextMatchParams) {
+          router.replace({ pathname: '/(drawer)/match-scout/begin-scouting', params: nextMatchParams });
+        } else {
+          router.replace('/(drawer)/match-scout');
+        }
+      };
+
+      const showNextMatchAlert = (title: string, message: string) => {
+        const buttonLabel = nextMatchParams ? 'Next Match' : 'OK';
+
+        Alert.alert(
+          title,
+          message,
+          [
+            {
+              text: buttonLabel,
+              onPress: navigateToNextMatch,
+            },
+          ],
+          { cancelable: false },
+        );
+      };
+
       try {
         await apiRequest('/scout/submit', {
           method: 'POST',
           body: JSON.stringify(row),
         });
 
-        Alert.alert('Match submitted', 'Match data was saved and sent successfully.');
+        showNextMatchAlert('Match submitted', 'Match data was saved and sent successfully.');
       } catch (error) {
         console.error('Failed to submit match data to API', error);
-        Alert.alert(
+        showNextMatchAlert(
           'Match saved locally',
-          'The match data was saved on this device but could not be sent to the server.'
+          'The match data was saved on this device but could not be sent to the server.',
         );
       }
     } catch (error) {
