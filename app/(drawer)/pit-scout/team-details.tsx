@@ -1,5 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { and, eq } from 'drizzle-orm';
 import {
   Alert,
   Keyboard,
@@ -18,6 +19,7 @@ import { useOrganization } from '@/hooks/use-organization';
 import { getDbOrThrow, schema } from '@/db';
 import type { NewPitData2025 } from '@/db/schema';
 import { getActiveEvent } from '@/app/services/logged-in-event';
+import { submitPitScoutData, syncAlreadyPitScoutedEntries } from '@/app/services/pit-scouting';
 
 const DRIVETRAIN_OPTIONS = [
   { label: 'Swerve', value: 'SWERVE' },
@@ -268,6 +270,33 @@ export default function PitScoutTeamDetailsScreen() {
         })
         .onConflictDoNothing()
         .run();
+
+      const [pitRow] = await db
+        .select()
+        .from(schema.pitData2025)
+        .where(
+          and(
+            eq(schema.pitData2025.eventKey, eventKey),
+            eq(schema.pitData2025.teamNumber, parsedTeamNumber)
+          )
+        )
+        .limit(1);
+
+      if (!pitRow) {
+        throw new Error('Failed to retrieve submitted pit data.');
+      }
+
+      try {
+        await submitPitScoutData(pitRow);
+
+        try {
+          await syncAlreadyPitScoutedEntries(selectedOrganization.id);
+        } catch (syncError) {
+          console.error('Failed to refresh already pit scouted entries from API', syncError);
+        }
+      } catch (submissionError) {
+        console.error('Failed to submit pit data to API', submissionError);
+      }
 
       router.replace('/(drawer)/pit-scout');
     } catch (error) {
