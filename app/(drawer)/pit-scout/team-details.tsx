@@ -91,12 +91,12 @@ const parseOptionalInteger = (value: string) => {
   const trimmed = value.trim();
 
   if (!trimmed) {
-    return null;
+    return 0;
   }
 
   const parsed = Number.parseInt(trimmed, 10);
 
-  return Number.isNaN(parsed) ? null : parsed;
+  return Number.isNaN(parsed) ? 0 : parsed;
 };
 
 const parseCountValue = (value: string) => {
@@ -222,7 +222,7 @@ export default function PitScoutTeamDetailsScreen() {
         teamNumber: parsedTeamNumber,
         notes: '',
         drivetrain,
-        driveteam: driveTeam.trim() ? driveTeam.trim() : null,
+        driveteam: driveTeam.trim() ? driveTeam.trim() : '',
         robotWeight: parseOptionalInteger(robotWeight),
         autoNotes: normalizeNoteField(autoNotes),
         teleNotes: normalizeNoteField(teleNotes),
