@@ -472,6 +472,15 @@ export default function BeginScoutingRoute() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedOrganization } = useOrganization();
 
+  const resetPrescoutForm = (nextMatchNumberValue: number) => {
+    setSelectedTab('info');
+    setAutoCounts(createInitialPhaseCounts());
+    setTeleCounts(createInitialPhaseCounts());
+    setEndgameSelection('none');
+    setGeneralNotes('');
+    setMatchNumber(String(nextMatchNumberValue));
+  };
+
   const inputBackground = useThemeColor({ light: '#FFFFFF', dark: '#0F172A' }, 'background');
   const inputBorder = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -798,6 +807,8 @@ export default function BeginScoutingRoute() {
           throw new Error('Failed to retrieve submitted prescout data.');
         }
 
+        resetPrescoutForm(nextMatchNumber + 1);
+
         try {
           const abortController = new AbortController();
           const timeoutId = setTimeout(() => abortController.abort(), 5000);
@@ -815,7 +826,6 @@ export default function BeginScoutingRoute() {
           Alert.alert('Prescout submitted', 'Prescout data was saved and sent successfully.', [
             {
               text: 'OK',
-              onPress: () => router.replace('/(drawer)/prescout'),
             },
           ]);
         } catch (error) {
@@ -826,7 +836,6 @@ export default function BeginScoutingRoute() {
             [
               {
                 text: 'OK',
-                onPress: () => router.replace('/(drawer)/prescout'),
               },
             ],
           );
