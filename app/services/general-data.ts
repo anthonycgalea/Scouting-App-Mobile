@@ -67,6 +67,11 @@ export type UpdateGeneralDataResult = {
   loggedInOrganization: LoggedInOrganizationSyncResult;
 };
 
+export type RefreshUserOrganizationsResult = {
+  userOrganizations: UpsertResult;
+  loggedInOrganization: LoggedInOrganizationSyncResult;
+};
+
 type LoggedInEventSyncResult = {
   eventCode: string | null;
 };
@@ -545,4 +550,11 @@ export async function updateGeneralData(): Promise<UpdateGeneralDataResult> {
   const loggedInEvent = await syncLoggedInEvent();
 
   return { teams, events, organizations, userOrganizations, loggedInOrganization, loggedInEvent };
+}
+
+export async function refreshUserOrganizations(): Promise<RefreshUserOrganizationsResult> {
+  const userOrganizations = await syncUserOrganizations();
+  const loggedInOrganization = await syncLoggedInOrganization();
+
+  return { userOrganizations, loggedInOrganization };
 }
