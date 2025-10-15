@@ -113,7 +113,7 @@ export default function PitScoutTeamDetailsScreen() {
   const { selectedOrganization } = useOrganization();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTab, setSelectedTab] = useState<TabKey>('general');
-  const [drivetrain, setDrivetrain] = useState<string | null>(null);
+  const [drivetrain, setDrivetrain] = useState<(typeof DRIVETRAIN_OPTIONS)[number]['value']>('SWERVE');
   const [showDrivetrainOptions, setShowDrivetrainOptions] = useState(false);
   const [robotWeight, setRobotWeight] = useState('');
   const [driveTeam, setDriveTeam] = useState('');
@@ -157,13 +157,9 @@ export default function PitScoutTeamDetailsScreen() {
   const placeholderColor = useThemeColor({ light: '#64748B', dark: '#94A3B8' }, 'text');
 
   const drivetrainLabel = useMemo(() => {
-    if (!drivetrain) {
-      return 'Select a drivetrain';
-    }
-
     const match = DRIVETRAIN_OPTIONS.find((option) => option.value === drivetrain);
 
-    return match?.label ?? 'Select a drivetrain';
+    return match?.label ?? 'Swerve';
   }, [drivetrain]);
 
   const handleTabSelect = (tab: TabKey) => {
@@ -225,7 +221,7 @@ export default function PitScoutTeamDetailsScreen() {
         eventKey,
         teamNumber: parsedTeamNumber,
         notes: '',
-        drivetrain: drivetrain ?? null,
+        drivetrain,
         driveteam: driveTeam.trim() ? driveTeam.trim() : null,
         robotWeight: parseOptionalInteger(robotWeight),
         autoNotes: normalizeNoteField(autoNotes),
@@ -379,7 +375,7 @@ export default function PitScoutTeamDetailsScreen() {
                     <ThemedText
                       style={[
                         styles.dropdownText,
-                        { color: drivetrain ? textColor : placeholderColor },
+                        { color: textColor },
                       ]}
                     >
                       {drivetrainLabel}
