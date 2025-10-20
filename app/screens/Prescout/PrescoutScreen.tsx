@@ -8,22 +8,14 @@ export function PrescoutScreen() {
 
   const handleTeamPress = (team: TeamListItem) => {
     const activeEventKey = getActiveEvent();
-    const teamNumberParam = String(team.number);
-
-    const params: Record<string, string> = {
-      mode: 'prescout',
-      teamNumber: teamNumberParam,
-      team_number: teamNumberParam,
-    };
-
-    if (activeEventKey) {
-      params.eventKey = activeEventKey;
-      params.event_key = activeEventKey;
-    }
 
     router.push({
       pathname: '/(drawer)/match-scout/begin-scouting',
-      params,
+      params: {
+        mode: 'prescout',
+        teamNumber: String(team.number),
+        eventKey: activeEventKey ?? undefined,
+      },
     });
   };
 
