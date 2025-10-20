@@ -121,6 +121,7 @@ function initializeExpoSqliteDb() {
       id INTEGER PRIMARY KEY NOT NULL,
       organization_id INTEGER NOT NULL,
       team_number INTEGER NOT NULL,
+      role TEXT,
       FOREIGN KEY (organization_id) REFERENCES organization(id)
     );`,
     `CREATE TABLE IF NOT EXISTS pitdata2025 (
