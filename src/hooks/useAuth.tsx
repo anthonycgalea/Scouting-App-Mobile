@@ -49,18 +49,6 @@ async function persistSession(session: Session | null, refreshTokenOverride?: st
       if (refreshTokenToStore) {
         await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshTokenToStore);
       }
-
-      // 🔍 Add this:
-      console.log(
-        '✅ Stored session in SecureStore:',
-        session.access_token?.slice(0, 12) + '...',
-        '\nRefresh:',
-        refreshTokenToStore ? 'yes' : 'no'
-      );
-
-      // Optional readback check
-      const verify = await SecureStore.getItemAsync(SESSION_KEY);
-      console.log('📦 Verify readback =', verify ? 'exists' : 'missing');
     } else {
       await SecureStore.deleteItemAsync(SESSION_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
