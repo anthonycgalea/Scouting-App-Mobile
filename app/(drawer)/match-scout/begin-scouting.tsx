@@ -481,6 +481,12 @@ export default function BeginScoutingRoute() {
     setMatchNumber(String(nextMatchNumberValue));
   };
 
+  useEffect(() => {
+    if (isPrescoutMode) {
+      setTeamNumber(initialTeamNumber);
+    }
+  }, [initialTeamNumber, isPrescoutMode]);
+
   const inputBackground = useThemeColor({ light: '#FFFFFF', dark: '#0F172A' }, 'background');
   const inputBorder = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
   const textColor = useThemeColor({}, 'text');
