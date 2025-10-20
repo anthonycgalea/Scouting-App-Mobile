@@ -1,7 +1,7 @@
 import type { ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { and, eq } from 'drizzle-orm';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -15,14 +15,14 @@ import {
 
 import { getDbOrThrow, schema } from '@/db';
 import type { MatchSchedule } from '@/db/schema';
-import { apiRequest } from '../../services/api';
 import { syncAlreadyScoutedEntries } from '../../services/already-scouted';
+import { apiRequest } from '../../services/api';
 import { getActiveEvent } from '../../services/logged-in-event';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
-import { useThemeColor } from '@/hooks/use-theme-color';
 import { useOrganization } from '@/hooks/use-organization';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 const toSingleValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -706,7 +706,7 @@ export default function BeginScoutingRoute() {
     }
 
     const noteValue = generalNotes.trim();
-    const normalizedNotes = noteValue.length > 0 ? noteValue : null;
+    const normalizedNotes = noteValue.length > 0 ? noteValue : "";
 
     const endgameMap = {
       none: 'NONE',
