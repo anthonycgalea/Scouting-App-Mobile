@@ -2,11 +2,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser'; // ✅ needed for Expo Go
-console.log('🚀 Calling WebBrowser.maybeCompleteAuthSession()...');
-const maybeCompletedAuthSession = WebBrowser.maybeCompleteAuthSession();
-console.log('📬 WebBrowser.maybeCompleteAuthSession() result:', maybeCompletedAuthSession);
 
-// eslint-disable-next-line import/first
+ 
 import {
   createContext,
   ReactNode,
@@ -17,10 +14,10 @@ import {
   useRef,
   useState,
 } from 'react';
-// eslint-disable-next-line import/first
+ 
 import { supabase } from '../lib/supabase';
 
-// eslint-disable-next-line import/first
+ 
 import { getUserInfo, setAuthorizationToken } from '@/app/services/api';
 
 
@@ -66,10 +63,6 @@ async function persistSessionWithFallback(session: Session) {
 async function restoreSession() {
   const storedSession = await SecureStore.getItemAsync(SESSION_KEY);
   const storedRefresh = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-  console.log('🔑 restoreSession() - found:', {
-    session: !!storedSession,
-    refresh: !!storedRefresh,
-  });
   if (!storedSession || !storedRefresh) return null;
 
   try {
@@ -320,23 +313,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ✅ Discord OAuth flow (Expo Go + standalone compatible)
   const signInWithDiscord = useCallback(async () => {
-    console.log('🚀 Starting Discord OAuth sign-in flow...');
 
     try {
       // Use the same redirect for both Expo Go and standalone builds.
       const redirect = Linking.createURL('/auth');
-      console.log('🔗 Computed redirect URL for Expo Linking:', redirect);
-
-      console.log('📨 Calling supabase.auth.signInWithOAuth for Discord...');
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: { redirectTo: redirect },
-      });
-
-      console.log('📬 signInWithOAuth response:', {
-        hasData: !!data,
-        authorizeUrl: data?.url,
-        error,
       });
 
       if (error) {
@@ -344,18 +327,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!data?.url) {
-        console.log('⚠️ Supabase did not return an authorize URL. Aborting browser launch.');
         return;
       }
-
-      console.log('🌐 Opening WebBrowser auth session...');
       const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirect);
-      console.log('🏁 WebBrowser auth session closed with result:', authResult);
 
       // 🧭 CASE 1: Expo Go — direct access_token in returned URL
       if (authResult.type === 'success' && authResult.url) {
         try {
-          console.log('🔐 Parsing returned URL for tokens...');
           const parsed = Linking.parse(authResult.url);
 
           // Extract hash fragment manually (since Expo returns tokens after '#')
@@ -367,13 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             hashParams.get('provider_refresh_token') ??
             undefined;
 
-          console.log('🧭 Extracted hash params:', {
-            hasAccessToken: !!access_token,
-            hasRefreshToken: !!refresh_token,
-          });
-
           if (access_token) {
-            console.log('✅ Tokens found in WebBrowser result. Setting Supabase session...');
             const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
               access_token,
               refresh_token,
@@ -382,7 +354,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (sessionError) {
               console.error('❌ setSession failed:', sessionError);
             } else if (sessionData?.session) {
-              console.log('🎉 Session established immediately via WebBrowser result.');
               await persistSessionWithFallback(sessionData.session);
               setSession(sessionData.session);
               setUser(sessionData.session.user);
