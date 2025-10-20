@@ -263,22 +263,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      console.log('🚀 Initializing auth...');
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        console.log('🧠 Supabase already has active session');
         setSession(data.session);
         setUser(data.session.user);
         await persistSessionWithFallback(data.session);
       } else {
-        console.log('🔄 No active session, trying restoreSession()');
         const restored = await restoreSession();
         if (restored) {
           setSession(restored.session);
           setUser(restored.session.user);
           await persistSession(restored.session, restored.refreshToken);
-        } else {
-          console.log('❌ No stored session found');
         }
       }
       setIsLoading(false);
