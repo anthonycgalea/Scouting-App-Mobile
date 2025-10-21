@@ -20,8 +20,7 @@ const getWebBaseUrl = () => {
  * Replace the return value when the production endpoint is known.
  */
 export const getWebProductionBaseUrl = () => {
-  // TODO: configure the production API url once it is available.
-  return 'https://api.production.example.com';
+  return 'https://api.codystats.com';
 };
 
 /**
@@ -29,12 +28,10 @@ export const getWebProductionBaseUrl = () => {
  * This should be updated to point at the correct backend for mobile usage.
  */
 export const getMobileBaseUrl = () => {
-  // TODO: configure the mobile API url once it is available.
-
   if (__DEV__) {
     return DEV_MOBILE_BASE_URL;
   }
-  return 'https://api.mobile.example.com';
+  return 'https://api.codystats.com';
 };
 
 /**
