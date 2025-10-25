@@ -21,7 +21,14 @@ export async function takeRobotPhoto(teamNumber: number): Promise<string | null>
   }
 
   const sourceUri = result.assets[0].uri;
-  const directory = `${FileSystem.documentDirectory}robotPhotos`;
+  // eslint-disable-next-line import/namespace -- documentDirectory is a valid runtime export from expo-file-system
+  const baseDirectory = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
+
+  if (!baseDirectory) {
+    throw new Error('No writable directory available for storing robot photos.');
+  }
+
+  const directory = `${baseDirectory}robotPhotos`;
 
   await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
 

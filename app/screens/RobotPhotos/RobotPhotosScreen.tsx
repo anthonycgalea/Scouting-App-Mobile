@@ -1,5 +1,19 @@
-import { TeamListScreen } from '@/app/screens/Shared/TeamListScreen';
+import { useRouter } from 'expo-router';
+
+import { TeamListScreen, type TeamListItem } from '@/app/screens/Shared/TeamListScreen';
 
 export function RobotPhotosScreen() {
-  return <TeamListScreen title="Robot Photos" />;
+  const router = useRouter();
+
+  const handleTeamPress = (team: TeamListItem) => {
+    router.push({
+      pathname: '/(drawer)/robot-photos/team-photos',
+      params: {
+        teamNumber: String(team.number),
+        teamName: team.name,
+      },
+    });
+  };
+
+  return <TeamListScreen title="Robot Photos" onTeamPress={handleTeamPress} />;
 }
