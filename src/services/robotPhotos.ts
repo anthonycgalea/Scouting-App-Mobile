@@ -4,6 +4,18 @@ import * as FileSystem from 'expo-file-system';
 import { getDbOrThrow, schema } from '@/db';
 import { getActiveEvent } from '@/app/services/logged-in-event';
 
+export async function ensureCameraPermission(): Promise<boolean> {
+  const existingPermission = await ImagePicker.getCameraPermissionsAsync();
+
+  if (existingPermission.granted) {
+    return true;
+  }
+
+  const requestedPermission = await ImagePicker.requestCameraPermissionsAsync();
+
+  return requestedPermission.granted;
+}
+
 export async function takeRobotPhoto(teamNumber: number): Promise<string | null> {
   const result = await ImagePicker.launchCameraAsync({
     quality: 0.8,

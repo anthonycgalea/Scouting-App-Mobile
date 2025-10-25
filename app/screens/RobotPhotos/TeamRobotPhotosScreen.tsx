@@ -18,7 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getDbOrThrow, schema } from '@/db';
 import { getActiveEvent } from '@/app/services/logged-in-event';
-import { takeRobotPhoto } from '@/src/services/robotPhotos';
+import { ensureCameraPermission, takeRobotPhoto } from '@/src/services/robotPhotos';
 
 interface PhotoItem {
   id: number;
@@ -129,6 +129,16 @@ export function TeamRobotPhotosScreen() {
 
     try {
       setIsTakingPhoto(true);
+      const hasPermission = await ensureCameraPermission();
+
+      if (!hasPermission) {
+        Alert.alert(
+          'Camera permission required',
+          'Please enable camera access in your device settings to take robot photos.'
+        );
+        return;
+      }
+
       const uri = await takeRobotPhoto(teamNumber);
 
       if (!uri) {
