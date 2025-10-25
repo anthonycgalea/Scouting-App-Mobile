@@ -16,6 +16,7 @@ export const DRAWER_ITEMS: {
   { name: 'pit-scout/index', title: 'Pit Scout', href: ROUTES.pitScout, icon: 'build-outline' },
   { name: 'match-scout/index', title: 'Match Scout', href: ROUTES.matchScout, icon: 'trophy-outline' },
   { name: 'prescout/index', title: 'Prescout', href: ROUTES['prescout'], icon: 'search-outline' },
+  { name: 'robot-photos/index', title: 'Robot Photos', href: ROUTES.robotPhotos, icon: 'camera-outline' },
   { name: 'settings/index', title: 'App Settings', href: ROUTES.appSettings, icon: 'settings-outline' },
   {
     name: 'organization-select/index',
