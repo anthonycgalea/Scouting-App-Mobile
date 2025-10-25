@@ -2,6 +2,7 @@ export { LoginScreen } from './Auth/LoginScreen';
 export { PitScoutScreen } from './PitScout/PitScoutScreen';
 export { PrescoutScreen } from './Prescout/PrescoutScreen';
 export { RobotPhotosScreen } from './RobotPhotos/RobotPhotosScreen';
+export { TeamRobotPhotosScreen } from './RobotPhotos/TeamRobotPhotosScreen';
 export { MatchScoutScreen } from './MatchScout/MatchScoutScreen';
 export { MatchTeamSelectScreen } from './MatchScout/MatchTeamSelectScreen';
 export { AppSettingsScreen } from './Settings/AppSettingsScreen';
