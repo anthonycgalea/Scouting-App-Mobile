@@ -3,6 +3,7 @@ export const ROUTES = {
   pitScout: '/(drawer)/pit-scout' as const,
   matchScout: '/(drawer)/match-scout' as const,
   prescout: '/(drawer)/prescout' as const,
+  robotPhotos: '/(drawer)/robot-photos' as const,
   appSettings: '/(drawer)/settings' as const,
   eventsBrowser: '/(drawer)/settings/events' as const,
   organizationSelect: '/(drawer)/organization-select' as const,
