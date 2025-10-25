@@ -1,5 +1,5 @@
 import { integer, primaryKey, sqliteTable, text, foreignKey } from 'drizzle-orm/sqlite-core';
-import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import { InferInsertModel, InferSelectModel, sql } from 'drizzle-orm';
 
 export const teamRecords = sqliteTable('teamrecord', {
   teamNumber: integer('team_number').primaryKey(),
@@ -165,6 +165,35 @@ export const userOrganizations = sqliteTable(
 
 export type UserOrganization = InferSelectModel<typeof userOrganizations>;
 export type NewUserOrganization = InferInsertModel<typeof userOrganizations>;
+
+export const robotPhotos = sqliteTable(
+  'robot_photos',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    eventKey: text('event_key').notNull(),
+    teamNumber: integer('team_number')
+      .notNull(),
+    localUri: text('local_uri').notNull(),
+    remoteUrl: text('remote_url'),
+    uploadPending: integer('upload_pending').notNull().default(1),
+    createdAt: integer('created_at').notNull().default(sql`(strftime('%s','now'))`),
+  },
+  (table) => ({
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'robot_photos_team_fk',
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'robot_photos_event_fk',
+    }),
+  }),
+);
+
+export type RobotPhoto = InferSelectModel<typeof robotPhotos>;
+export type NewRobotPhoto = InferInsertModel<typeof robotPhotos>;
 
 export const pitData2025 = sqliteTable(
   'pitdata2025',

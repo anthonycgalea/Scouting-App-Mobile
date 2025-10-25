@@ -124,6 +124,17 @@ function initializeExpoSqliteDb() {
       role TEXT,
       FOREIGN KEY (organization_id) REFERENCES organization(id)
     );`,
+    `CREATE TABLE IF NOT EXISTS robot_photos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_key TEXT NOT NULL,
+      team_number INTEGER NOT NULL,
+      local_uri TEXT NOT NULL,
+      remote_url TEXT,
+      upload_pending INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+      FOREIGN KEY (team_number) REFERENCES teamrecord(team_number),
+      FOREIGN KEY (event_key) REFERENCES frcevent(event_key)
+    );`,
     `CREATE TABLE IF NOT EXISTS pitdata2025 (
       event_key TEXT NOT NULL,
       team_number INTEGER NOT NULL,
