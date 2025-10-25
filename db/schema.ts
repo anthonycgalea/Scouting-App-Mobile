@@ -170,6 +170,7 @@ export const robotPhotos = sqliteTable(
   'robot_photos',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
+    eventKey: text('event_key').notNull(),
     teamNumber: integer('team_number')
       .notNull(),
     localUri: text('local_uri').notNull(),
@@ -182,6 +183,11 @@ export const robotPhotos = sqliteTable(
       columns: [table.teamNumber],
       foreignColumns: [teamRecords.teamNumber],
       name: 'robot_photos_team_fk',
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'robot_photos_event_fk',
     }),
   }),
 );
