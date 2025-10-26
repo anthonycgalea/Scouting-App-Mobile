@@ -3,7 +3,7 @@ import type { AlreadyScoutedResponse } from './already-scouted';
 import type { AlreadyPitScoutedResponse } from './pit-scouting';
 import { getActiveEvent } from './logged-in-event';
 import { getDbOrThrow, schema } from '@/db';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 export type RetrieveEventInfoResult = {
   eventCode: string;
@@ -193,6 +193,8 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     }),
   ]);
 
+  const requiredTeamNumbers = new Set<number>();
+
   const normalizedMatchMap = new Map<string, NormalizedMatchSchedule>();
   for (const item of rawMatchSchedules ?? []) {
     const normalized = normalizeMatchSchedule(item, eventCode);
@@ -200,6 +202,13 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     if (!normalized) {
       continue;
     }
+
+    requiredTeamNumbers.add(normalized.red1Id);
+    requiredTeamNumbers.add(normalized.red2Id);
+    requiredTeamNumbers.add(normalized.red3Id);
+    requiredTeamNumbers.add(normalized.blue1Id);
+    requiredTeamNumbers.add(normalized.blue2Id);
+    requiredTeamNumbers.add(normalized.blue3Id);
 
     const key = `${normalized.matchLevel}#${normalized.matchNumber}`;
 
@@ -219,6 +228,8 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     if (!normalizedTeamSet.has(normalized.teamNumber)) {
       normalizedTeamSet.set(normalized.teamNumber, normalized);
     }
+
+    requiredTeamNumbers.add(normalized.teamNumber);
   }
 
   const db = getDbOrThrow();
@@ -246,6 +257,8 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     if (!normalizedAlreadyScoutedMap.has(key)) {
       normalizedAlreadyScoutedMap.set(key, normalized);
     }
+
+    requiredTeamNumbers.add(normalized.teamNumber);
   }
 
   const normalizedAlreadyPitScoutedMap = new Map<string, NormalizedAlreadyPitScouted>();
@@ -265,6 +278,8 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     if (!normalizedAlreadyPitScoutedMap.has(key)) {
       normalizedAlreadyPitScoutedMap.set(key, normalized);
     }
+
+    requiredTeamNumbers.add(normalized.teamNumber);
   }
 
   const matchScheduleResult: RetrieveEventInfoResult['matchSchedule'] = {
@@ -290,7 +305,59 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     created: 0,
   };
 
+  const requiredTeamNumberList = [...requiredTeamNumbers];
+
   db.transaction((tx) => {
+    if (requiredTeamNumberList.length > 0) {
+      const existingTeamRows = tx
+        .select({ teamNumber: schema.teamRecords.teamNumber })
+        .from(schema.teamRecords)
+        .where(inArray(schema.teamRecords.teamNumber, requiredTeamNumberList))
+        .all();
+
+      const existingTeamNumbers = new Set<number>(existingTeamRows.map((row) => row.teamNumber));
+
+      const placeholderTeams: typeof schema.teamRecords.$inferInsert[] = [];
+
+      for (const teamNumber of requiredTeamNumberList) {
+        if (!existingTeamNumbers.has(teamNumber)) {
+          placeholderTeams.push({
+            teamNumber,
+            teamName: `Team ${teamNumber}`,
+            location: null,
+          });
+        }
+      }
+
+      if (placeholderTeams.length > 0) {
+        tx.insert(schema.teamRecords).values(placeholderTeams).onConflictDoNothing().run();
+      }
+    }
+
+    const existingEvent = tx
+      .select({ eventKey: schema.frcEvents.eventKey })
+      .from(schema.frcEvents)
+      .where(eq(schema.frcEvents.eventKey, eventCode))
+      .limit(1)
+      .all();
+
+    if (existingEvent.length === 0) {
+      const parsedYear = Number.parseInt(eventCode.slice(0, 4), 10);
+      const year = Number.isFinite(parsedYear) ? parsedYear : new Date().getFullYear();
+
+      tx
+        .insert(schema.frcEvents)
+        .values({
+          eventKey: eventCode,
+          eventName: eventCode,
+          shortName: null,
+          year,
+          week: 0,
+        })
+        .onConflictDoNothing()
+        .run();
+    }
+
     const existingMatchSchedules = tx
       .select()
       .from(schema.matchSchedules)
