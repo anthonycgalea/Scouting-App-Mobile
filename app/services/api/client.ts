@@ -75,6 +75,13 @@ export async function apiRequest<TResponse>(path: string, options: ApiRequestOpt
 
   const parsedBody = await parseResponseBody(response);
 
+  console.log('API response', {
+    url,
+    status: response.status,
+    ok: response.ok,
+    body: parsedBody,
+  });
+
   if (!response.ok) {
     const errorMessage =
       typeof parsedBody === 'object' && parsedBody !== null && 'message' in parsedBody
