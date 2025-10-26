@@ -449,10 +449,11 @@ async function syncOrganizations(): Promise<UpsertResult> {
           .delete(schema.userOrganizations)
           .where(eq(schema.userOrganizations.organizationId, existingOrganization.id))
           .run();
-        tx
-          .delete(schema.organizations)
-          .where(eq(schema.organizations.id, existingOrganization.id))
-          .run();
+
+        // Avoid deleting the organization record itself so that any tables with
+        // foreign keys (for example, already scouted data) continue to reference
+        // a valid organization. This prevents refreshes from failing when the
+        // API omits an organization that still has related local data.
       }
     }
   });
