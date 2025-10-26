@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "frc-codystats",
-    "slug": "frc-codystats",
+    "name": "codystats",
+    "slug": "codystats",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
