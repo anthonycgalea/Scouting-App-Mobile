@@ -43,6 +43,7 @@ type MatchScheduleResponse = {
 type TeamEventResponse = {
   event_key?: string | null;
   team_number?: number | string | null;
+  team_name?: string | null;
 };
 
 type NormalizedMatchSchedule = {
@@ -121,14 +122,21 @@ const normalizeMatchSchedule = (
 const normalizeTeamEvent = (
   item: TeamEventResponse,
   eventCode: string,
-): NormalizedTeamEvent | null => {
+): (NormalizedTeamEvent & { teamName: string | null }) | null => {
   const teamNumber = normalizeNumber(item.team_number);
 
   if (teamNumber === null) {
     return null;
   }
 
-  return { eventKey: eventCode, teamNumber };
+  const normalizedName =
+    typeof item.team_name === 'string' ? item.team_name.trim() : '';
+
+  return {
+    eventKey: eventCode,
+    teamNumber,
+    teamName: normalizedName.length > 0 ? normalizedName : null,
+  };
 };
 
 const normalizeAlreadyScoutedEntry = (
@@ -218,6 +226,7 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
   }
 
   const normalizedTeamSet = new Map<number, NormalizedTeamEvent>();
+  const normalizedTeamNameMap = new Map<number, string>();
   for (const item of rawTeamEvents ?? []) {
     const normalized = normalizeTeamEvent(item, eventCode);
 
@@ -225,11 +234,17 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
       continue;
     }
 
-    if (!normalizedTeamSet.has(normalized.teamNumber)) {
-      normalizedTeamSet.set(normalized.teamNumber, normalized);
+    const { teamName, ...teamEvent } = normalized;
+
+    if (!normalizedTeamSet.has(teamEvent.teamNumber)) {
+      normalizedTeamSet.set(teamEvent.teamNumber, teamEvent);
     }
 
-    requiredTeamNumbers.add(normalized.teamNumber);
+    if (teamName) {
+      normalizedTeamNameMap.set(teamEvent.teamNumber, teamName);
+    }
+
+    requiredTeamNumbers.add(teamEvent.teamNumber);
   }
 
   const db = getDbOrThrow();
@@ -321,9 +336,12 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
 
       for (const teamNumber of requiredTeamNumberList) {
         if (!existingTeamNumbers.has(teamNumber)) {
+          const preferredName = normalizedTeamNameMap.get(teamNumber);
+          const normalizedName = preferredName ? preferredName.trim() : '';
+
           placeholderTeams.push({
             teamNumber,
-            teamName: `Team ${teamNumber}`,
+            teamName: normalizedName.length > 0 ? normalizedName : `Team ${teamNumber}`,
             location: null,
           });
         }
@@ -331,6 +349,37 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
 
       if (placeholderTeams.length > 0) {
         tx.insert(schema.teamRecords).values(placeholderTeams).onConflictDoNothing().run();
+      }
+
+      if (normalizedTeamNameMap.size > 0) {
+        const teamNumbersWithNames = [...normalizedTeamNameMap.keys()];
+
+        const existingTeamNameRows = tx
+          .select({
+            teamNumber: schema.teamRecords.teamNumber,
+            teamName: schema.teamRecords.teamName,
+          })
+          .from(schema.teamRecords)
+          .where(inArray(schema.teamRecords.teamNumber, teamNumbersWithNames))
+          .all();
+
+        const existingTeamNameMap = new Map<number, string | null>(
+          existingTeamNameRows.map((row) => [row.teamNumber, row.teamName ?? null]),
+        );
+
+        for (const [teamNumber, teamName] of normalizedTeamNameMap.entries()) {
+          const currentName = existingTeamNameMap.get(teamNumber) ?? null;
+
+          if (currentName === teamName) {
+            continue;
+          }
+
+          tx
+            .update(schema.teamRecords)
+            .set({ teamName })
+            .where(eq(schema.teamRecords.teamNumber, teamNumber))
+            .run();
+        }
       }
     }
 

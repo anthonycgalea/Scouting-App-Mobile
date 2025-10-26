@@ -89,11 +89,16 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
       .all();
 
     const mapped = rows
-      .map((row) => ({
-        number: row.teamNumber,
-        name: row.teamName,
-        location: row.teamLocation ?? 'Location unavailable',
-      }))
+      .map((row) => {
+        const normalizedName =
+          typeof row.teamName === 'string' ? row.teamName.trim() : '';
+
+        return {
+          number: row.teamNumber,
+          name: normalizedName.length > 0 ? normalizedName : `Team ${row.teamNumber}`,
+          location: row.teamLocation ?? 'Location unavailable',
+        };
+      })
       .sort((a, b) => a.number - b.number);
 
     let alreadyScoutedTeams: number[] = [];
