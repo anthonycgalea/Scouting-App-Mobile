@@ -30,6 +30,8 @@ type AuthContextValue = {
   session: Session | null;
   isLoading: boolean;
   signInWithDiscord: () => Promise<void>;
+  signInWithSlack: () => Promise<void>;
+  signInWithTeams: () => Promise<void>;
   signOut: () => Promise<void>;
   displayName: string | null;
   refreshUserInfo: () => Promise<void>;
@@ -311,81 +313,102 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [clearRefreshTimeout, scheduleSessionRefresh, session]);
 
-  // ✅ Discord OAuth flow (Expo Go + standalone compatible)
-  const signInWithDiscord = useCallback(async () => {
+  type SupportedOAuthProvider = 'discord' | 'slack_oidc' | 'azure';
 
-    try {
-      // Use the same redirect for both Expo Go and standalone builds.
-      const redirect = Linking.createURL('/auth');
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'discord',
-        options: { redirectTo: redirect },
-      });
+  const startOAuthFlow = useCallback(
+    async (provider: SupportedOAuthProvider, providerDisplayName: string) => {
+      try {
+        // Use the same redirect for both Expo Go and standalone builds.
+        const redirect = Linking.createURL('/auth');
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: { redirectTo: redirect },
+        });
 
-      if (error) {
-        throw error;
-      }
+        if (error) {
+          throw error;
+        }
 
-      if (!data?.url) {
-        return;
-      }
-      const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirect);
+        if (!data?.url) {
+          return;
+        }
+        const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirect);
 
-      // 🧭 CASE 1: Expo Go — direct access_token in returned URL
-      if (authResult.type === 'success' && authResult.url) {
-        try {
-          const parsed = Linking.parse(authResult.url);
+        // 🧭 CASE 1: Expo Go — direct access_token in returned URL
+        if (authResult.type === 'success' && authResult.url) {
+          try {
+            // Extract hash fragment manually (since Expo returns tokens after '#')
+            const hash = authResult.url.split('#')[1];
+            const hashParams = new URLSearchParams(hash ?? '');
+            const access_token = hashParams.get('access_token') ?? undefined;
+            const refresh_token =
+              hashParams.get('refresh_token') ??
+              hashParams.get('provider_refresh_token') ??
+              undefined;
 
-          // Extract hash fragment manually (since Expo returns tokens after '#')
-          const hash = authResult.url.split('#')[1];
-          const hashParams = new URLSearchParams(hash);
-          const access_token = hashParams.get('access_token') ?? undefined;
-          const refresh_token =
-            hashParams.get('refresh_token') ??
-            hashParams.get('provider_refresh_token') ??
-            undefined;
+            if (access_token) {
+              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+                access_token,
+                refresh_token,
+              });
 
-          if (access_token) {
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-              access_token,
-              refresh_token,
-            });
+              if (sessionError) {
+                console.error(`❌ setSession failed for ${providerDisplayName}:`, sessionError);
+              } else if (sessionData?.session) {
+                await persistSessionWithFallback(sessionData.session);
+                setSession(sessionData.session);
+                setUser(sessionData.session.user);
+              } else {
+                console.log(
+                  `⚠️ setSession succeeded for ${providerDisplayName} but no session object returned.`,
+                );
+              }
 
-            if (sessionError) {
-              console.error('❌ setSession failed:', sessionError);
-            } else if (sessionData?.session) {
-              await persistSessionWithFallback(sessionData.session);
-              setSession(sessionData.session);
-              setUser(sessionData.session.user);
-            } else {
-              console.log('⚠️ setSession succeeded but no session object returned.');
+              return; // ✅ Done
             }
 
-            return; // ✅ Done
+            console.log(
+              `ℹ️ No access_token in ${providerDisplayName} result — fallback to handleUrl listener.`,
+            );
+          } catch (parseError) {
+            console.error(
+              `⚠️ Failed to parse tokens from ${providerDisplayName} result URL:`,
+              parseError,
+            );
           }
-
-          console.log('ℹ️ No access_token in result — fallback to handleUrl listener.');
-        } catch (parseError) {
-          console.error('⚠️ Failed to parse tokens from result URL:', parseError);
         }
+
+
+        // 🧭 CASE 2: Standalone app — deep link arrives later
+        if (authFlowTimeoutRef.current) {
+          clearTimeout(authFlowTimeoutRef.current);
+        }
+
+        authFlowTimeoutRef.current = setTimeout(() => {
+          console.log(
+            `⚠️ No ${providerDisplayName} auth callback received within 3 seconds after browser closed. Waiting for deep link...`
+          );
+          authFlowTimeoutRef.current = null;
+        }, 3000);
+      } catch (error) {
+        console.error(`❌ ${providerDisplayName} sign-in failed with exception:`, error);
+        throw error;
       }
+    },
+    [],
+  );
 
+  const signInWithDiscord = useCallback(async () => {
+    await startOAuthFlow('discord', 'Discord');
+  }, [startOAuthFlow]);
 
-      // 🧭 CASE 2: Standalone app — deep link arrives later
-      if (authFlowTimeoutRef.current) {
-        clearTimeout(authFlowTimeoutRef.current);
-      }
+  const signInWithSlack = useCallback(async () => {
+    await startOAuthFlow('slack_oidc', 'Slack');
+  }, [startOAuthFlow]);
 
-      authFlowTimeoutRef.current = setTimeout(() => {
-        console.log(
-          '⚠️ No auth callback received within 3 seconds after browser closed. Waiting for deep link...'
-        );
-        authFlowTimeoutRef.current = null;
-      }, 3000);
-    } catch (error) {
-      console.error('❌ Discord sign-in failed with exception:', error);
-    }
-  }, []);
+  const signInWithTeams = useCallback(async () => {
+    await startOAuthFlow('azure', 'Teams');
+  }, [startOAuthFlow]);
 
 
 
@@ -407,6 +430,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       isLoading,
       signInWithDiscord,
+      signInWithSlack,
+      signInWithTeams,
       signOut,
       displayName,
       refreshUserInfo,
@@ -417,6 +442,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       isLoading,
       signInWithDiscord,
+      signInWithSlack,
+      signInWithTeams,
       signOut,
       displayName,
       refreshUserInfo,
