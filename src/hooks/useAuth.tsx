@@ -19,6 +19,8 @@ import { supabase } from '../lib/supabase';
 
  
 import { getUserInfo, setAuthorizationToken } from '@/app/services/api';
+import { runFullSync } from '@/app/services/full-sync';
+import { refreshUserAssignmentsFromServer } from '@/app/services/user-sync';
 
 
 const SESSION_KEY = 'supabase.session';
@@ -90,6 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isRefreshingRef = useRef(false);
   const authFlowTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const assignmentsSyncInFlightRef = useRef(false);
+  const lastAssignmentsSyncUserRef = useRef<string | null>(null);
+  const assignmentsSyncSucceededRef = useRef(false);
 
   const clearRefreshTimeout = useCallback(() => {
     if (refreshTimeoutRef.current) {
@@ -304,6 +309,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     refreshUserInfo();
   }, [session?.access_token, refreshUserInfo]);
+
+  useEffect(() => {
+    const userId = session?.user?.id ?? null;
+    const hasAccessToken = Boolean(session?.access_token);
+
+    if (!hasAccessToken || !userId) {
+      lastAssignmentsSyncUserRef.current = null;
+      assignmentsSyncSucceededRef.current = false;
+      return;
+    }
+
+    if (assignmentsSyncInFlightRef.current) {
+      return;
+    }
+
+    if (lastAssignmentsSyncUserRef.current !== userId) {
+      assignmentsSyncSucceededRef.current = false;
+    } else if (assignmentsSyncSucceededRef.current) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const synchronizeAssignments = async () => {
+      assignmentsSyncInFlightRef.current = true;
+      try {
+        const assignments = await refreshUserAssignmentsFromServer();
+
+        if (isCancelled) {
+          return;
+        }
+
+        let fullSyncSucceeded = true;
+
+        if (assignments.organizationChanged || assignments.eventChanged) {
+          try {
+            await runFullSync();
+          } catch (error) {
+            fullSyncSucceeded = false;
+            console.warn('Failed to run full sync after refreshing user assignments:', error);
+          }
+        }
+
+        if (!isCancelled) {
+          lastAssignmentsSyncUserRef.current = userId;
+          assignmentsSyncSucceededRef.current = fullSyncSucceeded;
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.warn('Failed to refresh user organization/event assignments:', error);
+          lastAssignmentsSyncUserRef.current = userId;
+          assignmentsSyncSucceededRef.current = false;
+        }
+      } finally {
+        assignmentsSyncInFlightRef.current = false;
+      }
+    };
+
+    void synchronizeAssignments();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [session?.access_token, session?.user?.id]);
 
   useEffect(() => {
     scheduleSessionRefresh(session);
