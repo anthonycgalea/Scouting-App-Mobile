@@ -28,6 +28,7 @@ type OrganizationResponse = {
 
 type UserOrganizationResponse = {
   id: number;
+  name?: string | null;
   organization_id?: number;
   team_number?: number;
   user_organization_id?: number;
@@ -488,6 +489,37 @@ async function syncUserOrganizations(): Promise<UpsertResult> {
 
       if (!normalized) {
         continue;
+      }
+
+      const existingOrganization = tx
+        .select()
+        .from(schema.organizations)
+        .where(eq(schema.organizations.id, normalized.organizationId))
+        .limit(1)
+        .all()[0];
+
+      if (!existingOrganization) {
+        const organizationName =
+          typeof userOrganization.name === 'string' ? userOrganization.name.trim() : null;
+        const organizationTeamNumber =
+          typeof userOrganization.team_number === 'number'
+            ? userOrganization.team_number
+            : normalized.teamNumber;
+
+        if (organizationName && Number.isFinite(organizationTeamNumber)) {
+          tx
+            .insert(schema.organizations)
+            .values({
+              id: normalized.organizationId,
+              name: organizationName,
+              teamNumber: organizationTeamNumber,
+            })
+            .run();
+        } else {
+          // Skip inserting the user organization when the related organization is missing
+          // and we don't have enough information to create a placeholder record.
+          continue;
+        }
       }
 
       receivedIds.add(normalized.id);
