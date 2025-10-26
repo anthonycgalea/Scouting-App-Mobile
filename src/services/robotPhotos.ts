@@ -4,9 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   EncodingType,
   StorageAccessFramework,
-  cacheDirectory,
   copyAsync,
-  documentDirectory,
   makeDirectoryAsync,
   readAsStringAsync,
   writeAsStringAsync,
@@ -14,6 +12,7 @@ import {
 
 import { getDbOrThrow, schema } from '@/db';
 import { getActiveEvent } from '@/app/services/logged-in-event';
+import { getWritableDirectory } from './photoStorage';
 
 type FileSystemStorageLocation =
   | { kind: 'file'; directory: string }
@@ -32,10 +31,14 @@ async function resolveStorageLocation(): Promise<FileSystemStorageLocation | nul
   }
 
   storageResolutionPromise = (async () => {
-    const baseDirectory = documentDirectory ?? cacheDirectory;
+    const baseDirectory = await getWritableDirectory();
 
     if (baseDirectory) {
-      return { kind: 'file', directory: `${baseDirectory}robotPhotos` };
+      const normalizedBaseDirectory = baseDirectory.endsWith('/')
+        ? baseDirectory
+        : `${baseDirectory}/`;
+
+      return { kind: 'file', directory: `${normalizedBaseDirectory}robotPhotos` };
     }
 
     const canUseStorageAccessFramework =
@@ -93,12 +96,23 @@ export async function ensureRobotPhotoStoragePermission(): Promise<boolean> {
     return true;
   }
 
-  console.warn('Robot photos will reference the captured camera URI because no writable directory is available.');
+  console.warn('Running inside Expo Go - using fallback URI for robot photo storage.');
 
   return Platform.OS === 'web';
 }
 
 export async function takeRobotPhoto(teamNumber: number): Promise<string | null> {
+  const existingMediaLibraryPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
+
+  if (!existingMediaLibraryPermission.granted) {
+    const requestedMediaLibraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!requestedMediaLibraryPermission.granted) {
+      console.warn('Media library permission is required to capture robot photos.');
+      return null;
+    }
+  }
+
   const result = await ImagePicker.launchCameraAsync({
     quality: 0.8,
     base64: false,
@@ -119,15 +133,18 @@ export async function takeRobotPhoto(teamNumber: number): Promise<string | null>
   const storageLocation = await resolveStorageLocation();
 
   if (!storageLocation) {
-    console.warn(
-      'Robot photo will reference the original camera URI because no writable directory is available on this platform.',
-    );
+    console.warn('Running inside Expo Go - using fallback URI for robot photo storage.');
   } else {
     try {
       if (storageLocation.kind === 'file') {
+        const targetDirectory = storageLocation.directory.endsWith('/')
+          ? storageLocation.directory
+          : `${storageLocation.directory}/`;
+
         await makeDirectoryAsync(storageLocation.directory, { intermediates: true });
 
-        destinationUri = `${storageLocation.directory}/${teamNumber}_${Date.now()}.jpg`;
+        const filename = `${teamNumber}_${Date.now()}.jpg`;
+        destinationUri = `${targetDirectory}${filename}`;
 
         await copyAsync({
           from: sourceUri,
