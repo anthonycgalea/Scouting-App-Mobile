@@ -92,11 +92,13 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
       .map((row) => {
         const normalizedName =
           typeof row.teamName === 'string' ? row.teamName.trim() : '';
+        const normalizedLocation =
+          typeof row.teamLocation === 'string' ? row.teamLocation.trim() : '';
 
         return {
           number: row.teamNumber,
           name: normalizedName.length > 0 ? normalizedName : `Team ${row.teamNumber}`,
-          location: row.teamLocation ?? 'Location unavailable',
+          location: normalizedLocation,
         };
       })
       .sort((a, b) => a.number - b.number);
@@ -285,9 +287,11 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
                         <ThemedText type="defaultSemiBold" style={styles.teamName}>
                           {team.name}
                         </ThemedText>
-                        <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}>
-                          {team.location}
-                        </ThemedText>
+                        {team.location ? (
+                          <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}> 
+                            {team.location}
+                          </ThemedText>
+                        ) : null}
                       </View>
                     </Pressable>
                   ))}
@@ -330,9 +334,11 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
                             >
                               {team.name}
                             </ThemedText>
-                            <ThemedText style={[styles.teamLocation, { color: scoutedRowTextColor }]}>
-                              {team.location}
-                            </ThemedText>
+                            {team.location ? (
+                              <ThemedText style={[styles.teamLocation, { color: scoutedRowTextColor }]}> 
+                                {team.location}
+                              </ThemedText>
+                            ) : null}
                           </View>
                         </Pressable>
                       ))}
@@ -362,9 +368,11 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
                       <ThemedText type="defaultSemiBold" style={styles.teamName}>
                         {team.name}
                       </ThemedText>
-                      <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}> 
-                        {team.location}
-                      </ThemedText>
+                      {team.location ? (
+                        <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}> 
+                          {team.location}
+                        </ThemedText>
+                      ) : null}
                     </View>
                   </Pressable>
                 ))
