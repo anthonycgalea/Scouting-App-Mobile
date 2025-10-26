@@ -1,49 +1,90 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '../hooks/useAuth';
 
 const LoginScreen = () => {
-  const { signInWithDiscord, isLoading, displayName } = useAuth();
+  const { signInWithDiscord, signInWithSlack, signInWithTeams, isLoading, displayName } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<'discord' | 'slack' | 'teams' | null>(null);
 
-  const handleSignIn = async () => {
+  const oauthOptions = useMemo(
+    () => [
+      {
+        key: 'discord' as const,
+        label: 'Sign in with Discord',
+        start: signInWithDiscord,
+        style: styles.discordButton,
+      },
+      {
+        key: 'slack' as const,
+        label: 'Sign in with Slack',
+        start: signInWithSlack,
+        style: styles.slackButton,
+      },
+      {
+        key: 'teams' as const,
+        label: 'Sign in with Teams',
+        start: signInWithTeams,
+        style: styles.teamsButton,
+      },
+    ],
+    [signInWithDiscord, signInWithSlack, signInWithTeams],
+  );
+
+  const handleSignIn = async (
+    providerKey: 'discord' | 'slack' | 'teams',
+    start: () => Promise<void>,
+    label: string,
+  ) => {
     setErrorMessage(null);
-    setIsSubmitting(true);
+    setActiveProvider(providerKey);
     try {
-      await signInWithDiscord();
+      await start();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to start Discord sign-in.';
+      const providerName = label.replace(/^Sign in with\s+/i, '');
+      const message =
+        error instanceof Error ? error.message : `Unable to start ${providerName} sign-in.`;
       setErrorMessage(message);
     } finally {
-      setIsSubmitting(false);
+      setActiveProvider(null);
     }
   };
 
-  const showSpinner = isLoading || isSubmitting;
+  const isBusy = isLoading || activeProvider !== null;
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sign in</Text>
-      <Text style={styles.subtitle}>Connect your Discord account to unlock syncing features.</Text>
+      <Text style={styles.subtitle}>Connect your account to unlock syncing features.</Text>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-          (showSpinner) && styles.buttonDisabled,
-        ]}
-        accessibilityRole="button"
-        disabled={showSpinner}
-        onPress={handleSignIn}
-      >
-        {showSpinner ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <Text style={styles.buttonLabel}>Sign in with Discord</Text>
-        )}
-      </Pressable>
+      {oauthOptions.map(({ key, label, start, style }, index) => {
+        const showSpinner =
+          activeProvider === key || (isLoading && activeProvider === null && key === 'discord');
+        const isDisabled = isBusy;
+        const isLast = index === oauthOptions.length - 1;
+        return (
+          <Pressable
+            key={key}
+            style={({ pressed }) => [
+              styles.button,
+              style,
+              pressed && styles.buttonPressed,
+              (showSpinner || isBusy) && styles.buttonDisabled,
+              isLast && styles.buttonLast,
+            ]}
+            accessibilityRole="button"
+            disabled={isDisabled}
+            onPress={() => handleSignIn(key, start, label)}
+          >
+            {showSpinner ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.buttonLabel}>{label}</Text>
+            )}
+          </Pressable>
+        );
+      })}
 
       {displayName ? (
         <Text style={styles.userInfo}>Session display name: {displayName}</Text>
@@ -77,17 +118,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   button: {
-    backgroundColor: '#5865F2',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
   buttonPressed: {
     opacity: 0.85,
   },
   buttonDisabled: {
     opacity: 0.65,
+  },
+  buttonLast: {
+    marginBottom: 0,
+  },
+  discordButton: {
+    backgroundColor: '#5865F2',
+  },
+  slackButton: {
+    backgroundColor: '#4A154B',
+  },
+  teamsButton: {
+    backgroundColor: '#464EB8',
   },
   buttonLabel: {
     color: '#ffffff',
