@@ -3,7 +3,8 @@ import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { DRAWER_ITEMS } from '@/app/navigation';
+import { useDrawerItems } from '@/app/navigation';
+import type { DrawerItem } from '@/app/navigation';
 import { ROUTES } from '@/constants/routes';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
@@ -33,6 +34,7 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
   const colorScheme = useColorScheme();
   const activeRouteName = state.routes[state.index]?.name;
+  const drawerItems = useDrawerItems();
   const tint = Colors[colorScheme].tint;
   const inactiveIconColor = Colors[colorScheme].icon;
   const activeItemBackground =
@@ -44,8 +46,8 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
     'settings/index',
     'organization-select/index',
   ]);
-  const primaryItems = DRAWER_ITEMS.filter((item) => !settingsItemNames.has(item.name));
-  const settingsItems = DRAWER_ITEMS.filter((item) => settingsItemNames.has(item.name));
+  const primaryItems = drawerItems.filter((item) => !settingsItemNames.has(item.name));
+  const settingsItems = drawerItems.filter((item) => settingsItemNames.has(item.name));
 
   const handleAuthAction = () => {
     navigation.closeDrawer();
@@ -64,7 +66,7 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
       : browsingLabel
     : browsingLabel;
 
-  const renderDrawerItem = (item: (typeof DRAWER_ITEMS)[number]) => {
+  const renderDrawerItem = (item: DrawerItem) => {
     const isActive = activeRouteName === item.name;
 
     return (
