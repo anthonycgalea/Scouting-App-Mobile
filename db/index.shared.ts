@@ -4,8 +4,8 @@ import localforage from 'localforage';
 import { Platform } from 'react-native';
 import * as schema from './schema';
 
-const DATABASE_NAME = 'frc-redzone-app';
-const STORE_NAME = 'frc_redzone_store';
+const DATABASE_NAME = 'codystats-app';
+const STORE_NAME = 'codystats_store';
 
 // ✅ manually emulate drizzleLocalforage for web
 function drizzleLocalforage(adapter: typeof localforage, options: { schema: any }) {

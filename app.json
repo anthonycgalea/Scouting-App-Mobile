@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "frc-red-zone",
-    "slug": "frc-red-zone",
+    "name": "frc-codystats",
+    "slug": "frc-codystats",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
