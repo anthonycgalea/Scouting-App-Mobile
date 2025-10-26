@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 
 type TeamRecordResponse = {
   team_number: number;
-  team_name: string;
+  team_name?: string | null;
   location?: string | null;
   rookieYear?: string | number | null;
 };
@@ -87,11 +87,16 @@ type LoggedInOrganizationSyncResult = {
   organizationId: number | null;
 };
 
-const normalizeTeam = (team: TeamRecordResponse) => ({
-  teamNumber: team.team_number,
-  teamName: team.team_name,
-  location: team.location ? team.location.trim() || null : null,
-});
+const normalizeTeam = (team: TeamRecordResponse) => {
+  const normalizedName =
+    typeof team.team_name === 'string' ? team.team_name.trim() : '';
+
+  return {
+    teamNumber: team.team_number,
+    teamName: normalizedName.length > 0 ? normalizedName : null,
+    location: team.location ? team.location.trim() || null : null,
+  };
+};
 
 const normalizeEvent = (event: EventResponse) => ({
   eventKey: event.event_key,
@@ -277,7 +282,7 @@ async function syncTeams(): Promise<UpsertResult> {
 
     db.transaction((tx) => {
       for (const team of items) {
-        if (typeof team.team_number !== 'number' || !team.team_name) {
+        if (typeof team.team_number !== 'number' || !Number.isFinite(team.team_number)) {
           continue;
         }
 

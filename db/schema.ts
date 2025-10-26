@@ -3,7 +3,7 @@ import { InferInsertModel, InferSelectModel, sql } from 'drizzle-orm';
 
 export const teamRecords = sqliteTable('teamrecord', {
   teamNumber: integer('team_number').primaryKey(),
-  teamName: text('team_name').notNull(),
+  teamName: text('team_name'),
   location: text('location'),
 });
 

@@ -62,7 +62,7 @@ function initializeExpoSqliteDb() {
   const createStatements = [
     `CREATE TABLE IF NOT EXISTS teamrecord (
       team_number INTEGER PRIMARY KEY NOT NULL,
-      team_name TEXT NOT NULL,
+      team_name TEXT,
       location TEXT
     );`,
     `CREATE TABLE IF NOT EXISTS logged_in_event (
