@@ -1,29 +1,28 @@
-import { OrientationLock as ExpoOrientationLock } from 'expo-screen-orientation';
-import { NativeModulesProxy } from 'expo-modules-core';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 export const OrientationLock = {
-  PORTRAIT_UP: ExpoOrientationLock.PORTRAIT_UP,
-  LANDSCAPE: ExpoOrientationLock.LANDSCAPE,
+  PORTRAIT_UP: ScreenOrientation.OrientationLock.PORTRAIT_UP,
+  LANDSCAPE: ScreenOrientation.OrientationLock.LANDSCAPE,
 } as const;
 
-export type OrientationLockValue = (typeof OrientationLock)[keyof typeof OrientationLock];
+export type OrientationLockValue =
+  (typeof OrientationLock)[keyof typeof OrientationLock];
 
-const ExpoScreenOrientation =
-  NativeModulesProxy?.ExpoScreenOrientation as
-    | { lockAsync?: (orientation: OrientationLockValue) => Promise<void> }
-    | undefined;
-
+/** Locks the screen orientation and logs what happens */
 export async function lockOrientationAsync(lock: OrientationLockValue) {
-  if (!ExpoScreenOrientation?.lockAsync) {
-    const error = new Error('Screen orientation module is not available');
-    console.warn(error.message);
-    throw error;
-  }
-
   try {
-    await ExpoScreenOrientation.lockAsync(lock);
+    console.log(`Attempting to lock orientation to ${lock}...`);
+    await ScreenOrientation.lockAsync(lock);
+
+    // ✅ Immediately check the current orientation
+    const current = await ScreenOrientation.getOrientationAsync();
+    console.log(`✅ Locked to ${lock}, current orientation: ${current}`);
+
+    // (optional) human-readable debug info
+    if (current === ScreenOrientation.Orientation.PORTRAIT_UP) {
+      console.warn('⚠️ Still in portrait — Android may have ignored the request.');
+    }
   } catch (error) {
-    console.warn('Failed to lock screen orientation', error);
-    throw error;
+    console.warn('❌ Failed to lock screen orientation', error);
   }
 }

@@ -74,25 +74,20 @@ function OrientationController() {
   const lastOrientationLock = useRef<OrientationLockValue | null>(null);
 
   useEffect(() => {
-    let shouldLockLandscape = false;
+    // Remove any leading /(drawer) or similar prefixes for comparison
+    const normalize = (path: string) =>
+      path.replace(/^\/?\(drawer\)/, '').replace(/\/index$/, '');
 
-    if (pathname) {
-      for (const route of LANDSCAPE_DRAWER_ROUTE_PATHS) {
-        if (pathname.startsWith(route)) {
-          shouldLockLandscape = true;
-          break;
-        }
-      }
-    }
+    const normalizedPath = normalize(pathname);
+    const isLandscape = Array.from(LANDSCAPE_DRAWER_ROUTE_PATHS).some((route) =>
+      normalizedPath.startsWith(normalize(route))
+    );
 
-    const desiredOrientation = shouldLockLandscape
+    const desiredOrientation = isLandscape
       ? OrientationLock.LANDSCAPE
       : OrientationLock.PORTRAIT_UP;
 
-    if (lastOrientationLock.current === desiredOrientation) {
-      return;
-    }
-
+    if (lastOrientationLock.current === desiredOrientation) return;
     lastOrientationLock.current = desiredOrientation;
 
     void lockOrientationAsync(desiredOrientation).catch(() => {
@@ -102,3 +97,4 @@ function OrientationController() {
 
   return null;
 }
+
