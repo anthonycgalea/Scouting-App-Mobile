@@ -4,6 +4,7 @@ import { retrieveEventInfo, type RetrieveEventInfoResult } from './event-info';
 import { getActiveEvent, setActiveEvent } from './logged-in-event';
 import { syncAlreadyScoutedEntries } from './already-scouted';
 import { syncAlreadyPitScoutedEntries } from './pit-scouting';
+import { syncPendingRobotPhotos } from './robot-photos';
 import { getDbOrThrow, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 
@@ -16,6 +17,7 @@ export type SyncDataWithServerResult = {
   prescoutDataSent: number;
   alreadyScoutedUpdated: number;
   alreadyPitScoutedUpdated: number;
+  robotPhotosUploaded: number;
 };
 
 const normalizeEventCode = (rawEventCode: unknown): string | null => {
@@ -84,6 +86,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
 
   const alreadyScoutedUpdated = await syncAlreadyScoutedEntries(organizationId);
   const alreadyPitScoutedUpdated = await syncAlreadyPitScoutedEntries(organizationId);
+  const robotPhotosUploaded = await syncPendingRobotPhotos();
 
   return {
     eventCode: remoteEventCode,
@@ -94,5 +97,6 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     prescoutDataSent: prescoutRows.length,
     alreadyScoutedUpdated,
     alreadyPitScoutedUpdated,
+    robotPhotosUploaded,
   };
 }
