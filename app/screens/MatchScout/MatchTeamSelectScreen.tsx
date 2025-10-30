@@ -39,7 +39,7 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
     case 'qm':
       return 'Quals';
     case 'sf':
-      return 'Semis';
+      return 'Playoff';
     case 'qf':
       return 'Quarters';
     case 'f':

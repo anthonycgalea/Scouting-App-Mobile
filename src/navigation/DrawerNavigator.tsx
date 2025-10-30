@@ -1,8 +1,14 @@
+import {
+  createDrawerNavigator,
+  DrawerContentScrollView,
+  DrawerItem,
+  DrawerItemList,
+} from '@react-navigation/drawer';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { createDrawerNavigator, DrawerContentScrollView, DrawerItem, DrawerItemList } from '@react-navigation/drawer';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import LoginScreen from '../screens/LoginScreen';
 import { useAuth } from '../hooks/useAuth';
+import LoginScreen from '../screens/LoginScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -17,14 +23,25 @@ const HomeScreen = () => (
 
 const DrawerNavigator = () => {
   const { user, signOut, isLoading, displayName, isFetchingUserInfo } = useAuth();
+  const insets = useSafeAreaInsets(); // ✅ safe area values
 
   return (
     <Drawer.Navigator
       screenOptions={{
         headerTitle: 'Scouting App',
+        drawerType: 'front', // ✅ ensures drawer slides over content
+        drawerStyle: {
+          paddingBottom: insets.bottom, // ✅ keeps drawer background above nav bar
+        },
       }}
       drawerContent={(props) => (
-        <DrawerContentScrollView {...props}>
+        <DrawerContentScrollView
+          {...props}
+          contentContainerStyle={{
+            paddingTop: insets.top,
+            // ✅ don't rely solely on paddingBottom — add a spacer below
+          }}
+        >
           <View style={styles.profileContainer}>
             {user ? (
               <>
@@ -40,7 +57,9 @@ const DrawerNavigator = () => {
               <Text style={styles.profileHeading}>You are browsing as a guest.</Text>
             )}
           </View>
+
           <DrawerItemList {...props} />
+
           {user ? (
             <DrawerItem
               disabled={isLoading}
@@ -49,7 +68,8 @@ const DrawerNavigator = () => {
                 try {
                   await signOut();
                 } catch (error) {
-                  const message = error instanceof Error ? error.message : 'Failed to sign out.';
+                  const message =
+                    error instanceof Error ? error.message : 'Failed to sign out.';
                   Alert.alert('Sign out failed', message);
                 }
               }}
@@ -60,6 +80,9 @@ const DrawerNavigator = () => {
               onPress={() => props.navigation.navigate('Login' as never)}
             />
           )}
+
+          {/* ✅ spacer ensures last item stays above system nav bar */}
+          <View style={{ height: insets.bottom }} />
         </DrawerContentScrollView>
       )}
     >

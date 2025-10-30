@@ -22,6 +22,14 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.codystats.app"
     },
+    "androidStatusBar": {
+      "backgroundColor": "#00000000",
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "visible": "leanback",
+      "backgroundColor": "#00000000"
+    },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"

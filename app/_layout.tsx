@@ -1,32 +1,28 @@
+import * as NavigationBar from 'expo-navigation-bar'; // ✅ added
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
-WebBrowser.maybeCompleteAuthSession();
-// eslint-disable-next-line import/first
+import { useEffect, useRef } from 'react'; // ✅ keep this import
+import { Platform } from 'react-native'; // ✅ fix: import Platform separately
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-// eslint-disable-next-line import/first
 import { Stack, usePathname } from 'expo-router';
-// eslint-disable-next-line import/first
 import { StatusBar } from 'expo-status-bar';
-// eslint-disable-next-line import/first
 import 'react-native-reanimated';
-// eslint-disable-next-line import/first
-import { useEffect, useRef } from 'react';
-// eslint-disable-next-line import/first
+
 import { LANDSCAPE_DRAWER_ROUTE_PATHS } from '@/app/navigation';
-// eslint-disable-next-line import/first
 import {
   lockOrientationAsync,
   OrientationLock,
   type OrientationLockValue,
 } from '@/lib/screen-orientation';
 
-// eslint-disable-next-line import/first
 import '@/db'; // Initialize the SQLite-backed storage on startup.
+import { View } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+WebBrowser.maybeCompleteAuthSession();
 
 // Normalize the export shape expected by @supabase/auth-js when running in Expo.
-// The library reaches for ExpoSecureStore.default, but the package only exposes
-// named exports in ESM environments. Assigning the module object to its own
-// default export ensures both patterns resolve to the same implementation.
 (SecureStore as typeof SecureStore & { default?: typeof SecureStore }).default ??= SecureStore;
 
 type ProvidersModule = typeof import('@/app/providers');
@@ -41,15 +37,26 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  // ✅ Step 2 – make Android navigation bar translucent / overlay
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+      NavigationBar.setBehaviorAsync('overlay-swipe').catch(() => {});
+    }
+  }, []);
+
   return (
-    <ColorSchemeProvider>
-      <ThemedRootLayout />
-    </ColorSchemeProvider>
+    <SafeAreaProvider>
+      <ColorSchemeProvider>
+        <ThemedRootLayout />
+      </ColorSchemeProvider>
+    </SafeAreaProvider>
   );
 }
 
 function ThemedRootLayout() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <AuthProvider>
@@ -57,10 +64,22 @@ function ThemedRootLayout() {
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <OrganizationProvider>
             <OrientationController />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(drawer)" />
-              <Stack.Screen name="auth/login" />
-            </Stack>
+              <View
+                style={{
+                  flex: 1,
+                  paddingTop: insets.top,
+                  paddingBottom: insets.bottom,
+                  backgroundColor:
+                    colorScheme === 'dark'
+                      ? DarkTheme.colors.background
+                      : DefaultTheme.colors.background,
+                }}
+              >
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(drawer)" />
+                  <Stack.Screen name="auth/login" />
+                </Stack>
+              </View>
             <StatusBar style="auto" />
           </OrganizationProvider>
         </ThemeProvider>
@@ -74,7 +93,6 @@ function OrientationController() {
   const lastOrientationLock = useRef<OrientationLockValue | null>(null);
 
   useEffect(() => {
-    // Remove any leading /(drawer) or similar prefixes for comparison
     const normalize = (path: string) =>
       path.replace(/^\/?\(drawer\)/, '').replace(/\/index$/, '');
 
@@ -97,4 +115,3 @@ function OrientationController() {
 
   return null;
 }
-

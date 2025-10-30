@@ -175,13 +175,6 @@ export function SuperScoutScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.header}>
-        <ThemedText type="title">SuperScout</ThemedText>
-        <ThemedText type="subtitle">
-          Capture alliance-wide performance insights while your team scouts each match.
-        </ThemedText>
-      </View>
-
       {isLoading ? (
         <View style={styles.stateWrapper}>
           <ActivityIndicator accessibilityLabel="Loading match schedule" color={accentColor} />

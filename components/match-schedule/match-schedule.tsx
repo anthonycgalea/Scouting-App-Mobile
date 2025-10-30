@@ -90,7 +90,7 @@ const getMatchLevelLabel = (matchLevel: string) => {
   }
 
   if (normalized === 'sf') {
-    return 'Semis';
+    return 'Playoff';
   }
 
   if (normalized === 'qf') {
