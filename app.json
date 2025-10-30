@@ -43,8 +43,13 @@
           }
         }
       ],
-      "expo-sqlite",
+      "expo-file-system",
+      "expo-image-picker",
+      "expo-media-library",
+      "expo-screen-orientation",
       "expo-secure-store",
+      "expo-sqlite",
+      "expo-system-ui",
       "expo-web-browser"
     ],
     "experiments": {
