@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
@@ -34,6 +34,7 @@ const matchRowToEntry = (row: MatchScheduleRow): MatchScheduleEntry => ({
 const SECTION_ORDER: MatchScheduleSection[] = ['qualification', 'playoffs', 'finals'];
 
 export function SuperScoutScreen() {
+  const router = useRouter();
   const [selectedSection, setSelectedSection] = useState<MatchScheduleSection>('qualification');
   const [matches, setMatches] = useState<MatchScheduleEntry[]>([]);
   const [activeEventKey, setActiveEventKey] = useState<string | null>(null);
@@ -141,6 +142,35 @@ export function SuperScoutScreen() {
     }
   }, [isDownloading, loadMatchesFromDb]);
 
+  const handleMatchPress = useCallback(
+    (match: MatchScheduleEntry) => {
+      const params: Record<string, string> = {
+        matchLevel: match.match_level,
+        matchNumber: String(match.match_number),
+      };
+
+      const maybeAddTeam = (key: string, value: number | null | undefined) => {
+        if (value !== null && value !== undefined) {
+          params[key] = String(value);
+        }
+      };
+
+      if (match.event_key) {
+        params.eventKey = match.event_key;
+      }
+
+      maybeAddTeam('red1', match.red1_id);
+      maybeAddTeam('red2', match.red2_id);
+      maybeAddTeam('red3', match.red3_id);
+      maybeAddTeam('blue1', match.blue1_id);
+      maybeAddTeam('blue2', match.blue2_id);
+      maybeAddTeam('blue3', match.blue3_id);
+
+      router.push({ pathname: '/(drawer)/super-scout/select-alliance', params });
+    },
+    [router]
+  );
+
   const hasMatches = matches.length > 0;
 
   return (
@@ -164,7 +194,7 @@ export function SuperScoutScreen() {
             onChange={setSelectedSection}
             options={SECTION_DEFINITIONS}
           />
-          <MatchSchedule matches={groupedMatches[selectedSection]} />
+          <MatchSchedule matches={groupedMatches[selectedSection]} onMatchPress={handleMatchPress} />
         </>
       ) : (
         <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>
