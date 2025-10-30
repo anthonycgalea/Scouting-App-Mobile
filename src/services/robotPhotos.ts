@@ -2,12 +2,21 @@ import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import { Platform } from "react-native";
+import { and, eq } from "drizzle-orm";
 
+import { uploadRobotPhoto, extractRemoteUrlFromRobotPhotoResponse } from "@/app/services/api/robot-photos";
 import { getActiveEvent } from "@/app/services/logged-in-event";
 import { getDbOrThrow, schema } from "@/db";
 import { getWritableDirectory } from "./photoStorage";
 
 type FileSystemStorageLocation = { kind: "file"; directory: string };
+
+type RobotPhotoUploadRecord = {
+  id: number;
+  eventKey: string;
+  teamNumber: number;
+  localUri: string;
+};
 
 /**
  * Resolve a local writable directory for robot photo storage.
@@ -141,5 +150,73 @@ export async function takeRobotPhoto(teamNumber: number): Promise<string | null>
     })
     .run();
 
+  const [inserted] = db
+    .select({
+      id: schema.robotPhotos.id,
+      eventKey: schema.robotPhotos.eventKey,
+      teamNumber: schema.robotPhotos.teamNumber,
+      localUri: schema.robotPhotos.localUri,
+    })
+    .from(schema.robotPhotos)
+    .where(
+      and(
+        eq(schema.robotPhotos.eventKey, eventKey),
+        eq(schema.robotPhotos.teamNumber, teamNumber),
+        eq(schema.robotPhotos.localUri, destinationUri),
+      ),
+    )
+    .all();
+
+  if (inserted) {
+    await tryUploadRobotPhotoRecord(inserted);
+  }
+
   return destinationUri;
+}
+
+export async function tryUploadRobotPhotoRecord(
+  record: RobotPhotoUploadRecord,
+  description?: string | null,
+): Promise<boolean> {
+  const db = getDbOrThrow();
+
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(record.localUri);
+
+    if (!fileInfo.exists) {
+      console.warn(
+        "Robot photo not found on device. Marking upload as complete without remote copy.",
+        record.localUri,
+      );
+
+      await db
+        .update(schema.robotPhotos)
+        .set({ uploadPending: 0 })
+        .where(eq(schema.robotPhotos.id, record.id))
+        .run();
+
+      return false;
+    }
+
+    const response = await uploadRobotPhoto(
+      record.teamNumber,
+      record.localUri,
+      description ?? undefined,
+    );
+    const remoteUrl = extractRemoteUrlFromRobotPhotoResponse(response);
+
+    await db
+      .update(schema.robotPhotos)
+      .set({
+        remoteUrl: remoteUrl ?? null,
+        uploadPending: 0,
+      })
+      .where(eq(schema.robotPhotos.id, record.id))
+      .run();
+
+    return true;
+  } catch (error) {
+    console.warn("Failed to upload robot photo. Will retry during sync.", error);
+    return false;
+  }
 }
