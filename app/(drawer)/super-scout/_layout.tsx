@@ -5,6 +5,7 @@ export default function SuperScoutLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="select-alliance" options={{ presentation: 'card' }} />
+      <Stack.Screen name="match" options={{ presentation: 'card' }} />
     </Stack>
   );
 }
