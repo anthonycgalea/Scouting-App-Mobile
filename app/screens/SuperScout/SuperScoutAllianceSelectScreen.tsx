@@ -82,7 +82,8 @@ export function SuperScoutAllianceSelectScreen({
   const neutralButtonBackground = useThemeColor({ light: '#E2E8F0', dark: '#27272A' }, 'background');
   const neutralButtonText = useThemeColor({}, 'text');
   const headerText = useThemeColor({}, 'text');
-  const primaryButtonBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
+  const redButtonBackground = isDark ? '#7F1D1D' : '#DC2626';
+  const blueButtonBackground = isDark ? '#1E3A8A' : '#1D4ED8';
   const primaryButtonText = '#F8FAFC';
 
   const matchLabel = useMemo(() => {
@@ -166,22 +167,38 @@ export function SuperScoutAllianceSelectScreen({
       </View>
       <View style={styles.footer}>
         <View style={[styles.selectionPreview, { backgroundColor: cardBackground, borderColor }]}>
-          {selectedOption ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleBeginSuperScout}
-              disabled={!canBegin}
-              style={({ pressed }) => [
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleBeginSuperScout}
+            disabled={!canBegin}
+            style={({ pressed }) => {
+              const backgroundColor = selectedAlliance
+                ? selectedAlliance === 'red'
+                  ? redButtonBackground
+                  : blueButtonBackground
+                : neutralButtonBackground;
+
+              return [
                 styles.beginButton,
                 {
-                  backgroundColor: primaryButtonBackground,
+                  backgroundColor,
                   opacity: !canBegin ? 0.5 : pressed ? 0.85 : 1,
+                },
+              ];
+            }}
+          >
+            <ThemedText
+              style={[
+                styles.beginButtonText,
+                {
+                  color: selectedAlliance ? primaryButtonText : neutralButtonText,
                 },
               ]}
             >
-              <ThemedText style={[styles.beginButtonText, { color: primaryButtonText }]}>Begin SuperScout</ThemedText>
-            </Pressable>
-          ) : (
+              Begin SuperScout
+            </ThemedText>
+          </Pressable>
+          {!selectedOption && (
             <ThemedText style={[styles.selectionText, { color: headerText }]}>Select an alliance to continue</ThemedText>
           )}
         </View>
