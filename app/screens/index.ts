@@ -8,6 +8,7 @@ export { MatchTeamSelectScreen } from './MatchScout/MatchTeamSelectScreen';
 export { MatchPreviewsScreen } from './MatchPreviews/MatchPreviewsScreen';
 export { SuperScoutScreen } from './SuperScout/SuperScoutScreen';
 export { SuperScoutAllianceSelectScreen } from './SuperScout/SuperScoutAllianceSelectScreen';
+export { SuperScoutMatchScreen } from './SuperScout/SuperScoutMatchScreen';
 export { AppSettingsScreen } from './Settings/AppSettingsScreen';
 export { EventBrowserScreen } from './Settings/EventBrowserScreen';
 export { OrganizationApplyScreen } from './Settings/OrganizationApplyScreen';

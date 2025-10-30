@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -63,6 +64,7 @@ export interface SuperScoutAllianceSelectScreenProps {
 export function SuperScoutAllianceSelectScreen({
   matchLevel,
   matchNumber,
+  eventKey,
   red1,
   red2,
   red3,
@@ -72,6 +74,7 @@ export function SuperScoutAllianceSelectScreen({
   onCancel,
 }: SuperScoutAllianceSelectScreenProps) {
   const [selectedAlliance, setSelectedAlliance] = useState<AllianceColor>();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -124,12 +127,38 @@ export function SuperScoutAllianceSelectScreen({
       return;
     }
 
-    const allianceLabel = `${selectedOption.label}: ${selectedOption.teams
-      .map((team) => renderTeamNumber(team))
-      .join(', ')}`;
+    const params: Record<string, string> = {
+      alliance: selectedOption.key,
+    };
 
-    Alert.alert('SuperScout', `Alliance selection saved for ${allianceLabel}.`);
-  }, [selectedOption]);
+    if (matchLevel) {
+      params.matchLevel = matchLevel;
+    }
+
+    if (matchNumber !== undefined) {
+      params.matchNumber = String(matchNumber);
+    }
+
+    if (eventKey) {
+      params.eventKey = eventKey;
+    }
+
+    const [team1, team2, team3] = selectedOption.teams;
+
+    if (team1 !== undefined) {
+      params.team1 = String(team1);
+    }
+
+    if (team2 !== undefined) {
+      params.team2 = String(team2);
+    }
+
+    if (team3 !== undefined) {
+      params.team3 = String(team3);
+    }
+
+    router.push({ pathname: '/(drawer)/super-scout/match', params });
+  }, [eventKey, matchLevel, matchNumber, router, selectedOption]);
 
   const canBegin = Boolean(selectedOption);
 
