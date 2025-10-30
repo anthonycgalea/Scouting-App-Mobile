@@ -2,6 +2,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { retrieveEventInfo } from '@/app/services/event-info';
+import { getActiveEvent } from '@/app/services/logged-in-event';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import {
   MatchSchedule,
@@ -14,10 +16,8 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { getDbOrThrow, schema } from '@/db';
 import type { MatchSchedule as MatchScheduleRow } from '@/db/schema';
-import { useThemeColor } from '@/hooks/use-theme-color';
 import { useOrganization } from '@/hooks/use-organization';
-import { retrieveEventInfo } from '@/app/services/event-info';
-import { getActiveEvent } from '@/app/services/logged-in-event';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { and, eq } from 'drizzle-orm';
 
 const matchRowToEntry = (row: MatchScheduleRow): MatchScheduleEntry => ({
@@ -214,9 +214,6 @@ export function MatchScoutScreen() {
         </View>
       ) : hasMatches ? (
         <>
-          {activeEventKey ? (
-            <ThemedText style={[styles.eventCaption, { color: mutedText }]}>Viewing schedule for {activeEventKey}</ThemedText>
-          ) : null}
           <MatchScheduleToggle
             value={selectedSection}
             onChange={setSelectedSection}

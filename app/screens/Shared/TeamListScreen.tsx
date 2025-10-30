@@ -9,16 +9,16 @@ import {
   View,
 } from 'react-native';
 
-import { Stack, useFocusEffect } from 'expo-router';
 import { and, eq } from 'drizzle-orm';
+import { Stack, useFocusEffect } from 'expo-router';
 
-import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { ThemedText } from '@/components/themed-text';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { useOrganization } from '@/hooks/use-organization';
-import { getDbOrThrow, schema } from '@/db';
 import { retrieveEventInfo } from '@/app/services/event-info';
 import { getActiveEvent } from '@/app/services/logged-in-event';
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { ThemedText } from '@/components/themed-text';
+import { getDbOrThrow, schema } from '@/db';
+import { useOrganization } from '@/hooks/use-organization';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 export interface TeamListItem {
   number: number;
@@ -245,9 +245,6 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {activeEventKey ? (
-            <ThemedText style={[styles.eventCaption, { color: mutedTextColor }]}>Viewing teams for {activeEventKey}</ThemedText>
-          ) : null}
           <View style={[styles.searchContainer, { backgroundColor: searchBackground, borderColor }]}>
             <TextInput
               value={searchTerm}
