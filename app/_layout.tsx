@@ -4,11 +4,21 @@ WebBrowser.maybeCompleteAuthSession();
 // eslint-disable-next-line import/first
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 // eslint-disable-next-line import/first
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 // eslint-disable-next-line import/first
 import { StatusBar } from 'expo-status-bar';
 // eslint-disable-next-line import/first
 import 'react-native-reanimated';
+// eslint-disable-next-line import/first
+import { useEffect, useRef } from 'react';
+// eslint-disable-next-line import/first
+import { LANDSCAPE_DRAWER_ROUTE_PATHS } from '@/app/navigation';
+// eslint-disable-next-line import/first
+import {
+  lockOrientationAsync,
+  OrientationLock,
+  type OrientationLockValue,
+} from '@/lib/screen-orientation';
 
 // eslint-disable-next-line import/first
 import '@/db'; // Initialize the SQLite-backed storage on startup.
@@ -46,6 +56,7 @@ function ThemedRootLayout() {
       <QueryProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <OrganizationProvider>
+            <OrientationController />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(drawer)" />
               <Stack.Screen name="auth/login" />
@@ -56,4 +67,38 @@ function ThemedRootLayout() {
       </QueryProvider>
     </AuthProvider>
   );
+}
+
+function OrientationController() {
+  const pathname = usePathname();
+  const lastOrientationLock = useRef<OrientationLockValue | null>(null);
+
+  useEffect(() => {
+    let shouldLockLandscape = false;
+
+    if (pathname) {
+      for (const route of LANDSCAPE_DRAWER_ROUTE_PATHS) {
+        if (pathname.startsWith(route)) {
+          shouldLockLandscape = true;
+          break;
+        }
+      }
+    }
+
+    const desiredOrientation = shouldLockLandscape
+      ? OrientationLock.LANDSCAPE
+      : OrientationLock.PORTRAIT_UP;
+
+    if (lastOrientationLock.current === desiredOrientation) {
+      return;
+    }
+
+    lastOrientationLock.current = desiredOrientation;
+
+    void lockOrientationAsync(desiredOrientation).catch(() => {
+      lastOrientationLock.current = null;
+    });
+  }, [pathname]);
+
+  return null;
 }
