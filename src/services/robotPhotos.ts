@@ -1,15 +1,13 @@
-import * as FileSystem from "expo-file-system";
+import { and, eq } from "drizzle-orm";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import { Platform } from "react-native";
-import { and, eq } from "drizzle-orm";
 
-import { uploadRobotPhoto, extractRemoteUrlFromRobotPhotoResponse } from "@/app/services/api/robot-photos";
+import { extractRemoteUrlFromRobotPhotoResponse, uploadRobotPhoto } from "@/app/services/api/robot-photos";
 import { getActiveEvent } from "@/app/services/logged-in-event";
 import { getDbOrThrow, schema } from "@/db";
 import { getWritableDirectory } from "./photoStorage";
-
-type FileSystemStorageLocation = { kind: "file"; directory: string };
 
 type RobotPhotoUploadRecord = {
   id: number;
@@ -18,17 +16,14 @@ type RobotPhotoUploadRecord = {
   localUri: string;
 };
 
-/**
- * Resolve a local writable directory for robot photo storage.
- * SAF is no longer supported in Expo SDK 54, so we only use app sandbox.
- */
+type FileSystemStorageLocation = { kind: "file"; directory: string };
+
 async function resolveStorageLocation(): Promise<FileSystemStorageLocation | null> {
-  const baseDirectory = await getWritableDirectory();
-  if (baseDirectory) {
-    const normalized = baseDirectory.endsWith("/") ? baseDirectory : `${baseDirectory}/`;
-    return { kind: "file", directory: `${normalized}robotPhotos` };
-  }
-  return null;
+  const baseDir = await getWritableDirectory();
+  if (!baseDir) return null;
+
+  const normalized = baseDir.endsWith("/") ? baseDir : `${baseDir}/`;
+  return { kind: "file", directory: `${normalized}robotPhotos` };
 }
 
 /** Ensure the app has camera access */
@@ -41,64 +36,32 @@ export async function ensureCameraPermission(): Promise<boolean> {
 
 /** Ensure the app can write photos locally or to gallery (Android 13+ safe) */
 export async function ensureRobotPhotoStoragePermission(): Promise<boolean> {
-  // iOS and Android < 13 don’t need explicit storage permission for sandbox writes
   if (Platform.OS === "ios") return true;
 
-  try {
-    const { status, canAskAgain, accessPrivileges } =
-      await MediaLibrary.getPermissionsAsync();
+  const { status, canAskAgain } = await MediaLibrary.getPermissionsAsync();
+  if (status === "granted") return true;
 
-    // ✅ treat "limited" or "all" access as sufficient
-    if (status === "granted" || status === "limited" || accessPrivileges === "all") {
-      return true;
-    }
-
-    // If we can still ask, request again
-    if (canAskAgain) {
-      const { status: newStatus, accessPrivileges: newPrivs } =
-        await MediaLibrary.requestPermissionsAsync();
-
-      if (
-        newStatus === "granted" ||
-        newStatus === "limited" ||
-        newPrivs === "all"
-      ) {
-        return true;
-      }
-    }
-
-    // 🧠 fallback: internal sandbox (always writable)
-    const fs: any = FileSystem as any;
-    const dir = fs.documentDirectory ?? fs.cacheDirectory;
-    if (dir) {
-      try {
-        await FileSystem.writeAsStringAsync(`${dir}perm_test.txt`, "ok");
-        await FileSystem.deleteAsync(`${dir}perm_test.txt`, { idempotent: true });
-        return true;
-      } catch {
-        // ignore sandbox write failure
-      }
-    }
-
-    console.warn("Storage permission denied or limited beyond app sandbox.");
-    return false;
-  } catch (error) {
-    console.error("Error requesting media permissions:", error);
-    return false;
+  if (canAskAgain) {
+    const { status: newStatus } = await MediaLibrary.requestPermissionsAsync();
+    if (newStatus === "granted") return true;
   }
+
+  // fallback check: ensure sandbox writable
+  const dir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
+  if (dir) {
+    try {
+      await FileSystem.writeAsStringAsync(`${dir}perm_test.txt`, "ok");
+      await FileSystem.deleteAsync(`${dir}perm_test.txt`, { idempotent: true });
+      return true;
+    } catch {
+      // ignore
+    }
+  }
+  return false;
 }
 
-/** Capture and persist a robot photo */
+/** Take and persist a robot photo */
 export async function takeRobotPhoto(teamNumber: number): Promise<string | null> {
-  const existingLibPerm = await ImagePicker.getMediaLibraryPermissionsAsync();
-  if (!existingLibPerm.granted) {
-    const requested = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!requested.granted) {
-      console.warn("Media library permission is required to capture robot photos.");
-      return null;
-    }
-  }
-
   const result = await ImagePicker.launchCameraAsync({
     quality: 0.8,
     base64: false,
@@ -111,32 +74,21 @@ export async function takeRobotPhoto(teamNumber: number): Promise<string | null>
 
   const sourceUri = result.assets[0].uri;
   let destinationUri = sourceUri;
-  const storageLocation = await resolveStorageLocation();
+  const storage = await resolveStorageLocation();
 
-  if (!storageLocation) {
-    console.warn("No writable directory available — using fallback URI for robot photo storage.");
-  } else {
+  if (storage) {
     try {
-      const targetDir = storageLocation.directory.endsWith("/")
-        ? storageLocation.directory
-        : `${storageLocation.directory}/`;
-
-      await FileSystem.makeDirectoryAsync(storageLocation.directory, { intermediates: true });
-
+      await FileSystem.makeDirectoryAsync(storage.directory, { intermediates: true });
       const filename = `${teamNumber}_${Date.now()}.jpg`;
-      destinationUri = `${targetDir}${filename}`;
-
-      await FileSystem.copyAsync({
-        from: sourceUri,
-        to: destinationUri,
-      });
-    } catch (error) {
-      console.warn(
-        "Failed to persist robot photo to the local filesystem, falling back to source URI.",
-        error
-      );
+      const targetUri = `${storage.directory}/${filename}`;
+      await FileSystem.copyAsync({ from: sourceUri, to: targetUri });
+      destinationUri = targetUri;
+    } catch (err) {
+      console.warn("Failed to persist robot photo locally, falling back to cache:", err);
       destinationUri = sourceUri;
     }
+  } else {
+    console.warn("No writable directory available — using fallback URI for robot photo storage.");
   }
 
   const db = getDbOrThrow();
@@ -174,6 +126,7 @@ export async function takeRobotPhoto(teamNumber: number): Promise<string | null>
   return destinationUri;
 }
 
+/** Upload any pending local photo records */
 export async function tryUploadRobotPhotoRecord(
   record: RobotPhotoUploadRecord,
   description?: string | null,
@@ -188,13 +141,11 @@ export async function tryUploadRobotPhotoRecord(
         "Robot photo not found on device. Marking upload as complete without remote copy.",
         record.localUri,
       );
-
       await db
         .update(schema.robotPhotos)
         .set({ uploadPending: 0 })
         .where(eq(schema.robotPhotos.id, record.id))
         .run();
-
       return false;
     }
 
@@ -203,6 +154,7 @@ export async function tryUploadRobotPhotoRecord(
       record.localUri,
       description ?? undefined,
     );
+
     const remoteUrl = extractRemoteUrlFromRobotPhotoResponse(response);
 
     await db
