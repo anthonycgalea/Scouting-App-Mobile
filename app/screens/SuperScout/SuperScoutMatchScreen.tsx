@@ -236,16 +236,16 @@ export function SuperScoutMatchScreen({
 
   return (
     <ScreenContainer>
-      <View style={[styles.header, { backgroundColor: allianceBackground }]}> 
-        <View style={styles.headerContent}>
-          <Pressable accessibilityRole="button" onPress={onClose} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={22} color={allianceText} />
-            <ThemedText style={[styles.backButtonLabel, { color: allianceText }]}>Back</ThemedText>
-          </Pressable>
-          <ThemedText type="title" style={[styles.headerTitle, { color: allianceText }]}>
+      <View style={styles.topBar}>
+        <Pressable accessibilityRole="button" onPress={onClose} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={22} color={textColor} />
+          <ThemedText style={[styles.backButtonLabel, { color: textColor }]}>Back</ThemedText>
+        </Pressable>
+        <View style={styles.matchDescriptor}>
+          <ThemedText type="title" style={[styles.matchTitle, { color: textColor }]}>
             {matchLabel}
           </ThemedText>
-          <ThemedText style={[styles.headerSubtitle, { color: allianceText }]}>{allianceLabel}</ThemedText>
+          <ThemedText style={[styles.matchSubtitle, { color: mutedText }]}>{allianceLabel}</ThemedText>
         </View>
       </View>
       <View style={styles.contentWrapper}>
@@ -254,136 +254,138 @@ export function SuperScoutMatchScreen({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {teams.map((teamNumber, index) => {
-            const teamKey = String(teamNumber ?? `slot-${index}`);
-            const state = teamInputs[teamKey] ?? createDefaultTeamState();
-            const defenseActive = isDefenseCommentSelected(teamKey);
+          <View style={styles.teamCardsRow}>
+            {teams.map((teamNumber, index) => {
+              const teamKey = String(teamNumber ?? `slot-${index}`);
+              const state = teamInputs[teamKey] ?? createDefaultTeamState();
+              const defenseActive = isDefenseCommentSelected(teamKey);
 
-            return (
-              <View
-                key={teamKey}
-                style={[styles.teamCard, { backgroundColor: cardBackground, borderColor }]}
-              >
-                <ThemedText type="subtitle" style={styles.teamTitle}>
-                  Team {renderTeamNumber(teamNumber)}
-                </ThemedText>
-                <View style={styles.section}>
-                  <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                    Starting Position
+              return (
+                <View
+                  key={teamKey}
+                  style={[styles.teamCard, { backgroundColor: cardBackground, borderColor }]}
+                >
+                  <ThemedText type="subtitle" style={styles.teamTitle}>
+                    Team {renderTeamNumber(teamNumber)}
                   </ThemedText>
-                  <View style={styles.chipRow}>
-                    {STARTING_POSITIONS.map((option) => {
-                      const isSelected = state.startingPosition === option.key;
-
-                      return (
-                        <Pressable
-                          key={option.key}
-                          onPress={() => handleSelectStartingPosition(teamKey, option.key)}
-                          style={({ pressed }) => [
-                            styles.chip,
-                            {
-                              backgroundColor: isSelected ? allianceBackground : chipBackground,
-                              borderColor,
-                              opacity: pressed ? 0.85 : 1,
-                            },
-                          ]}
-                        >
-                          <ThemedText
-                            style={[
-                              styles.chipLabel,
-                              { color: isSelected ? allianceText : textColor },
-                            ]}
-                          >
-                            {option.label}
-                          </ThemedText>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-                <View style={styles.section}>
-                  <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                    Canned Comments
-                  </ThemedText>
-                  <View style={styles.chipRow}>
-                    {DEFAULT_SUPER_SCOUT_FIELDS.map((field) => {
-                      const isSelected = state.cannedComments.includes(field.key);
-
-                      return (
-                        <Pressable
-                          key={field.key}
-                          onPress={() => handleToggleComment(teamKey, field)}
-                          style={({ pressed }) => [
-                            styles.chip,
-                            {
-                              backgroundColor: isSelected ? allianceBackground : chipBackground,
-                              borderColor,
-                              opacity: pressed ? 0.85 : 1,
-                            },
-                          ]}
-                        >
-                          <ThemedText
-                            style={[
-                              styles.chipLabel,
-                              { color: isSelected ? allianceText : textColor },
-                            ]}
-                          >
-                            {field.label}
-                          </ThemedText>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                  {!DEFAULT_SUPER_SCOUT_FIELDS.length && (
-                    <ThemedText style={[styles.emptyStateText, { color: mutedText }]}>
-                      No canned comments available.
+                  <View style={styles.section}>
+                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                      Starting Position
                     </ThemedText>
-                  )}
-                </View>
-                <View style={styles.section}>
-                  <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                    Performance Ratings
-                  </ThemedText>
-                  <View style={styles.ratingColumns}>
-                    <View style={styles.ratingColumn}>
-                      <ThemedText style={[styles.ratingLabel, { color: mutedText }]}>Driver</ThemedText>
-                      {renderStarRating(teamKey, 'driverRating', state.driverRating)}
-                    </View>
-                    {defenseActive && (
-                      <View style={styles.ratingColumn}>
-                        <ThemedText style={[styles.ratingLabel, { color: mutedText }]}>Defense</ThemedText>
-                        {renderStarRating(teamKey, 'defenseRating', state.defenseRating)}
-                      </View>
-                    )}
-                    <View style={styles.ratingColumn}>
-                      <ThemedText style={[styles.ratingLabel, { color: mutedText }]}>Overall</ThemedText>
-                      {renderStarRating(teamKey, 'robotOverall', state.robotOverall)}
+                    <View style={styles.chipRow}>
+                      {STARTING_POSITIONS.map((option) => {
+                        const isSelected = state.startingPosition === option.key;
+
+                        return (
+                          <Pressable
+                            key={option.key}
+                            onPress={() => handleSelectStartingPosition(teamKey, option.key)}
+                            style={({ pressed }) => [
+                              styles.chip,
+                              {
+                                backgroundColor: isSelected ? allianceBackground : chipBackground,
+                                borderColor,
+                                opacity: pressed ? 0.85 : 1,
+                              },
+                            ]}
+                          >
+                            <ThemedText
+                              style={[
+                                styles.chipLabel,
+                                { color: isSelected ? allianceText : textColor },
+                              ]}
+                            >
+                              {option.label}
+                            </ThemedText>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   </View>
+                  <View style={styles.section}>
+                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                      Canned Comments
+                    </ThemedText>
+                    <View style={styles.chipRow}>
+                      {DEFAULT_SUPER_SCOUT_FIELDS.map((field) => {
+                        const isSelected = state.cannedComments.includes(field.key);
+
+                        return (
+                          <Pressable
+                            key={field.key}
+                            onPress={() => handleToggleComment(teamKey, field)}
+                            style={({ pressed }) => [
+                              styles.chip,
+                              {
+                                backgroundColor: isSelected ? allianceBackground : chipBackground,
+                                borderColor,
+                                opacity: pressed ? 0.85 : 1,
+                              },
+                            ]}
+                          >
+                            <ThemedText
+                              style={[
+                                styles.chipLabel,
+                                { color: isSelected ? allianceText : textColor },
+                              ]}
+                            >
+                              {field.label}
+                            </ThemedText>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    {!DEFAULT_SUPER_SCOUT_FIELDS.length && (
+                      <ThemedText style={[styles.emptyStateText, { color: mutedText }]}>
+                        No canned comments available.
+                      </ThemedText>
+                    )}
+                  </View>
+                  <View style={styles.section}>
+                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                      Performance Ratings
+                    </ThemedText>
+                    <View style={styles.ratingColumns}>
+                      <View style={styles.ratingColumn}>
+                        <ThemedText style={[styles.ratingLabel, { color: mutedText }]}>Driver</ThemedText>
+                        {renderStarRating(teamKey, 'driverRating', state.driverRating)}
+                      </View>
+                      {defenseActive && (
+                        <View style={styles.ratingColumn}>
+                          <ThemedText style={[styles.ratingLabel, { color: mutedText }]}>Defense</ThemedText>
+                          {renderStarRating(teamKey, 'defenseRating', state.defenseRating)}
+                        </View>
+                      )}
+                      <View style={styles.ratingColumn}>
+                        <ThemedText style={[styles.ratingLabel, { color: mutedText }]}>Overall</ThemedText>
+                        {renderStarRating(teamKey, 'robotOverall', state.robotOverall)}
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.section}>
+                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                      Notes
+                    </ThemedText>
+                    <TextInput
+                      multiline
+                      placeholder="Enter any additional observations"
+                      placeholderTextColor={placeholderColor}
+                      value={state.notes}
+                      onChangeText={(value) => handleNotesChange(teamKey, value)}
+                      style={[
+                        styles.notesInput,
+                        {
+                          backgroundColor: inputBackground,
+                          borderColor: inputBorderColor,
+                          color: textColor,
+                        },
+                      ]}
+                    />
+                  </View>
                 </View>
-                <View style={styles.section}>
-                  <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                    Notes
-                  </ThemedText>
-                  <TextInput
-                    multiline
-                    placeholder="Enter any additional observations"
-                    placeholderTextColor={placeholderColor}
-                    value={state.notes}
-                    onChangeText={(value) => handleNotesChange(teamKey, value)}
-                    style={[
-                      styles.notesInput,
-                      {
-                        backgroundColor: inputBackground,
-                        borderColor: inputBorderColor,
-                        color: textColor,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>
         </ScrollView>
         <View style={styles.footer}>
           <Pressable style={[styles.submitButton, { backgroundColor: allianceBackground }]} disabled>
@@ -432,45 +434,56 @@ export function createSuperScoutMatchScreenPropsFromParams(params: {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  headerContent: {
-    gap: 6,
+  matchDescriptor: {
+    flex: 1,
+    alignItems: 'flex-end',
+    gap: 2,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 6,
   },
   backButtonLabel: {
     fontSize: 16,
     fontWeight: '600',
   },
-  headerTitle: {
+  matchTitle: {
     fontSize: 24,
     lineHeight: 28,
+    textAlign: 'right',
   },
-  headerSubtitle: {
+  matchSubtitle: {
     fontSize: 16,
     opacity: 0.9,
+    textAlign: 'right',
   },
   contentWrapper: {
     flex: 1,
     gap: 16,
   },
   scrollContent: {
-    gap: 16,
+    flexGrow: 1,
     paddingBottom: 16,
+  },
+  teamCardsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'stretch',
+    flex: 1,
   },
   teamCard: {
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
     gap: 16,
+    flex: 1,
+    minWidth: 0,
   },
   teamTitle: {
     textAlign: 'center',
