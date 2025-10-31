@@ -101,13 +101,15 @@ const PickListItem = ({
             {isDnp ? 'DNP' : `#${rank.rank}`}
           </ThemedText>
         </View>
-        <ThemedText type="defaultSemiBold" style={styles.itemTeamNumber}>
-          {rank.teamNumber}
-        </ThemedText>
+        <View style={styles.itemTeamInfo}>
+          <ThemedText type="defaultSemiBold" style={styles.itemTeamNumber} numberOfLines={1}>
+            {rank.teamNumber}
+          </ThemedText>
+          <ThemedText style={[styles.itemTeamName, { color: mutedText }]} numberOfLines={1}>
+            {team?.teamName ?? 'Team information unavailable'}
+          </ThemedText>
+        </View>
       </View>
-      <ThemedText style={[styles.itemTeamName, { color: mutedText }]} numberOfLines={1}>
-        {team?.teamName ?? 'Team information unavailable'}
-      </ThemedText>
       {rank.notes ? (
         <ThemedText style={[styles.itemNotes, { color: mutedText }]} numberOfLines={2}>
           {rank.notes}
@@ -255,7 +257,6 @@ const styles = StyleSheet.create({
   itemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 12,
   },
   itemRankBadge: {
@@ -270,12 +271,19 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
+  itemTeamInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   itemTeamNumber: {
     fontSize: 18,
     fontWeight: '700',
   },
   itemTeamName: {
     fontSize: 14,
+    flexShrink: 1,
   },
   itemNotes: {
     fontSize: 13,

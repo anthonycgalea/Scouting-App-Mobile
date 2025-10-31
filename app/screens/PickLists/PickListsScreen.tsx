@@ -255,72 +255,95 @@ export function PickListsScreen() {
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.contentWrapper}>
-            <View
-              style={[styles.card, styles.pickListCard, { backgroundColor: cardBackground, borderColor }]}
-            >
-              <View style={styles.sectionHeader}>
-                <ThemedText type="title" style={styles.sectionTitle}>
-                  Pick List
-                </ThemedText>
-                <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>Select a pick list to view the current rankings.</ThemedText>
-              </View>
-              <View style={styles.dropdownContainer}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: isPickListDropdownOpen }}
-                  onPress={() => setIsPickListDropdownOpen((current) => !current)}
-                  style={[styles.dropdownTrigger, { borderColor, backgroundColor: chipBackground }]}
-                >
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={[styles.dropdownLabel, { color: textColor }]}
-                    numberOfLines={1}
-                  >
-                    {selectedPickList?.title ?? 'Select a pick list'}
+            <View style={styles.cardRow}>
+              <View
+                style={[styles.card, styles.allianceCard, { backgroundColor: cardBackground, borderColor }]}
+              >
+                <View style={styles.sectionHeader}>
+                  <ThemedText type="title" style={styles.sectionTitle}>
+                    Alliance Selection
                   </ThemedText>
-                  <ThemedText style={[styles.dropdownIcon, { color: mutedText }]}> 
-                    {isPickListDropdownOpen ? '▲' : '▼'}
+                  <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>
+                    Keep track of alliance picks as they happen.
                   </ThemedText>
-                </Pressable>
-                {isPickListDropdownOpen ? (
-                  <View style={[styles.dropdownList, { borderColor, backgroundColor: cardBackground }]}>
-                    <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
-                      {sortedPickLists.map((pickList) => {
-                        const isSelected = pickList.id === selectedPickListId;
-                        return (
-                          <Pressable
-                            key={pickList.id}
-                            onPress={() => handleSelectPickList(pickList.id)}
-                            style={[
-                              styles.dropdownOption,
-                              isSelected ? { backgroundColor: chipBackground } : null,
-                            ]}
-                          >
-                            <ThemedText
-                              style={[styles.dropdownOptionLabel, { color: textColor }]}
-                              numberOfLines={1}
-                            >
-                              {pickList.title}
-                            </ThemedText>
-                          </Pressable>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                ) : null}
-              </View>
-              {selectedPickList ? (
-                <View style={styles.previewContainer}>
-                  <PickListPreview
-                    ranks={selectedPickList.ranks}
-                    eventTeamsByNumber={eventTeamsByNumber}
-                  />
                 </View>
-              ) : (
                 <View style={styles.emptySection}>
-                  <ThemedText style={[styles.emptySectionText, { color: mutedText }]}>Select a pick list to view the teams it contains.</ThemedText>
+                  <ThemedText style={[styles.emptySectionText, { color: mutedText }]}>
+                    Select teams to build your alliance.
+                  </ThemedText>
                 </View>
-              )}
+              </View>
+              <View
+                style={[styles.card, styles.pickListCard, { backgroundColor: cardBackground, borderColor }]}
+              >
+                <View style={styles.sectionHeader}>
+                  <ThemedText type="title" style={styles.sectionTitle}>
+                    Pick List
+                  </ThemedText>
+                  <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>
+                    Select a pick list to view the current rankings.
+                  </ThemedText>
+                </View>
+                <View style={styles.dropdownContainer}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: isPickListDropdownOpen }}
+                    onPress={() => setIsPickListDropdownOpen((current) => !current)}
+                    style={[styles.dropdownTrigger, { borderColor, backgroundColor: chipBackground }]}
+                  >
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={[styles.dropdownLabel, { color: textColor }]}
+                      numberOfLines={1}
+                    >
+                      {selectedPickList?.title ?? 'Select a pick list'}
+                    </ThemedText>
+                    <ThemedText style={[styles.dropdownIcon, { color: mutedText }]}>
+                      {isPickListDropdownOpen ? '▲' : '▼'}
+                    </ThemedText>
+                  </Pressable>
+                  {isPickListDropdownOpen ? (
+                    <View style={[styles.dropdownList, { borderColor, backgroundColor: cardBackground }]}>
+                      <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
+                        {sortedPickLists.map((pickList) => {
+                          const isSelected = pickList.id === selectedPickListId;
+                          return (
+                            <Pressable
+                              key={pickList.id}
+                              onPress={() => handleSelectPickList(pickList.id)}
+                              style={[
+                                styles.dropdownOption,
+                                isSelected ? { backgroundColor: chipBackground } : null,
+                              ]}
+                            >
+                              <ThemedText
+                                style={[styles.dropdownOptionLabel, { color: textColor }]}
+                                numberOfLines={1}
+                              >
+                                {pickList.title}
+                              </ThemedText>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  ) : null}
+                </View>
+                {selectedPickList ? (
+                  <View style={styles.previewContainer}>
+                    <PickListPreview
+                      ranks={selectedPickList.ranks}
+                      eventTeamsByNumber={eventTeamsByNumber}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.emptySection}>
+                    <ThemedText style={[styles.emptySectionText, { color: mutedText }]}>
+                      Select a pick list to view the teams it contains.
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
             </View>
           </ScrollView>
         )}
@@ -403,6 +426,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: 16,
   },
+  cardRow: {
+    flexDirection: 'row',
+    gap: 16,
+    flexWrap: 'wrap',
+  },
   card: {
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
@@ -410,6 +438,9 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 20,
     minWidth: 320,
+  },
+  allianceCard: {
+    flex: 1,
   },
   pickListCard: {
     flex: 1,
