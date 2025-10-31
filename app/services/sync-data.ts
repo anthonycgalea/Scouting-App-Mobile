@@ -18,6 +18,7 @@ export type SyncDataWithServerResult = {
   superScoutDataSent: number;
   alreadyScoutedUpdated: number;
   alreadyPitScoutedUpdated: number;
+  alreadySuperScoutedUpdated: number;
   robotPhotosUploaded: number;
   superScoutFieldsSynced: number;
 };
@@ -275,6 +276,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
 
   const alreadyScoutedUpdated = await syncAlreadyScoutedEntries(organizationId);
   const alreadyPitScoutedUpdated = await syncAlreadyPitScoutedEntries(organizationId);
+  const alreadySuperScoutedUpdated = eventInfo.alreadySuperScouted.created;
   const robotPhotosUploaded = await syncPendingRobotPhotos();
 
   return {
@@ -287,6 +289,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     superScoutDataSent,
     alreadyScoutedUpdated,
     alreadyPitScoutedUpdated,
+    alreadySuperScoutedUpdated,
     robotPhotosUploaded,
     superScoutFieldsSynced,
   };

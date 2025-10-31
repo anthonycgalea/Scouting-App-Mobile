@@ -211,6 +211,14 @@ function initializeExpoSqliteDb() {
       FOREIGN KEY (team_number) REFERENCES teamrecord(team_number),
       FOREIGN KEY (organization_id) REFERENCES organization(id)
     );`,
+    `CREATE TABLE IF NOT EXISTS already_super_scouted (
+      event_code TEXT NOT NULL,
+      match_level TEXT NOT NULL,
+      match_number INTEGER NOT NULL,
+      alliance TEXT NOT NULL CHECK (alliance IN ('red', 'blue')),
+      PRIMARY KEY (event_code, match_level, match_number, alliance),
+      FOREIGN KEY (event_code) REFERENCES frcevent(event_key)
+    );`,
     `CREATE TABLE IF NOT EXISTS prescoutmatchdata2025 (
       event_key TEXT NOT NULL,
       team_number INTEGER NOT NULL,
