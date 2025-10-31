@@ -469,6 +469,7 @@ export default function MatchPreviewDetailsScreen() {
               <View style={styles.simulationColumn}>
                 {simulation2025 ? (
                   <>
+                    {/* Predicted Winner */}
                     <View style={[styles.simulationPredictionCard, { backgroundColor: cardBackground, borderColor }]}>
                       <ThemedText type="defaultSemiBold" style={styles.simulationSectionTitle}>
                         Predicted Winner
@@ -498,6 +499,87 @@ export default function MatchPreviewDetailsScreen() {
                         </View>
                       </View>
                     </View>
+
+                    {/* RP Breakdown Cards */}
+                    <View style={styles.simulationAllianceGrid}>
+                      {/* Red Alliance */}
+                      <View style={[styles.simulationAllianceCard, { backgroundColor: cardBackground, borderColor }]}>
+                        <ThemedText type="defaultSemiBold" style={[styles.simulationAllianceTitle, styles.redText]}>
+                          Red RP
+                        </ThemedText>
+
+                        <View style={styles.simulationMetricRow}>
+                          <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>Auto RP</ThemedText>
+                          <ThemedText style={styles.simulationMetricValue}>
+                            {formatPercentage(simulation2025.red_auto_rp)}
+                          </ThemedText>
+                        </View>
+
+                        <View style={styles.simulationMetricGroup}>
+                          <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>Coral Success</ThemedText>
+                          <View style={styles.simulationMetricSubGroup}>
+                            <View style={styles.simulationMetricSubRow}>
+                              <ThemedText style={[styles.simulationMetricSubLabel, { color: mutedText }]}>Win</ThemedText>
+                              <ThemedText style={styles.simulationMetricValue}>
+                                {formatPercentage(simulation2025.red_w_coral_rp)}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.simulationMetricSubRow}>
+                              <ThemedText style={[styles.simulationMetricSubLabel, { color: mutedText }]}>RP</ThemedText>
+                              <ThemedText style={styles.simulationMetricValue}>
+                                {formatPercentage(simulation2025.red_r_coral_rp)}
+                              </ThemedText>
+                            </View>
+                          </View>
+                        </View>
+
+                        <View style={styles.simulationMetricRow}>
+                          <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>Endgame RP</ThemedText>
+                          <ThemedText style={styles.simulationMetricValue}>
+                            {formatPercentage(simulation2025.red_endgame_rp)}
+                          </ThemedText>
+                        </View>
+                      </View>
+
+                      {/* Blue Alliance */}
+                      <View style={[styles.simulationAllianceCard, { backgroundColor: cardBackground, borderColor }]}>
+                        <ThemedText type="defaultSemiBold" style={[styles.simulationAllianceTitle, styles.blueText]}>
+                          Blue RP
+                        </ThemedText>
+
+                        <View style={styles.simulationMetricRow}>
+                          <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>Auto RP</ThemedText>
+                          <ThemedText style={styles.simulationMetricValue}>
+                            {formatPercentage(simulation2025.blue_auto_rp)}
+                          </ThemedText>
+                        </View>
+
+                        <View style={styles.simulationMetricGroup}>
+                          <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>Coral Success</ThemedText>
+                          <View style={styles.simulationMetricSubGroup}>
+                            <View style={styles.simulationMetricSubRow}>
+                              <ThemedText style={[styles.simulationMetricSubLabel, { color: mutedText }]}>Win</ThemedText>
+                              <ThemedText style={styles.simulationMetricValue}>
+                                {formatPercentage(simulation2025.blue_w_coral_rp)}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.simulationMetricSubRow}>
+                              <ThemedText style={[styles.simulationMetricSubLabel, { color: mutedText }]}>RP</ThemedText>
+                              <ThemedText style={styles.simulationMetricValue}>
+                                {formatPercentage(simulation2025.blue_r_coral_rp)}
+                              </ThemedText>
+                            </View>
+                          </View>
+                        </View>
+
+                        <View style={styles.simulationMetricRow}>
+                          <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>Endgame RP</ThemedText>
+                          <ThemedText style={styles.simulationMetricValue}>
+                            {formatPercentage(simulation2025.blue_endgame_rp)}
+                          </ThemedText>
+                        </View>
+                      </View>
+                    </View>
                   </>
                 ) : simulationFallbackMessage ? (
                   <View style={[styles.simulationMessageCard, { backgroundColor: cardBackground, borderColor }]}>
@@ -507,12 +589,14 @@ export default function MatchPreviewDetailsScreen() {
                   </View>
                 ) : (
                   <View
-                    style={[styles.simulationMessageCard, styles.simulationLoadingCard, { backgroundColor: cardBackground, borderColor }]}
+                    style={[
+                      styles.simulationMessageCard,
+                      styles.simulationLoadingCard,
+                      { backgroundColor: cardBackground, borderColor },
+                    ]}
                   >
                     <ActivityIndicator color={accentColor} />
-                    <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}>
-                      Loading simulation…
-                    </ThemedText>
+                    <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}>Loading simulation…</ThemedText>
                   </View>
                 )}
               </View>
@@ -550,6 +634,48 @@ export const createMatchPreviewDetailsScreenPropsFromParams = (params: any) => {
 };
 
 const styles = StyleSheet.create({
+    simulationAllianceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  simulationAllianceCard: {
+    flex: 1,
+    minWidth: 200,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  simulationAllianceTitle: {
+    fontSize: 18,
+  },
+  simulationMetricRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  simulationMetricLabel: {
+    fontSize: 14,
+  },
+  simulationMetricValue: {
+    fontWeight: '600',
+  },
+  simulationMetricGroup: {
+    gap: 12,
+  },
+  simulationMetricSubGroup: {
+    gap: 8,
+  },
+  simulationMetricSubRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  simulationMetricSubLabel: {
+    fontSize: 12,
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -645,3 +771,5 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -6 }],
   },
 });
+
+
