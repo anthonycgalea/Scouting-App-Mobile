@@ -38,12 +38,73 @@ export async function syncPickLists(organizationId: number): Promise<SyncPickLis
   const remotePickLists = await fetchPickLists({ organizationId });
   const db = getDbOrThrow();
 
+  const referencedTeamNumbers = new Set<number>();
+  const referencedEventKeys = new Set<string>();
+
+  for (const list of remotePickLists) {
+    const normalizedEventKey = normalizeEventKey(list.eventKey);
+
+    if (normalizedEventKey) {
+      referencedEventKeys.add(normalizedEventKey);
+    }
+
+    for (const rank of list.ranks) {
+      if (typeof rank.teamNumber === 'number' && Number.isFinite(rank.teamNumber)) {
+        referencedTeamNumbers.add(rank.teamNumber);
+      }
+    }
+  }
+
   let created = 0;
   let updated = 0;
   let removed = 0;
   let ranksInserted = 0;
 
   db.transaction((tx) => {
+    const validEventKeys = new Set<string>();
+
+    if (referencedEventKeys.size > 0) {
+      const existingEvents = tx
+        .select({ eventKey: schema.frcEvents.eventKey })
+        .from(schema.frcEvents)
+        .where(inArray(schema.frcEvents.eventKey, [...referencedEventKeys]))
+        .all();
+
+      existingEvents.forEach((row) => {
+        if (typeof row.eventKey === 'string') {
+          validEventKeys.add(row.eventKey);
+        }
+      });
+    }
+
+    if (referencedTeamNumbers.size > 0) {
+      const teamNumberList = [...referencedTeamNumbers];
+
+      const existingTeams = tx
+        .select({ teamNumber: schema.teamRecords.teamNumber })
+        .from(schema.teamRecords)
+        .where(inArray(schema.teamRecords.teamNumber, teamNumberList))
+        .all();
+
+      const existingTeamNumbers = new Set<number>(existingTeams.map((row) => row.teamNumber));
+
+      const placeholderTeams: typeof schema.teamRecords.$inferInsert[] = [];
+
+      for (const teamNumber of teamNumberList) {
+        if (!existingTeamNumbers.has(teamNumber)) {
+          placeholderTeams.push({
+            teamNumber,
+            teamName: `Team ${teamNumber}`,
+            location: null,
+          });
+        }
+      }
+
+      if (placeholderTeams.length > 0) {
+        tx.insert(schema.teamRecords).values(placeholderTeams).onConflictDoNothing().run();
+      }
+    }
+
     const existingRows = tx
       .select({ id: schema.pickLists.id })
       .from(schema.pickLists)
@@ -79,7 +140,10 @@ export async function syncPickLists(organizationId: number): Promise<SyncPickLis
         typeof list.organizationId === 'number' && Number.isFinite(list.organizationId)
           ? list.organizationId
           : organizationId;
-      const eventKey = normalizeEventKey(list.eventKey);
+      const normalizedEventKey = normalizeEventKey(list.eventKey);
+      const eventKey = normalizedEventKey && validEventKeys.has(normalizedEventKey)
+        ? normalizedEventKey
+        : null;
 
       tx
         .insert(schema.pickLists)
