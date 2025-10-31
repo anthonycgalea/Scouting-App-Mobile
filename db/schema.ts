@@ -361,6 +361,29 @@ export const alreadyPitScouteds = sqliteTable(
 export type AlreadyPitScouted = InferSelectModel<typeof alreadyPitScouteds>;
 export type NewAlreadyPitScouted = InferInsertModel<typeof alreadyPitScouteds>;
 
+export const alreadySuperScouteds = sqliteTable(
+  'already_super_scouted',
+  {
+    eventCode: text('event_code').notNull(),
+    matchLevel: text('match_level').notNull(),
+    matchNumber: integer('match_number').notNull(),
+    alliance: text('alliance', { enum: ['red', 'blue'] }).notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.eventCode, table.matchLevel, table.matchNumber, table.alliance],
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventCode],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'already_super_scouted_event_fk',
+    }),
+  })
+);
+
+export type AlreadySuperScouted = InferSelectModel<typeof alreadySuperScouteds>;
+export type NewAlreadySuperScouted = InferInsertModel<typeof alreadySuperScouteds>;
+
 export const prescoutMatchData2025 = sqliteTable(
   'prescoutmatchdata2025',
   {

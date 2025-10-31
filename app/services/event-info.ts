@@ -1,4 +1,5 @@
 import { apiRequest } from './api/client';
+import { normalizeAlreadySuperScouted, type AlreadySuperScoutedResponse } from './already-super-scouted';
 import type { AlreadyScoutedResponse } from './already-scouted';
 import type { AlreadyPitScoutedResponse } from './pit-scouting';
 import { getActiveEvent } from './logged-in-event';
@@ -23,6 +24,10 @@ export type RetrieveEventInfoResult = {
     created: number;
   };
   alreadyPitScouted: {
+    received: number;
+    created: number;
+  };
+  alreadySuperScouted: {
     received: number;
     created: number;
   };
@@ -65,6 +70,7 @@ type NormalizedTeamEvent = {
 
 type NormalizedAlreadyScouted = typeof schema.alreadyScouteds.$inferInsert;
 type NormalizedAlreadyPitScouted = typeof schema.alreadyPitScouteds.$inferInsert;
+type NormalizedAlreadySuperScouted = typeof schema.alreadySuperScouteds.$inferInsert;
 
 const normalizeNumber = (value: number | string | null | undefined): number | null => {
   if (typeof value === 'number') {
@@ -186,7 +192,13 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     throw new Error('No event is currently selected. Please select an event and try again.');
   }
 
-  const [rawMatchSchedules, rawTeamEvents, rawAlreadyScouted, rawAlreadyPitScouted] = await Promise.all([
+  const [
+    rawMatchSchedules,
+    rawTeamEvents,
+    rawAlreadyScouted,
+    rawAlreadyPitScouted,
+    rawAlreadySuperScouted,
+  ] = await Promise.all([
     apiRequest<MatchScheduleResponse[]>(`/public/matchSchedule/${eventCode}`, {
       method: 'GET',
     }),
@@ -197,6 +209,9 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
       method: 'GET',
     }),
     apiRequest<AlreadyPitScoutedResponse[]>('/scout/pitscouted', {
+      method: 'GET',
+    }),
+    apiRequest<AlreadySuperScoutedResponse[]>('/scout/superscouted', {
       method: 'GET',
     }),
   ]);
@@ -297,6 +312,23 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     requiredTeamNumbers.add(normalized.teamNumber);
   }
 
+  const normalizedAlreadySuperScoutedMap = new Map<string, NormalizedAlreadySuperScouted>();
+  for (const item of rawAlreadySuperScouted ?? []) {
+    const normalizedEntries = normalizeAlreadySuperScouted(item);
+
+    for (const normalized of normalizedEntries) {
+      if (normalized.eventCode !== eventCode) {
+        continue;
+      }
+
+      const key = `${normalized.eventCode}#${normalized.matchLevel}#${normalized.matchNumber}#${normalized.alliance}`;
+
+      if (!normalizedAlreadySuperScoutedMap.has(key)) {
+        normalizedAlreadySuperScoutedMap.set(key, normalized);
+      }
+    }
+  }
+
   const matchScheduleResult: RetrieveEventInfoResult['matchSchedule'] = {
     received: normalizedMatchMap.size,
     created: 0,
@@ -317,6 +349,11 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
 
   const alreadyPitScoutedResult: RetrieveEventInfoResult['alreadyPitScouted'] = {
     received: normalizedAlreadyPitScoutedMap.size,
+    created: 0,
+  };
+
+  const alreadySuperScoutedResult: RetrieveEventInfoResult['alreadySuperScouted'] = {
+    received: normalizedAlreadySuperScoutedMap.size,
     created: 0,
   };
 
@@ -522,6 +559,18 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
         alreadyPitScoutedResult.created += 1;
       }
     }
+
+    for (const normalized of normalizedAlreadySuperScoutedMap.values()) {
+      const result = tx
+        .insert(schema.alreadySuperScouteds)
+        .values(normalized)
+        .onConflictDoNothing()
+        .run();
+
+      if (result.rowsAffected > 0) {
+        alreadySuperScoutedResult.created += 1;
+      }
+    }
   });
 
   return {
@@ -530,5 +579,6 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     teamEvents: teamEventsResult,
     alreadyScouted: alreadyScoutedResult,
     alreadyPitScouted: alreadyPitScoutedResult,
+    alreadySuperScouted: alreadySuperScoutedResult,
   };
 }

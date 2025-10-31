@@ -33,10 +33,32 @@ const matchRowToEntry = (row: MatchScheduleRow): MatchScheduleEntry => ({
 
 const SECTION_ORDER: MatchScheduleSection[] = ['qualification', 'playoffs', 'finals'];
 
+const normalizeAlliance = (value: string | null | undefined): 'red' | 'blue' | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  return normalized === 'red' || normalized === 'blue' ? normalized : null;
+};
+
+const createAllianceKey = (matchLevel: string, matchNumber: number, alliance: 'red' | 'blue') =>
+  `${matchLevel.toLowerCase()}#${matchNumber}#${alliance}`;
+
+const createTeamMatchKey = (matchLevel: string, matchNumber: number, teamNumber: number) =>
+  `${matchLevel.toLowerCase()}-${matchNumber}-${teamNumber}`;
+
 export function SuperScoutScreen() {
   const router = useRouter();
   const [selectedSection, setSelectedSection] = useState<MatchScheduleSection>('qualification');
   const [matches, setMatches] = useState<MatchScheduleEntry[]>([]);
+  const [alreadySuperScoutedAlliances, setAlreadySuperScoutedAlliances] = useState<
+    { matchLevel: string; matchNumber: number; alliance: 'red' | 'blue' }[]
+  >([]);
+  const [localSuperScoutEntries, setLocalSuperScoutEntries] = useState<
+    { matchLevel: string; matchNumber: number; alliance: 'red' | 'blue'; teamNumber: number }[]
+  >([]);
   const [activeEventKey, setActiveEventKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +88,81 @@ export function SuperScoutScreen() {
       .where(eq(schema.matchSchedules.eventKey, eventKey))
       .all();
 
-    return { eventKey, matches: rows.map(matchRowToEntry) };
+    const alreadySuperRows = db
+      .select({
+        matchLevel: schema.alreadySuperScouteds.matchLevel,
+        matchNumber: schema.alreadySuperScouteds.matchNumber,
+        alliance: schema.alreadySuperScouteds.alliance,
+      })
+      .from(schema.alreadySuperScouteds)
+      .where(eq(schema.alreadySuperScouteds.eventCode, eventKey))
+      .all();
+
+    const localSuperRows = db
+      .select({
+        matchLevel: schema.superScoutData.matchLevel,
+        matchNumber: schema.superScoutData.matchNumber,
+        alliance: schema.superScoutData.alliance,
+        teamNumber: schema.superScoutData.teamNumber,
+      })
+      .from(schema.superScoutData)
+      .where(eq(schema.superScoutData.eventKey, eventKey))
+      .all();
+
+    const normalizedAlreadySuper = alreadySuperRows
+      .map((row) => {
+        const matchLevel = typeof row.matchLevel === 'string' ? row.matchLevel.trim() : '';
+        const alliance = normalizeAlliance(row.alliance);
+        const matchNumber =
+          typeof row.matchNumber === 'number' && Number.isFinite(row.matchNumber)
+            ? row.matchNumber
+            : null;
+
+        if (!matchLevel || matchNumber === null || !alliance) {
+          return null;
+        }
+
+        return { matchLevel, matchNumber, alliance };
+      })
+      .filter(
+        (entry): entry is { matchLevel: string; matchNumber: number; alliance: 'red' | 'blue' } =>
+          entry !== null,
+      );
+
+    const normalizedLocalSuper = localSuperRows
+      .map((row) => {
+        const matchLevel = typeof row.matchLevel === 'string' ? row.matchLevel.trim() : '';
+        const alliance = normalizeAlliance(row.alliance);
+        const matchNumber =
+          typeof row.matchNumber === 'number' && Number.isFinite(row.matchNumber)
+            ? row.matchNumber
+            : null;
+        const teamNumber =
+          typeof row.teamNumber === 'number' && Number.isFinite(row.teamNumber)
+            ? row.teamNumber
+            : null;
+
+        if (!matchLevel || matchNumber === null || teamNumber === null || !alliance) {
+          return null;
+        }
+
+        return { matchLevel, matchNumber, alliance, teamNumber };
+      })
+      .filter(
+        (entry): entry is {
+          matchLevel: string;
+          matchNumber: number;
+          alliance: 'red' | 'blue';
+          teamNumber: number;
+        } => entry !== null,
+      );
+
+    return {
+      eventKey,
+      matches: rows.map(matchRowToEntry),
+      alreadySuper: normalizedAlreadySuper,
+      localSuper: normalizedLocalSuper,
+    };
   }, []);
 
   useFocusEffect(
@@ -74,9 +170,11 @@ export function SuperScoutScreen() {
       setIsLoading(true);
 
       try {
-        const { eventKey, matches: data } = loadMatchesFromDb();
+        const { eventKey, matches: data, alreadySuper, localSuper } = loadMatchesFromDb();
         setActiveEventKey(eventKey);
         setMatches(data);
+        setAlreadySuperScoutedAlliances(alreadySuper);
+        setLocalSuperScoutEntries(localSuper);
         setErrorMessage(null);
       } catch (error) {
         console.error('Failed to load match schedule', error);
@@ -87,6 +185,8 @@ export function SuperScoutScreen() {
         setErrorMessage(message);
         setActiveEventKey(null);
         setMatches([]);
+        setAlreadySuperScoutedAlliances([]);
+        setLocalSuperScoutEntries([]);
       } finally {
         setIsLoading(false);
       }
@@ -112,6 +212,99 @@ export function SuperScoutScreen() {
     }
   }, [matches, selectedSection]);
 
+  const scoutedTeamMatches = useMemo(() => {
+    if (matches.length === 0) {
+      return new Set<string>();
+    }
+
+    const remoteAllianceSet = new Set<string>();
+    alreadySuperScoutedAlliances.forEach((entry) => {
+      const { matchLevel, matchNumber, alliance } = entry;
+
+      if (!matchLevel || !Number.isFinite(matchNumber)) {
+        return;
+      }
+
+      remoteAllianceSet.add(createAllianceKey(matchLevel, matchNumber, alliance));
+    });
+
+    const localAllianceTeamMap = new Map<string, Set<number>>();
+    localSuperScoutEntries.forEach((entry) => {
+      const { matchLevel, matchNumber, alliance, teamNumber } = entry;
+
+      if (!matchLevel || !Number.isFinite(matchNumber) || !Number.isFinite(teamNumber)) {
+        return;
+      }
+
+      const allianceKey = createAllianceKey(matchLevel, matchNumber, alliance);
+      let teamSet = localAllianceTeamMap.get(allianceKey);
+
+      if (!teamSet) {
+        teamSet = new Set<number>();
+        localAllianceTeamMap.set(allianceKey, teamSet);
+      }
+
+      teamSet.add(teamNumber);
+    });
+
+    const result = new Set<string>();
+
+    matches.forEach((match) => {
+      const rawMatchLevel = typeof match.match_level === 'string' ? match.match_level.trim() : '';
+      const matchNumber =
+        typeof match.match_number === 'number' && Number.isFinite(match.match_number)
+          ? match.match_number
+          : null;
+
+      if (!rawMatchLevel || matchNumber === null) {
+        return;
+      }
+
+      const redTeams = [match.red1_id, match.red2_id, match.red3_id];
+      const blueTeams = [match.blue1_id, match.blue2_id, match.blue3_id];
+
+      const isAllianceScouted = (
+        alliance: 'red' | 'blue',
+        teams: (number | null | undefined)[],
+      ): boolean => {
+        const allianceKey = createAllianceKey(rawMatchLevel, matchNumber, alliance);
+
+        if (remoteAllianceSet.has(allianceKey)) {
+          return true;
+        }
+
+        const localTeams = localAllianceTeamMap.get(allianceKey);
+
+        if (!localTeams) {
+          return false;
+        }
+
+        return teams.every(
+          (teamNumber) =>
+            typeof teamNumber === 'number' && Number.isFinite(teamNumber) && localTeams.has(teamNumber),
+        );
+      };
+
+      if (isAllianceScouted('red', redTeams)) {
+        redTeams.forEach((teamNumber) => {
+          if (typeof teamNumber === 'number' && Number.isFinite(teamNumber)) {
+            result.add(createTeamMatchKey(rawMatchLevel, matchNumber, teamNumber));
+          }
+        });
+      }
+
+      if (isAllianceScouted('blue', blueTeams)) {
+        blueTeams.forEach((teamNumber) => {
+          if (typeof teamNumber === 'number' && Number.isFinite(teamNumber)) {
+            result.add(createTeamMatchKey(rawMatchLevel, matchNumber, teamNumber));
+          }
+        });
+      }
+    });
+
+    return result;
+  }, [alreadySuperScoutedAlliances, localSuperScoutEntries, matches]);
+
   const groupedMatches = useMemo(() => groupMatchesBySection(matches), [matches]);
 
   const handleDownloadPress = useCallback(async () => {
@@ -122,9 +315,11 @@ export function SuperScoutScreen() {
     try {
       setIsDownloading(true);
       await retrieveEventInfo();
-      const { eventKey, matches: data } = loadMatchesFromDb();
+      const { eventKey, matches: data, alreadySuper, localSuper } = loadMatchesFromDb();
       setActiveEventKey(eventKey);
       setMatches(data);
+      setAlreadySuperScoutedAlliances(alreadySuper);
+      setLocalSuperScoutEntries(localSuper);
       setErrorMessage(null);
 
       if (data.length === 0) {
@@ -137,6 +332,8 @@ export function SuperScoutScreen() {
           ? error.message
           : 'An unexpected error occurred while downloading the match schedule.';
       Alert.alert('Download failed', message);
+      setAlreadySuperScoutedAlliances([]);
+      setLocalSuperScoutEntries([]);
     } finally {
       setIsDownloading(false);
     }
@@ -187,7 +384,11 @@ export function SuperScoutScreen() {
             onChange={setSelectedSection}
             options={SECTION_DEFINITIONS}
           />
-          <MatchSchedule matches={groupedMatches[selectedSection]} onMatchPress={handleMatchPress} />
+          <MatchSchedule
+            matches={groupedMatches[selectedSection]}
+            onMatchPress={handleMatchPress}
+            scoutedTeamMatches={scoutedTeamMatches}
+          />
         </>
       ) : (
         <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>
