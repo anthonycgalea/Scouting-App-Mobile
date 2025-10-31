@@ -6,6 +6,7 @@ export { TeamRobotPhotosScreen } from './RobotPhotos/TeamRobotPhotosScreen';
 export { MatchScoutScreen } from './MatchScout/MatchScoutScreen';
 export { MatchTeamSelectScreen } from './MatchScout/MatchTeamSelectScreen';
 export { MatchPreviewsScreen } from './MatchPreviews/MatchPreviewsScreen';
+export { MatchPreviewDetailsScreen } from './MatchPreviews/MatchPreviewDetailsScreen';
 export { SuperScoutScreen } from './SuperScout/SuperScoutScreen';
 export { SuperScoutAllianceSelectScreen } from './SuperScout/SuperScoutAllianceSelectScreen';
 export { SuperScoutMatchScreen } from './SuperScout/SuperScoutMatchScreen';
