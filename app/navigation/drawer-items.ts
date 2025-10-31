@@ -22,7 +22,6 @@ const BASE_DRAWER_ITEMS: DrawerItem[] = [
   { name: 'match-scout/index', title: 'Match Scout', href: ROUTES.matchScout, icon: 'trophy-outline' },
   { name: 'prescout/index', title: 'Prescout', href: ROUTES.prescout, icon: 'search-outline' },
   { name: 'robot-photos/index', title: 'Robot Photos', href: ROUTES.robotPhotos, icon: 'camera-outline' },
-  { name: 'pick-lists/index', title: 'Pick Lists', href: ROUTES.pickLists, icon: 'list-outline' },
   { name: 'settings/index', title: 'App Settings', href: ROUTES.appSettings, icon: 'settings-outline' },
   {
     name: 'organization-select/index',
@@ -33,6 +32,12 @@ const BASE_DRAWER_ITEMS: DrawerItem[] = [
 ];
 
 const TABLET_ONLY_DRAWER_ITEMS: DrawerItem[] = [
+  {
+    name: 'pick-lists/index',
+    title: 'Pick Lists',
+    href: ROUTES.pickLists,
+    icon: 'list-outline',
+  },
   {
     name: 'match-previews/index',
     title: 'Match Previews',

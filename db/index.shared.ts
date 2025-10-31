@@ -124,6 +124,30 @@ function initializeExpoSqliteDb() {
       role TEXT,
       FOREIGN KEY (organization_id) REFERENCES organization(id)
     );`,
+    `CREATE TABLE IF NOT EXISTS picklist (
+      id TEXT PRIMARY KEY NOT NULL,
+      season INTEGER NOT NULL,
+      organization_id INTEGER NOT NULL,
+      event_key TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT 'Pick List',
+      notes TEXT NOT NULL DEFAULT '',
+      created INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+      last_updated INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+      favorited INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (season) REFERENCES season(id),
+      FOREIGN KEY (organization_id) REFERENCES organization(id),
+      FOREIGN KEY (event_key) REFERENCES frcevent(event_key)
+    );`,
+    `CREATE TABLE IF NOT EXISTS picklist_rank (
+      picklist_id TEXT NOT NULL,
+      rank INTEGER NOT NULL,
+      team_number INTEGER NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
+      dnp INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (picklist_id, rank),
+      FOREIGN KEY (picklist_id) REFERENCES picklist(id),
+      FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
+    );`,
     `CREATE TABLE IF NOT EXISTS robot_photos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       event_key TEXT NOT NULL,

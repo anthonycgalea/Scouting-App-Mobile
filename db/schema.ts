@@ -166,6 +166,68 @@ export const userOrganizations = sqliteTable(
 export type UserOrganization = InferSelectModel<typeof userOrganizations>;
 export type NewUserOrganization = InferInsertModel<typeof userOrganizations>;
 
+export const pickLists = sqliteTable(
+  'picklist',
+  {
+    id: text('id').primaryKey(),
+    season: integer('season').notNull(),
+    organizationId: integer('organization_id').notNull(),
+    eventKey: text('event_key').notNull(),
+    title: text('title').notNull().default('Pick List'),
+    notes: text('notes').notNull().default(''),
+    created: integer('created').notNull().default(sql`(strftime('%s','now'))`),
+    lastUpdated: integer('last_updated').notNull().default(sql`(strftime('%s','now'))`),
+    favorited: integer('favorited').notNull().default(0),
+  },
+  (table) => ({
+    seasonRef: foreignKey({
+      columns: [table.season],
+      foreignColumns: [seasons.id],
+      name: 'picklist_season_fk',
+    }),
+    organizationRef: foreignKey({
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+      name: 'picklist_organization_fk',
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'picklist_event_fk',
+    }),
+  }),
+);
+
+export type PickList = InferSelectModel<typeof pickLists>;
+export type NewPickList = InferInsertModel<typeof pickLists>;
+
+export const pickListRanks = sqliteTable(
+  'picklist_rank',
+  {
+    pickListId: text('picklist_id').notNull(),
+    rank: integer('rank').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    notes: text('notes').notNull().default(''),
+    dnp: integer('dnp').notNull().default(0),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.pickListId, table.rank] }),
+    pickListRef: foreignKey({
+      columns: [table.pickListId],
+      foreignColumns: [pickLists.id],
+      name: 'picklist_rank_picklist_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'picklist_rank_team_fk',
+    }),
+  }),
+);
+
+export type PickListRank = InferSelectModel<typeof pickListRanks>;
+export type NewPickListRank = InferInsertModel<typeof pickListRanks>;
+
 export const robotPhotos = sqliteTable(
   'robot_photos',
   {
