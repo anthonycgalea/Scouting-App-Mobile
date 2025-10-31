@@ -3,10 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { getActiveEvent } from '@/app/services/logged-in-event';
-import {
-  fetchMatchSchedule,
-  type MatchScheduleEntry as ApiMatchScheduleEntry,
-} from '@/app/services/api/match-previews';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import {
   MatchSchedule,
@@ -17,21 +13,31 @@ import {
   groupMatchesBySection,
 } from '@/components/match-schedule';
 import { ThemedText } from '@/components/themed-text';
+import { getDbOrThrow, schema } from '@/db';
+import type { MatchSchedule as MatchScheduleRow } from '@/db/schema';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { eq } from 'drizzle-orm';
 
 const SECTION_ORDER: MatchScheduleSection[] = ['qualification', 'playoffs', 'finals'];
 
-const mapScheduleEntry = (entry: ApiMatchScheduleEntry): MatchScheduleEntry => ({
-  match_number: entry.match_number,
-  match_level: entry.match_level,
-  event_key: entry.event_key,
-  red1_id: entry.red1_id ?? undefined,
-  red2_id: entry.red2_id ?? undefined,
-  red3_id: entry.red3_id ?? undefined,
-  blue1_id: entry.blue1_id ?? undefined,
-  blue2_id: entry.blue2_id ?? undefined,
-  blue3_id: entry.blue3_id ?? undefined,
+const mapScheduleRow = (row: MatchScheduleRow): MatchScheduleEntry => ({
+  match_number: row.matchNumber,
+  match_level: row.matchLevel,
+  event_key: row.eventKey,
+  red1_id: row.red1Id,
+  red2_id: row.red2Id,
+  red3_id: row.red3Id,
+  blue1_id: row.blue1Id,
+  blue2_id: row.blue2Id,
+  blue3_id: row.blue3Id,
 });
+
+const MATCH_LEVEL_ORDER: Record<string, number> = {
+  qm: 0,
+  qf: 1,
+  sf: 2,
+  f: 3,
+};
 
 const buildMatchRouteParams = (match: MatchScheduleEntry) => {
   const params: Record<string, string> = {
@@ -77,15 +83,30 @@ export function MatchPreviewsScreen() {
     'text',
   );
 
-  const loadSchedule = useCallback(async () => {
+  const loadSchedule = useCallback(() => {
     const eventKey = getActiveEvent();
 
     if (!eventKey) {
       throw new Error('No event is currently selected. Please select an event to view match previews.');
     }
 
-    const response = await fetchMatchSchedule({ eventKey });
-    const normalizedMatches = (response ?? []).map(mapScheduleEntry);
+    const db = getDbOrThrow();
+    const rows = db
+      .select()
+      .from(schema.matchSchedules)
+      .where(eq(schema.matchSchedules.eventKey, eventKey))
+      .all();
+
+    const normalizedMatches = rows.map(mapScheduleRow).sort((a, b) => {
+      const levelA = MATCH_LEVEL_ORDER[a.match_level?.toLowerCase() ?? ''] ?? Number.MAX_SAFE_INTEGER;
+      const levelB = MATCH_LEVEL_ORDER[b.match_level?.toLowerCase() ?? ''] ?? Number.MAX_SAFE_INTEGER;
+
+      if (levelA !== levelB) {
+        return levelA - levelB;
+      }
+
+      return a.match_number - b.match_number;
+    });
 
     return { eventKey, matches: normalizedMatches };
   }, []);
@@ -112,34 +133,18 @@ export function MatchPreviewsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
       setIsLoading(true);
 
-      loadSchedule()
-        .then((result) => {
-          if (!isActive) {
-            return;
-          }
+      try {
+        const result = loadSchedule();
+        applyScheduleResult(result);
+      } catch (error) {
+        handleScheduleError(error);
+      } finally {
+        setIsLoading(false);
+      }
 
-          applyScheduleResult(result);
-        })
-        .catch((error) => {
-          if (!isActive) {
-            return;
-          }
-
-          handleScheduleError(error);
-        })
-        .finally(() => {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        });
-
-      return () => {
-        isActive = false;
-      };
+      return () => {};
     }, [applyScheduleResult, handleScheduleError, loadSchedule]),
   );
 
@@ -150,16 +155,14 @@ export function MatchPreviewsScreen() {
 
     setIsRefreshing(true);
 
-    loadSchedule()
-      .then((result) => {
-        applyScheduleResult(result);
-      })
-      .catch((error) => {
-        handleScheduleError(error);
-      })
-      .finally(() => {
-        setIsRefreshing(false);
-      });
+    try {
+      const result = loadSchedule();
+      applyScheduleResult(result);
+    } catch (error) {
+      handleScheduleError(error);
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [applyScheduleResult, handleScheduleError, isRefreshing, loadSchedule]);
 
   useEffect(() => {
