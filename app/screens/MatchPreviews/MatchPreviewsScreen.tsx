@@ -94,7 +94,7 @@ const buildMatchRouteParams = (match: MatchScheduleEntry) => {
 
 export function MatchPreviewsScreen() {
   const router = useRouter();
-  const [selectedSection, setSelectedSection] = useState<MatchScheduleSection>('qualification');
+  const [selectedSection, setSelectedSection] = useState<MatchScheduleSection>('my-matches');
   const [matches, setMatches] = useState<MatchScheduleEntry[]>([]);
   const [activeEventKey, setActiveEventKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -265,14 +265,17 @@ export function MatchPreviewsScreen() {
 
   useEffect(() => {
     if (matches.length === 0) {
-      if (selectedSection !== 'qualification') {
-        setSelectedSection('qualification');
+      if (selectedSection !== 'my-matches') {
+        setSelectedSection('my-matches');
       }
       return;
     }
 
     const currentSectionMatches = groupedMatches[selectedSection];
     if (currentSectionMatches.length === 0) {
+      if (selectedSection === 'my-matches') {
+        return;
+      }
       const fallback = SECTION_ORDER.find((section) => groupedMatches[section].length > 0);
       if (fallback && fallback !== selectedSection) {
         setSelectedSection(fallback);
