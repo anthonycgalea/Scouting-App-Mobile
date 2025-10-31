@@ -5,3 +5,5 @@ export * from './organizations';
 export * from './user';
 export * from './robot-photos';
 export * from './match-previews';
+export * from './events';
+export * from './pick-lists';

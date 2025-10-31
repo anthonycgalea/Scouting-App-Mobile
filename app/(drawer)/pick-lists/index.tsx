@@ -3,23 +3,25 @@ import { useRouter } from 'expo-router';
 
 import { PickListsScreen } from '@/app/screens';
 import { ROUTES } from '@/constants/routes';
+import { useIsTablet } from '@/hooks/use-is-tablet';
 import { useOrganizationRole } from '@/hooks/use-organization-role';
 
 export default function PickListsRoute() {
   const router = useRouter();
   const { canManagePickLists, isLoading } = useOrganizationRole();
+  const isTablet = useIsTablet();
 
   useEffect(() => {
     if (isLoading) {
       return;
     }
 
-    if (!canManagePickLists) {
+    if (!canManagePickLists || !isTablet) {
       router.replace(ROUTES.pitScout);
     }
-  }, [canManagePickLists, isLoading, router]);
+  }, [canManagePickLists, isLoading, isTablet, router]);
 
-  if (isLoading || !canManagePickLists) {
+  if (isLoading || !canManagePickLists || !isTablet) {
     return null;
   }
 
