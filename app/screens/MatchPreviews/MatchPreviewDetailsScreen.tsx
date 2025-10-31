@@ -1,3 +1,5 @@
+// app/match-previews/[view].tsx (or similar)
+import { useLocalSearchParams, useNavigation } from 'expo-router'; // ✅ useNavigation instead of Stack
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -24,12 +26,11 @@ export interface MatchPreviewDetailsScreenProps {
   blue1?: number;
   blue2?: number;
   blue3?: number;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const getMatchLevelLabel = (matchLevel: string | undefined) => {
   const normalized = matchLevel?.toLowerCase();
-
   switch (normalized) {
     case 'qm':
       return 'Qualification';
@@ -48,7 +49,6 @@ const formatNumber = (value: number | null | undefined) => {
   if (value === null || value === undefined || Number.isNaN(value) || !Number.isFinite(value)) {
     return undefined;
   }
-
   return value.toLocaleString(undefined, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
@@ -57,13 +57,10 @@ const formatNumber = (value: number | null | undefined) => {
 
 const formatStatWithDeviation = (stat?: MetricStatistics): ReactNode => {
   const average = formatNumber(stat?.average);
-
   if (!average) {
     return '—';
   }
-
   const deviation = formatNumber(stat?.standard_deviation);
-
   if (deviation && deviation !== '0.0') {
     return (
       <>
@@ -72,7 +69,6 @@ const formatStatWithDeviation = (stat?: MetricStatistics): ReactNode => {
       </>
     );
   }
-
   return average;
 };
 
@@ -80,9 +76,7 @@ const formatPercentage = (value: number | null | undefined) => {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return '—';
   }
-
   const normalized = Math.max(0, Math.min(1, value));
-
   return `${(normalized * 100).toLocaleString(undefined, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
@@ -90,14 +84,6 @@ const formatPercentage = (value: number | null | undefined) => {
 };
 
 type AllianceTeam = MatchPreviewResponse['red']['teams'][number];
-
-type SummaryMetric = {
-  key: string;
-  label: string;
-  value: string;
-  variant?: 'red' | 'blue';
-};
-
 type PreviewViewKey = 'overview' | 'red' | 'blue';
 
 const PREVIEW_VIEW_OPTIONS: { key: PreviewViewKey; label: string }[] = [
@@ -115,67 +101,53 @@ const PHASE_METRIC_FIELDS = [
   { key: 'processor', label: 'Processor' },
   { key: 'total_points', label: 'Total Points' },
 ] as const;
-
 type PhaseMetricFieldKey = (typeof PHASE_METRIC_FIELDS)[number]['key'];
 
-const ALLIANCE_METRIC_FIELDS: {
-  key: string;
-  label: string;
-  selector: (team: AllianceTeam) => MetricStatistics | undefined;
-}[] = [
-  { key: 'auto', label: 'Auto Total', selector: (team) => team.auto.total_points },
-  { key: 'teleop', label: 'Teleop Total', selector: (team) => team.teleop.total_points },
-  { key: 'endgame', label: 'Endgame', selector: (team) => team.endgame },
-  { key: 'total', label: 'Total Score', selector: (team) => team.total_points },
-];
+const ALLIANCE_METRIC_FIELDS = [
+  { key: 'auto', label: 'Auto Total', selector: (t: AllianceTeam) => t.auto.total_points },
+  { key: 'teleop', label: 'Teleop Total', selector: (t: AllianceTeam) => t.teleop.total_points },
+  { key: 'endgame', label: 'Endgame', selector: (t: AllianceTeam) => t.endgame },
+  { key: 'total', label: 'Total Score', selector: (t: AllianceTeam) => t.total_points },
+] as const;
 
-const sumTeamAverages = (
-  teams: AllianceTeam[],
-  selector: (team: AllianceTeam) => MetricStatistics | undefined,
-) => {
+const sumTeamAverages = (teams: AllianceTeam[], selector: (t: AllianceTeam) => MetricStatistics | undefined) => {
   let total = 0;
   let hasValue = false;
-
-  teams.forEach((team) => {
-    const stat = selector(team);
-    const average = stat?.average;
-
-    if (average !== null && average !== undefined && Number.isFinite(average)) {
-      total += average;
+  for (const t of teams) {
+    const v = selector(t)?.average;
+    if (v !== null && v !== undefined && Number.isFinite(v)) {
+      total += v;
       hasValue = true;
     }
-  });
-
+  }
   return hasValue ? total : undefined;
 };
 
-const renderAllianceTeamNumbers = (fallback: (number | undefined)[], previewTeams: AllianceTeam[]) => {
-  if (previewTeams.length > 0) {
-    return previewTeams.map((team) => team.team_number).filter((team) => team !== undefined);
-  }
-
-  return fallback.filter((team) => team !== undefined);
-};
+const renderAllianceTeamNumbers = (fallback: (number | undefined)[], previewTeams: AllianceTeam[]) =>
+  previewTeams.length > 0
+    ? previewTeams.map((t) => t.team_number).filter((n) => n !== undefined)
+    : fallback.filter((n) => n !== undefined);
 
 const isMatchSimulation2025 = (
-  simulation: MatchSimulationResponse | null
+  simulation: MatchSimulationResponse | null,
 ): simulation is MatchSimulation2025 => simulation?.season === 1;
 
-export function MatchPreviewDetailsScreen({
-  matchLevel,
-  matchNumber,
-  eventKey,
-  red1,
-  red2,
-  red3,
-  blue1,
-  blue2,
-  blue3,
-  onClose,
-}: MatchPreviewDetailsScreenProps) {
+export default function MatchPreviewDetailsScreen() {
+  const params = useLocalSearchParams();
+  const {
+    matchLevel,
+    matchNumber,
+    eventKey,
+    red1,
+    red2,
+    red3,
+    blue1,
+    blue2,
+    blue3,
+  } = createMatchPreviewDetailsScreenPropsFromParams(params);
+
   const [preview, setPreview] = useState<MatchPreviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [simulation, setSimulation] = useState<MatchSimulationResponse | null>(null);
   const [simulationError, setSimulationError] = useState<string | null>(null);
@@ -184,187 +156,65 @@ export function MatchPreviewDetailsScreen({
 
   const accentColor = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
   const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
-  const borderColor = useThemeColor({ light: 'rgba(15, 23, 42, 0.1)', dark: 'rgba(148, 163, 184, 0.25)' }, 'text');
+  const borderColor = useThemeColor(
+    { light: 'rgba(15, 23, 42, 0.1)', dark: 'rgba(148, 163, 184, 0.25)' },
+    'text',
+  );
   const mutedText = useThemeColor(
-    { light: 'rgba(15, 23, 42, 0.7)', dark: 'rgba(226, 232, 240, 0.7)' },
+    { light: 'rgba(15, 23, 42, 0.7)', dark: 'rgba(226,232,240,0.7)' },
     'text',
   );
   const textColor = useThemeColor({}, 'text');
   const closeButtonBackground = useThemeColor({ light: '#E2E8F0', dark: '#1F2937' }, 'background');
 
   const numericMatchNumber = Number.isFinite(matchNumber ?? NaN) ? matchNumber : undefined;
-  const hasValidParams = Boolean(matchLevel) && numericMatchNumber !== undefined;
-
-  const loadPreview = useCallback(async () => {
-    if (!matchLevel || numericMatchNumber === undefined) {
-      throw new Error('Match information is missing or invalid.');
-    }
-
-    return fetchMatchPreview({
-      matchLevel,
-      matchNumber: numericMatchNumber,
-      eventKey,
-    });
-  }, [eventKey, matchLevel, numericMatchNumber]);
-
-  const loadSimulation = useCallback(async () => {
-    if (!matchLevel || numericMatchNumber === undefined) {
-      throw new Error('Match information is missing or invalid.');
-    }
-
-    return fetchMatchSimulation({
-      matchLevel,
-      matchNumber: numericMatchNumber,
-      eventKey,
-    });
-  }, [eventKey, matchLevel, numericMatchNumber]);
-
-  const handlePreviewError = useCallback((error: unknown) => {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Unable to load match preview information. Confirm you are connected to the internet and try again.';
-
-    setErrorMessage(message);
-    setPreview(null);
-  }, []);
-
-  const handleSimulationError = useCallback((error: unknown) => {
-    console.error('Unable to load match simulation', error);
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Unable to load match simulation. Confirm you are connected to the internet and try again.';
-
-    setSimulationError(message);
-    setSimulation(null);
-  }, []);
-
-  useEffect(() => {
-    if (!hasValidParams) {
-      setIsLoading(false);
-      setErrorMessage('Match information is missing or invalid.');
-      setPreview(null);
-      setSimulation(null);
-      setSimulationError(null);
-      setHasLoadedSimulation(true);
-      return;
-    }
-
-    let isActive = true;
-    setIsLoading(true);
-    setHasLoadedSimulation(false);
-    setSimulationError(null);
-
-    Promise.all([
-      loadPreview(),
-      loadSimulation().catch((error) => {
-        if (isActive) {
-          handleSimulationError(error);
-        }
-
-        return null;
-      }),
-    ])
-      .then(([previewResponse, simulationResponse]) => {
-        if (!isActive) {
-          return;
-        }
-
-        setPreview(previewResponse);
-        setErrorMessage(null);
-        setSimulation(simulationResponse);
-
-        if (simulationResponse) {
-          setSimulationError(null);
-        }
-      })
-      .catch((error) => {
-        if (!isActive) {
-          return;
-        }
-
-        handlePreviewError(error);
-        setSimulation(null);
-      })
-      .finally(() => {
-        if (isActive) {
-          setIsLoading(false);
-          setHasLoadedSimulation(true);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [
-    handlePreviewError,
-    handleSimulationError,
-    hasValidParams,
-    loadPreview,
-    loadSimulation,
-  ]);
-
-  const handleRefresh = useCallback(() => {
-    if (isRefreshing || !hasValidParams) {
-      return;
-    }
-
-    setIsRefreshing(true);
-    setSimulationError(null);
-    setHasLoadedSimulation(false);
-
-    Promise.all([
-      loadPreview(),
-      loadSimulation().catch((error) => {
-        handleSimulationError(error);
-        return null;
-      }),
-    ])
-      .then(([previewResponse, simulationResponse]) => {
-        setPreview(previewResponse);
-        setErrorMessage(null);
-        setSimulation(simulationResponse);
-
-        if (simulationResponse) {
-          setSimulationError(null);
-        }
-      })
-      .catch((error) => {
-        handlePreviewError(error);
-        setSimulation(null);
-      })
-      .finally(() => {
-        setHasLoadedSimulation(true);
-        setIsRefreshing(false);
-      });
-  }, [
-    handlePreviewError,
-    handleSimulationError,
-    hasValidParams,
-    isRefreshing,
-    loadPreview,
-    loadSimulation,
-  ]);
-
   const matchLabel = useMemo(() => {
     const levelLabel = getMatchLevelLabel(matchLevel);
-    if (!numericMatchNumber) {
-      return levelLabel;
-    }
-
-    return `${levelLabel} Match ${numericMatchNumber}`;
+    if (!numericMatchNumber) return levelLabel;
+    return `${levelLabel} Match ${numericMatchNumber} Preview`;
   }, [matchLevel, numericMatchNumber]);
 
-  const redTeams = useMemo(
-    () => (preview?.red.teams ?? []) as AllianceTeam[],
-    [preview],
-  );
-  const blueTeams = useMemo(
-    () => (preview?.blue.teams ?? []) as AllianceTeam[],
-    [preview],
-  );
+  const navigation = useNavigation();
 
+  useEffect(() => {
+    navigation.setOptions({ title: matchLabel });
+  }, [navigation, matchLabel]);
+
+
+  const loadPreview = useCallback(async () => {
+    if (!matchLevel || numericMatchNumber === undefined)
+      throw new Error('Match information is missing or invalid.');
+    return fetchMatchPreview({ matchLevel, matchNumber: numericMatchNumber, eventKey });
+  }, [matchLevel, numericMatchNumber, eventKey]);
+
+  const loadSimulation = useCallback(async () => {
+    if (!matchLevel || numericMatchNumber === undefined)
+      throw new Error('Match information is missing or invalid.');
+    return fetchMatchSimulation({ matchLevel, matchNumber: numericMatchNumber, eventKey });
+  }, [matchLevel, numericMatchNumber, eventKey]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    Promise.all([
+      loadPreview(),
+      loadSimulation().catch((err) => {
+        setSimulationError(err.message);
+        return null;
+      }),
+    ])
+      .then(([p, s]) => {
+        setPreview(p);
+        setSimulation(s);
+      })
+      .catch((e) => setErrorMessage(e.message))
+      .finally(() => {
+        setIsLoading(false);
+        setHasLoadedSimulation(true);
+      });
+  }, [loadPreview, loadSimulation]);
+
+  const redTeams = useMemo(() => preview?.red.teams ?? [], [preview]);
+  const blueTeams = useMemo(() => preview?.blue.teams ?? [], [preview]);
   const redTeamNumbers = useMemo(
     () => renderAllianceTeamNumbers([red1, red2, red3], redTeams),
     [red1, red2, red3, redTeams],
@@ -375,7 +225,7 @@ export function MatchPreviewDetailsScreen({
   );
 
   const buildAllianceSummary = useCallback((teams: AllianceTeam[], variant: 'red' | 'blue') => {
-    return ALLIANCE_METRIC_FIELDS.map<SummaryMetric>((field) => ({
+    return ALLIANCE_METRIC_FIELDS.map((field) => ({
       key: field.key,
       label: field.label,
       value: formatNumber(sumTeamAverages(teams, field.selector)) ?? '—',
@@ -384,14 +234,12 @@ export function MatchPreviewDetailsScreen({
   }, []);
 
   const buildAlliancePhaseBreakdown = useCallback(
-    (teams: AllianceTeam[], selector: (team: AllianceTeam) => PhaseMetrics) => {
+    (teams: AllianceTeam[], selector: (t: AllianceTeam) => PhaseMetrics) => {
       const breakdown = {} as Record<PhaseMetricFieldKey, string>;
-
-      PHASE_METRIC_FIELDS.forEach((field) => {
-        const total = sumTeamAverages(teams, (team) => selector(team)[field.key]);
-        breakdown[field.key] = formatNumber(total) ?? '—';
+      PHASE_METRIC_FIELDS.forEach((f) => {
+        const total = sumTeamAverages(teams, (t) => selector(t)[f.key]);
+        breakdown[f.key] = formatNumber(total) ?? '—';
       });
-
       return breakdown;
     },
     [],
@@ -403,23 +251,23 @@ export function MatchPreviewDetailsScreen({
   );
   const blueAllianceSummary = useMemo(
     () => buildAllianceSummary(blueTeams, 'blue'),
-    [blueTeams, buildAllianceSummary],
+    [buildAllianceSummary, blueTeams],
   );
 
   const redAllianceAutoBreakdown = useMemo(
-    () => buildAlliancePhaseBreakdown(redTeams, (team) => team.auto),
+    () => buildAlliancePhaseBreakdown(redTeams, (t) => t.auto),
     [buildAlliancePhaseBreakdown, redTeams],
   );
   const redAllianceTeleopBreakdown = useMemo(
-    () => buildAlliancePhaseBreakdown(redTeams, (team) => team.teleop),
+    () => buildAlliancePhaseBreakdown(redTeams, (t) => t.teleop),
     [buildAlliancePhaseBreakdown, redTeams],
   );
   const blueAllianceAutoBreakdown = useMemo(
-    () => buildAlliancePhaseBreakdown(blueTeams, (team) => team.auto),
-    [blueTeams, buildAlliancePhaseBreakdown],
+    () => buildAlliancePhaseBreakdown(blueTeams, (t) => t.auto),
+    [buildAlliancePhaseBreakdown, blueTeams],
   );
   const blueAllianceTeleopBreakdown = useMemo(
-    () => buildAlliancePhaseBreakdown(blueTeams, (team) => team.teleop),
+    () => buildAlliancePhaseBreakdown(blueTeams, (t) => t.teleop),
     [buildAlliancePhaseBreakdown, blueTeams],
   );
 
@@ -429,76 +277,41 @@ export function MatchPreviewDetailsScreen({
   );
 
   const simulationWinner = useMemo(() => {
-    if (!simulation2025) {
-      return null;
-    }
-
-    const redWinPct = simulation2025.red_alliance_win_pct;
-    const blueWinPct = simulation2025.blue_alliance_win_pct;
-    const safeRedWin = redWinPct ?? 0;
-    const safeBlueWin = blueWinPct ?? 0;
-
-    const isRedFavorite = safeRedWin > safeBlueWin;
-    const isBlueFavorite = safeBlueWin > safeRedWin;
-
-    const winnerLabel = isRedFavorite
-      ? 'Red Alliance'
-      : isBlueFavorite
-        ? 'Blue Alliance'
-        : 'Evenly Matched';
-
-    const winnerPct = isRedFavorite
-      ? redWinPct
-      : isBlueFavorite
-        ? blueWinPct
-        : redWinPct;
-
-    return { redWinPct, blueWinPct, isRedFavorite, isBlueFavorite, winnerLabel, winnerPct };
+    if (!simulation2025) return null;
+    const redWin = simulation2025.red_alliance_win_pct ?? 0;
+    const blueWin = simulation2025.blue_alliance_win_pct ?? 0;
+    const isRed = redWin > blueWin;
+    const isBlue = blueWin > redWin;
+    const winnerLabel = isRed ? 'Red Alliance' : isBlue ? 'Blue Alliance' : 'Evenly Matched';
+    const winnerPct = isRed ? redWin : isBlue ? blueWin : redWin;
+    return { redWinPct: redWin, blueWinPct: blueWin, isRed, isBlue, winnerLabel, winnerPct };
   }, [simulation2025]);
 
   const simulationFallbackMessage = useMemo(() => {
-    if (simulationError) {
-      return simulationError;
-    }
-
-    if (hasLoadedSimulation) {
-      return 'Simulation details are not available for this season yet.';
-    }
-
+    if (simulationError) return simulationError;
+    if (hasLoadedSimulation) return 'Simulation details are not available for this season yet.';
     return null;
   }, [hasLoadedSimulation, simulationError]);
 
   const renderPhaseTable = useCallback(
-    (
-      title: string,
-      getValue: (field: (typeof PHASE_METRIC_FIELDS)[number]) => ReactNode,
-      options?: { variant?: 'red' | 'blue' },
-    ) => {
-      const variantStyle =
-        options?.variant === 'red'
-          ? styles.redText
-          : options?.variant === 'blue'
-            ? styles.blueText
-            : null;
-
+    (title: string, getValue: (f: (typeof PHASE_METRIC_FIELDS)[number]) => ReactNode, variant?: 'red' | 'blue') => {
+      const colorStyle = variant === 'red' ? styles.redText : variant === 'blue' ? styles.blueText : null;
       return (
         <View style={styles.breakdownSection}>
-          <ThemedText type="defaultSemiBold" style={[styles.breakdownSectionTitle, variantStyle]}>
+          <ThemedText type="defaultSemiBold" style={[styles.breakdownSectionTitle, colorStyle]}>
             {title}
           </ThemedText>
           <View style={[styles.breakdownTable, { borderColor }]}>
-            {PHASE_METRIC_FIELDS.map((field, index) => (
+            {PHASE_METRIC_FIELDS.map((f, i) => (
               <View
-                key={field.key}
+                key={f.key}
                 style={[
                   styles.breakdownTableRow,
-                  index !== PHASE_METRIC_FIELDS.length - 1
-                    ? { borderBottomWidth: StyleSheet.hairlineWidth, borderColor }
-                    : null,
+                  i !== PHASE_METRIC_FIELDS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderColor },
                 ]}
               >
-                <ThemedText style={[styles.breakdownLabel, { color: mutedText }]}>{field.label}</ThemedText>
-                <ThemedText style={[styles.breakdownValue, variantStyle]}>{getValue(field)}</ThemedText>
+                <ThemedText style={[styles.breakdownLabel, { color: mutedText }]}>{f.label}</ThemedText>
+                <ThemedText style={[styles.breakdownValue, colorStyle]}>{getValue(f)}</ThemedText>
               </View>
             ))}
           </View>
@@ -511,7 +324,6 @@ export function MatchPreviewDetailsScreen({
   const renderTeamCard = useCallback(
     (team: AllianceTeam, alliance: 'red' | 'blue') => {
       const cardBorder = alliance === 'red' ? '#DC2626' : '#2563EB';
-
       return (
         <View key={team.team_number} style={styles.teamCardWrapper}>
           <View style={[styles.teamCard, { borderColor: cardBorder }]}>
@@ -537,16 +349,8 @@ export function MatchPreviewDetailsScreen({
               </View>
             </View>
             <View style={styles.teamBreakdowns}>
-              {renderPhaseTable(
-                'Auto Breakdown',
-                (field) => formatStatWithDeviation(team.auto[field.key]),
-                { variant: alliance },
-              )}
-              {renderPhaseTable(
-                'Teleop Breakdown',
-                (field) => formatStatWithDeviation(team.teleop[field.key]),
-                { variant: alliance },
-              )}
+              {renderPhaseTable('Auto Breakdown', (f) => formatStatWithDeviation(team.auto[f.key]), alliance)}
+              {renderPhaseTable('Teleop Breakdown', (f) => formatStatWithDeviation(team.teleop[f.key]), alliance)}
             </View>
           </View>
         </View>
@@ -556,60 +360,44 @@ export function MatchPreviewDetailsScreen({
   );
 
   const renderAllianceSummaryCard = useCallback(
-    (variant: 'red' | 'blue', options?: { layout?: 'column' | 'grid' }) => {
+    (variant: 'red' | 'blue') => {
       const isRed = variant === 'red';
       const summary = isRed ? redAllianceSummary : blueAllianceSummary;
       const autoBreakdown = isRed ? redAllianceAutoBreakdown : blueAllianceAutoBreakdown;
       const teleopBreakdown = isRed ? redAllianceTeleopBreakdown : blueAllianceTeleopBreakdown;
       const title = isRed ? 'Red Alliance' : 'Blue Alliance';
-      const variantStyle = isRed ? styles.redText : styles.blueText;
-      const layout = options?.layout ?? 'column';
-      const containerStyle =
-        layout === 'column' ? styles.summaryColumnCard : styles.teamSummaryCard;
-
-      const card = (
-        <View style={[containerStyle, { backgroundColor: cardBackground, borderColor }]}>
-          <ThemedText type="defaultSemiBold" style={[styles.columnTitle, variantStyle]}>
+      const colorStyle = isRed ? styles.redText : styles.blueText;
+      return (
+        <View style={[styles.summaryColumnCard, { backgroundColor: cardBackground, borderColor }]}>
+          <ThemedText type="defaultSemiBold" style={[styles.columnTitle, colorStyle]}>
             {title}
           </ThemedText>
           <View style={styles.columnMetrics}>
-            {summary.map((metric) => (
-              <View key={metric.key} style={styles.columnMetricRow}>
-                <ThemedText style={[styles.columnMetricLabel, { color: mutedText }]}>
-                  {metric.label}
-                </ThemedText>
-                <ThemedText style={[styles.columnMetricValue, variantStyle]}>{metric.value}</ThemedText>
+            {summary.map((m) => (
+              <View key={m.key} style={styles.columnMetricRow}>
+                <ThemedText style={[styles.columnMetricLabel, { color: mutedText }]}>{m.label}</ThemedText>
+                <ThemedText style={[styles.columnMetricValue, colorStyle]}>{m.value}</ThemedText>
               </View>
             ))}
           </View>
           <View style={styles.breakdownGrid}>
-            {renderPhaseTable('Auto Breakdown', (field) => autoBreakdown[field.key], { variant })}
-            {renderPhaseTable('Teleop Breakdown', (field) => teleopBreakdown[field.key], { variant })}
+            {renderPhaseTable('Auto Breakdown', (f) => autoBreakdown[f.key], variant)}
+            {renderPhaseTable('Teleop Breakdown', (f) => teleopBreakdown[f.key], variant)}
           </View>
         </View>
       );
-
-      if (layout === 'grid') {
-        return (
-          <View key={`${variant}-summary`} style={styles.teamCardWrapper}>
-            {card}
-          </View>
-        );
-      }
-
-      return card;
     },
     [
-      blueAllianceAutoBreakdown,
-      blueAllianceSummary,
-      blueAllianceTeleopBreakdown,
-      cardBackground,
-      borderColor,
-      mutedText,
-      redAllianceAutoBreakdown,
       redAllianceSummary,
+      blueAllianceSummary,
+      redAllianceAutoBreakdown,
+      blueAllianceAutoBreakdown,
       redAllianceTeleopBreakdown,
+      blueAllianceTeleopBreakdown,
       renderPhaseTable,
+      borderColor,
+      cardBackground,
+      mutedText,
     ],
   );
 
@@ -617,392 +405,180 @@ export function MatchPreviewDetailsScreen({
     (variant: 'red' | 'blue') => {
       const isRed = variant === 'red';
       const teams = isRed ? redTeams : blueTeams;
-      const teamNumbers = isRed ? redTeamNumbers : blueTeamNumbers;
-      const allianceLabel = isRed ? 'Red Alliance Teams' : 'Blue Alliance Teams';
-      const variantStyle = isRed ? styles.redText : styles.blueText;
-
       return (
-        <View key={`${variant}-teams`} style={styles.teamListSection}>
-          <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, variantStyle]}>
-            {allianceLabel}
-          </ThemedText>
-          <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>
-            Teams: {teamNumbers.length > 0 ? teamNumbers.join(', ') : 'TBD'}
-          </ThemedText>
+        <View style={styles.teamListSection}>
           <View style={styles.teamList}>
-            {teams.map((team) => renderTeamCard(team, variant))}
-            {renderAllianceSummaryCard(variant, { layout: 'grid' })}
+            {teams.map((t) => renderTeamCard(t, variant))}
+            {renderAllianceSummaryCard(variant)}
           </View>
         </View>
       );
     },
-    [
-      blueTeamNumbers,
-      blueTeams,
-      mutedText,
-      redTeamNumbers,
-      redTeams,
-      renderAllianceSummaryCard,
-      renderTeamCard,
-    ],
+    [redTeams, blueTeams, renderTeamCard, renderAllianceSummaryCard],
   );
 
   return (
     <ScreenContainer>
-      <View style={styles.detailsHeader}>
-        <View style={styles.headerTextContainer}>
-          <ThemedText type="title">{matchLabel}</ThemedText>
-          {eventKey ? (
-            <ThemedText style={[styles.eventKeyLabel, { color: mutedText }]}>Event: {eventKey}</ThemedText>
-          ) : null}
+      {/* Tab selector + Close in one row under router header */}
+      <View style={styles.topBar}>
+        <View style={styles.tabSelectorRow}>
+          {PREVIEW_VIEW_OPTIONS.map((opt) => {
+            const isActive = opt.key === activeView;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => setActiveView(opt.key)}
+                style={[
+                  styles.tabButton,
+                  { borderColor },
+                  isActive && { backgroundColor: accentColor, borderColor: accentColor },
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={[styles.tabLabel, { color: isActive ? '#FFF' : mutedText }]}>
+                  {opt.label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
         </View>
         <Pressable
-          accessibilityRole="button"
-          onPress={onClose}
+          onPress={() => history.back()}
           style={({ pressed }) => [
             styles.closeButton,
-            {
-              backgroundColor: closeButtonBackground,
-              opacity: pressed ? 0.85 : 1,
-            },
+            { backgroundColor: closeButtonBackground, opacity: pressed ? 0.85 : 1 },
           ]}
         >
           <ThemedText style={styles.closeButtonText}>Close</ThemedText>
         </Pressable>
       </View>
+
       {isLoading ? (
         <View style={styles.stateWrapper}>
-          <ActivityIndicator accessibilityLabel="Loading match preview" color={accentColor} />
+          <ActivityIndicator color={accentColor} />
           <ThemedText style={[styles.stateMessage, { color: mutedText }]}>Loading match preview…</ThemedText>
         </View>
       ) : errorMessage ? (
         <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>
-          <ThemedText type="defaultSemiBold" style={[styles.stateTitle, { color: textColor }]}>
-            Unable to load match preview
-          </ThemedText>
-          <ThemedText style={[styles.stateMessage, { color: mutedText }]}>{errorMessage}</ThemedText>
+          <ThemedText style={{ color: textColor }}>{errorMessage}</ThemedText>
         </View>
-      ) : preview ? (
-        <>
-          <View style={styles.viewSelector}>
-            {PREVIEW_VIEW_OPTIONS.map((option) => {
-              const isActive = option.key === activeView;
-
-              return (
-                <Pressable
-                  key={option.key}
-                  onPress={() => setActiveView(option.key)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isActive }}
-                  style={({ pressed }) => [
-                    styles.viewSelectorButton,
-                    { borderColor },
-                    isActive ? { backgroundColor: accentColor, borderColor: accentColor } : null,
-                    { opacity: pressed ? 0.85 : 1 },
-                  ]}
-                >
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={[
-                      styles.viewSelectorLabel,
-                      { color: mutedText },
-                      isActive ? styles.viewSelectorLabelActive : null,
-                    ]}
-                  >
-                    {option.label}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-          <ScrollView contentContainerStyle={styles.previewContent}>
-            {activeView === 'overview' ? (
-              <>
-                <View style={styles.summaryColumns}>
-                  {renderAllianceSummaryCard('red')}
-                  <View style={styles.simulationColumn}>
-                    {simulation2025 ? (
-                      <>
-                        <View
+      ) : (
+        <ScrollView contentContainerStyle={styles.previewContent}>
+          {activeView === 'overview' ? (
+            <View style={styles.summaryColumns}>
+              {renderAllianceSummaryCard('red')}
+              <View style={styles.simulationColumn}>
+                {simulation2025 ? (
+                  <>
+                    <View style={[styles.simulationPredictionCard, { backgroundColor: cardBackground, borderColor }]}>
+                      <ThemedText type="defaultSemiBold" style={styles.simulationSectionTitle}>
+                        Predicted Winner
+                      </ThemedText>
+                      <View style={styles.predictionRow}>
+                        <ThemedText
                           style={[
-                            styles.simulationPredictionCard,
-                            { backgroundColor: cardBackground, borderColor },
+                            styles.predictionWinner,
+                            simulationWinner?.isRed ? styles.redText : simulationWinner?.isBlue ? styles.blueText : null,
                           ]}
                         >
-                          <ThemedText type="defaultSemiBold" style={styles.simulationSectionTitle}>
-                            Predicted Winner
+                          {simulationWinner?.winnerLabel ?? '—'}
+                        </ThemedText>
+                        <View
+                          style={[
+                            styles.winBadge,
+                            simulationWinner?.isRed
+                              ? styles.winBadgeRed
+                              : simulationWinner?.isBlue
+                              ? styles.winBadgeBlue
+                              : styles.winBadgeNeutral,
+                          ]}
+                        >
+                          <ThemedText style={styles.winBadgeText}>
+                            {formatPercentage(simulationWinner?.winnerPct ?? null)}
                           </ThemedText>
-                          <View style={styles.predictionRow}>
-                            <ThemedText
-                              style={[
-                                styles.predictionWinner,
-                                simulationWinner?.isRedFavorite
-                                  ? styles.redText
-                                  : simulationWinner?.isBlueFavorite
-                                    ? styles.blueText
-                                    : null,
-                              ]}
-                            >
-                              {simulationWinner?.winnerLabel ?? '—'}
-                            </ThemedText>
-                            <View
-                              style={[
-                                styles.winBadge,
-                                simulationWinner?.isRedFavorite
-                                  ? styles.winBadgeRed
-                                  : simulationWinner?.isBlueFavorite
-                                    ? styles.winBadgeBlue
-                                    : styles.winBadgeNeutral,
-                              ]}
-                            >
-                              <ThemedText style={styles.winBadgeText}>
-                                {formatPercentage(simulationWinner?.winnerPct ?? null)}
-                              </ThemedText>
-                            </View>
-                          </View>
-                          {simulationWinner &&
-                          !simulationWinner.isRedFavorite &&
-                          !simulationWinner.isBlueFavorite ? (
-                            <ThemedText style={[styles.predictionDescription, { color: mutedText }]}>
-                              Both alliances have an equal chance of winning based on the current simulation.
-                            </ThemedText>
-                          ) : null}
                         </View>
-
-                        <View style={styles.simulationAllianceGrid}>
-                          <View
-                            style={[
-                              styles.simulationAllianceCard,
-                              { backgroundColor: cardBackground, borderColor },
-                            ]}
-                          >
-                            <ThemedText
-                              type="defaultSemiBold"
-                              style={[styles.simulationAllianceTitle, styles.redText]}
-                            >
-                              Red RP
-                            </ThemedText>
-                            <View style={styles.simulationMetricRow}>
-                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
-                                Auto RP
-                              </ThemedText>
-                              <ThemedText style={styles.simulationMetricValue}>
-                                {formatPercentage(simulation2025.red_auto_rp)}
-                              </ThemedText>
-                            </View>
-                            <View style={styles.simulationMetricGroup}>
-                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
-                                Coral Success
-                              </ThemedText>
-                              <View style={styles.simulationMetricSubGroup}>
-                                <View style={styles.simulationMetricSubRow}>
-                                  <ThemedText
-                                    style={[styles.simulationMetricSubLabel, { color: mutedText }]}
-                                  >
-                                    Win
-                                  </ThemedText>
-                                  <ThemedText style={styles.simulationMetricValue}>
-                                    {formatPercentage(simulation2025.red_w_coral_rp)}
-                                  </ThemedText>
-                                </View>
-                                <View style={styles.simulationMetricSubRow}>
-                                  <ThemedText
-                                    style={[styles.simulationMetricSubLabel, { color: mutedText }]}
-                                  >
-                                    RP
-                                  </ThemedText>
-                                  <ThemedText style={styles.simulationMetricValue}>
-                                    {formatPercentage(simulation2025.red_r_coral_rp)}
-                                  </ThemedText>
-                                </View>
-                              </View>
-                            </View>
-                            <View style={styles.simulationMetricRow}>
-                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
-                                Endgame RP
-                              </ThemedText>
-                              <ThemedText style={styles.simulationMetricValue}>
-                                {formatPercentage(simulation2025.red_endgame_rp)}
-                              </ThemedText>
-                            </View>
-                          </View>
-
-                          <View
-                            style={[
-                              styles.simulationAllianceCard,
-                              { backgroundColor: cardBackground, borderColor },
-                            ]}
-                          >
-                            <ThemedText
-                              type="defaultSemiBold"
-                              style={[styles.simulationAllianceTitle, styles.blueText]}
-                            >
-                              Blue RP
-                            </ThemedText>
-                            <View style={styles.simulationMetricRow}>
-                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
-                                Auto RP
-                              </ThemedText>
-                              <ThemedText style={styles.simulationMetricValue}>
-                                {formatPercentage(simulation2025.blue_auto_rp)}
-                              </ThemedText>
-                            </View>
-                            <View style={styles.simulationMetricGroup}>
-                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
-                                Coral Success
-                              </ThemedText>
-                              <View style={styles.simulationMetricSubGroup}>
-                                <View style={styles.simulationMetricSubRow}>
-                                  <ThemedText
-                                    style={[styles.simulationMetricSubLabel, { color: mutedText }]}
-                                  >
-                                    Win
-                                  </ThemedText>
-                                  <ThemedText style={styles.simulationMetricValue}>
-                                    {formatPercentage(simulation2025.blue_w_coral_rp)}
-                                  </ThemedText>
-                                </View>
-                                <View style={styles.simulationMetricSubRow}>
-                                  <ThemedText
-                                    style={[styles.simulationMetricSubLabel, { color: mutedText }]}
-                                  >
-                                    RP
-                                  </ThemedText>
-                                  <ThemedText style={styles.simulationMetricValue}>
-                                    {formatPercentage(simulation2025.blue_r_coral_rp)}
-                                  </ThemedText>
-                                </View>
-                              </View>
-                            </View>
-                            <View style={styles.simulationMetricRow}>
-                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
-                                Endgame RP
-                              </ThemedText>
-                              <ThemedText style={styles.simulationMetricValue}>
-                                {formatPercentage(simulation2025.blue_endgame_rp)}
-                              </ThemedText>
-                            </View>
-                          </View>
-                        </View>
-                      </>
-                    ) : simulationFallbackMessage ? (
-                      <View
-                        style={[
-                          styles.simulationMessageCard,
-                          { backgroundColor: cardBackground, borderColor },
-                        ]}
-                      >
-                        <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}>
-                          {simulationFallbackMessage}
-                        </ThemedText>
                       </View>
-                    ) : (
-                      <View
-                        style={[
-                          styles.simulationMessageCard,
-                          styles.simulationLoadingCard,
-                          { backgroundColor: cardBackground, borderColor },
-                        ]}
-                      >
-                        <ActivityIndicator color={accentColor} />
-                        <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}>
-                          Loading simulation…
-                        </ThemedText>
-                      </View>
-                    )}
+                    </View>
+                  </>
+                ) : simulationFallbackMessage ? (
+                  <View style={[styles.simulationMessageCard, { backgroundColor: cardBackground, borderColor }]}>
+                    <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}>
+                      {simulationFallbackMessage}
+                    </ThemedText>
                   </View>
-                  {renderAllianceSummaryCard('blue')}
-                </View>
-              </>
-            ) : activeView === 'red' ? (
-              renderAllianceTeamsSection('red')
-            ) : (
-              renderAllianceTeamsSection('blue')
-            )}
-          </ScrollView>
-        </>
-      ) : (
-        <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>
-          <ThemedText type="defaultSemiBold" style={[styles.stateTitle, { color: textColor }]}>
-            Match preview is not available for this match yet.
-          </ThemedText>
-        </View>
+                ) : (
+                  <View
+                    style={[styles.simulationMessageCard, styles.simulationLoadingCard, { backgroundColor: cardBackground, borderColor }]}
+                  >
+                    <ActivityIndicator color={accentColor} />
+                    <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}>
+                      Loading simulation…
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+              {renderAllianceSummaryCard('blue')}
+            </View>
+          ) : activeView === 'red' ? (
+            renderAllianceTeamsSection('red')
+          ) : (
+            renderAllianceTeamsSection('blue')
+          )}
+        </ScrollView>
       )}
     </ScreenContainer>
   );
 }
 
-export const createMatchPreviewDetailsScreenPropsFromParams = (params: {
-  matchLevel?: string | string[];
-  matchNumber?: string | string[];
-  eventKey?: string | string[];
-  red1?: string | string[];
-  red2?: string | string[];
-  red3?: string | string[];
-  blue1?: string | string[];
-  blue2?: string | string[];
-  blue3?: string | string[];
-}) => {
-  const toSingleValue = (value: string | string[] | undefined) =>
-    Array.isArray(value) ? value[0] : value;
-
-  const parseNumber = (value: string | string[] | undefined) => {
-    const raw = toSingleValue(value);
-    if (!raw) {
-      return undefined;
-    }
-
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : undefined;
+export const createMatchPreviewDetailsScreenPropsFromParams = (params: any) => {
+  const toSingle = (v: any) => (Array.isArray(v) ? v[0] : v);
+  const parseNum = (v: any) => {
+    const raw = toSingle(v);
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
   };
-
   return {
-    matchLevel: toSingleValue(params.matchLevel),
-    matchNumber: parseNumber(params.matchNumber),
-    eventKey: toSingleValue(params.eventKey),
-    red1: parseNumber(params.red1),
-    red2: parseNumber(params.red2),
-    red3: parseNumber(params.red3),
-    blue1: parseNumber(params.blue1),
-    blue2: parseNumber(params.blue2),
-    blue3: parseNumber(params.blue3),
+    matchLevel: toSingle(params.matchLevel),
+    matchNumber: parseNum(params.matchNumber),
+    eventKey: toSingle(params.eventKey),
+    red1: parseNum(params.red1),
+    red2: parseNum(params.red2),
+    red3: parseNum(params.red3),
+    blue1: parseNum(params.blue1),
+    blue2: parseNum(params.blue2),
+    blue3: parseNum(params.blue3),
   };
 };
 
 const styles = StyleSheet.create({
-  detailsHeader: {
+  topBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  headerTextContainer: {
+  tabSelectorRow: {
     flex: 1,
-    gap: 4,
+    flexDirection: 'row',
+    gap: 8,
   },
-  eventKeyLabel: {
-    fontSize: 14,
+  tabButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 999,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  tabLabel: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   closeButton: {
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  closeButtonText: {
-    fontWeight: '600',
-  },
-  refreshButton: {
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  refreshButtonText: {
-    color: '#F8FAFC',
-    fontWeight: '600',
-  },
+  closeButtonText: { fontWeight: '600' },
   stateWrapper: {
     flex: 1,
     alignItems: 'center',
@@ -1013,254 +589,45 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 20,
-    gap: 12,
   },
-  stateTitle: {
-    fontSize: 18,
-    textAlign: 'center',
-  },
-  stateMessage: {
-    textAlign: 'center',
-    fontSize: 16,
-  },
-  previewContent: {
-    gap: 20,
-    paddingBottom: 40,
-  },
-  viewSelector: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  viewSelectorButton: {
-    flex: 1,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-  },
-  viewSelectorLabel: {
-    fontSize: 15,
-  },
-  viewSelectorLabelActive: {
-    color: '#F8FAFC',
-  },
-  summaryColumns: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  summaryColumnCard: {
-    flex: 1,
-    minWidth: 220,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-  },
-  simulationColumn: {
-    flex: 1,
-    minWidth: 220,
-    gap: 16,
-  },
-  simulationPredictionCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-  },
-  simulationSectionTitle: {
-    fontSize: 18,
-  },
-  predictionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  predictionWinner: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  winBadge: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  winBadgeRed: {
-    backgroundColor: 'rgba(220, 38, 38, 0.1)',
-    borderColor: 'rgba(220, 38, 38, 0.3)',
-  },
-  winBadgeBlue: {
-    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-    borderColor: 'rgba(37, 99, 235, 0.3)',
-  },
-  winBadgeNeutral: {
-    backgroundColor: 'rgba(15, 23, 42, 0.08)',
-    borderColor: 'rgba(15, 23, 42, 0.12)',
-  },
-  winBadgeText: {
-    fontWeight: '700',
-  },
-  predictionDescription: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  simulationAllianceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  simulationAllianceCard: {
-    flex: 1,
-    minWidth: 200,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-  },
-  simulationAllianceTitle: {
-    fontSize: 18,
-  },
-  simulationMetricRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  simulationMetricLabel: {
-    fontSize: 14,
-  },
-  simulationMetricValue: {
-    fontWeight: '600',
-  },
-  simulationMetricGroup: {
-    gap: 12,
-  },
-  simulationMetricSubGroup: {
-    gap: 8,
-  },
-  simulationMetricSubRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  simulationMetricSubLabel: {
-    fontSize: 12,
-  },
-  simulationMessageCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 8,
-  },
-  simulationMessageText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  simulationLoadingCard: {
-    alignItems: 'center',
-  },
-  columnTitle: {
-    fontSize: 18,
-  },
-  columnMetrics: {
-    gap: 12,
-  },
-  columnMetricRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  columnMetricLabel: {
-    flex: 1,
-    fontSize: 14,
-  },
-  columnMetricValue: {
-    fontWeight: '600',
-  },
-  redText: {
-    color: '#DC2626',
-  },
-  blueText: {
-    color: '#2563EB',
-  },
-  teamListSection: {
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-  },
-  sectionSubtitle: {
-    fontSize: 15,
-  },
-  teamList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    alignItems: 'stretch',
-  },
-  teamCardWrapper: {
-    flexGrow: 1,
-    flexShrink: 1,
-    width: '24%',
-    minWidth: 220,
-  },
-  teamCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-    minWidth: 0,
-  },
-  teamSummaryCard: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-    minWidth: 0,
-  },
-  teamCardTitle: {
-    fontSize: 16,
-  },
-  teamMetricsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  teamMetric: {
-    minWidth: 120,
-    gap: 4,
-  },
-  metricLabel: {
-    fontSize: 13,
-    color: 'rgba(15, 23, 42, 0.7)',
-  },
-  metricValue: {
-    fontWeight: '600',
-  },
-  teamBreakdowns: {
-    gap: 16,
-  },
-  breakdownGrid: {
-    gap: 16,
-  },
-  breakdownSection: {
-    gap: 8,
-  },
-  breakdownSectionTitle: {
-    fontSize: 15,
-  },
-  breakdownTable: {
-    borderWidth: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
+  stateMessage: { textAlign: 'center', fontSize: 16 },
+  previewContent: { gap: 20, paddingBottom: 40 },
+  summaryColumns: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  summaryColumnCard: { flex: 1, minWidth: 220, borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
+  simulationColumn: { flex: 1, minWidth: 220, gap: 16 },
+  simulationPredictionCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
+  simulationSectionTitle: { fontSize: 18 },
+  predictionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  predictionWinner: { fontSize: 16, fontWeight: '600' },
+  winBadge: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+  winBadgeRed: { backgroundColor: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.3)' },
+  winBadgeBlue: { backgroundColor: 'rgba(37,99,235,0.1)', borderColor: 'rgba(37,99,235,0.3)' },
+  winBadgeNeutral: { backgroundColor: 'rgba(15,23,42,0.08)', borderColor: 'rgba(15,23,42,0.12)' },
+  winBadgeText: { fontWeight: '700' },
+  simulationMessageCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 8 },
+  simulationMessageText: { fontSize: 14, textAlign: 'center' },
+  simulationLoadingCard: { alignItems: 'center' },
+  columnTitle: { fontSize: 18 },
+  columnMetrics: { gap: 12 },
+  columnMetricRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  columnMetricLabel: { flex: 1, fontSize: 14 },
+  columnMetricValue: { fontWeight: '600' },
+  redText: { color: '#DC2626' },
+  blueText: { color: '#2563EB' },
+  teamListSection: { gap: 12 },
+  teamList: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'stretch' },
+  teamCardWrapper: { flexGrow: 1, flexShrink: 1, width: '24%', minWidth: 220 },
+  teamCard: { flex: 1, borderWidth: 1, borderRadius: 16, padding: 14, gap: 12, minWidth: 0 },
+  teamCardTitle: { fontSize: 16 },
+  teamMetricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  teamMetric: { minWidth: 120, gap: 4 },
+  metricLabel: { fontSize: 13, color: 'rgba(15,23,42,0.7)' },
+  metricValue: { fontWeight: '600' },
+  teamBreakdowns: { gap: 16 },
+  breakdownGrid: { gap: 16 },
+  breakdownSection: { gap: 8 },
+  breakdownSectionTitle: { fontSize: 15 },
+  breakdownTable: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
   breakdownTableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1269,13 +636,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  breakdownLabel: {
-    flex: 1,
-    fontSize: 13,
-  },
-  breakdownValue: {
-    fontWeight: '600',
-  },
+  breakdownLabel: { flex: 1, fontSize: 13 },
+  breakdownValue: { fontWeight: '600' },
   standardDeviationSuperscript: {
     fontSize: 12,
     marginLeft: 2,

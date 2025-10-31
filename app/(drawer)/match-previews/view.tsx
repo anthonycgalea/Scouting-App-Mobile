@@ -1,9 +1,9 @@
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import {
-  MatchPreviewDetailsScreen,
+import MatchPreviewDetailsScreen, {
   createMatchPreviewDetailsScreenPropsFromParams,
 } from '@/app/screens/MatchPreviews/MatchPreviewDetailsScreen';
+
 
 export default function MatchPreviewDetailsRoute() {
   const router = useRouter();
