@@ -1,14 +1,20 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { DEFAULT_SUPER_SCOUT_FIELDS, SuperScoutFieldDefinition } from '@/constants/superScout';
 import { getDbOrThrow, schema } from '@/db';
+import type { MatchSchedule } from '@/db/schema';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { and, eq, inArray } from 'drizzle-orm';
+
+import { apiRequest } from '@/app/services/api';
+import { getActiveEvent } from '@/app/services/logged-in-event';
 
 type AllianceColor = 'red' | 'blue';
 type StartingPosition = 'LEFT' | 'CENTER' | 'RIGHT' | 'NO_SHOW';
@@ -66,6 +72,52 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
 
 const renderTeamNumber = (value?: number) => (value === undefined ? 'TBD' : value);
 
+const normalizeMatchLevel = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
+
+const findNextMatchParams = (
+  schedule: MatchSchedule[],
+  {
+    matchLevel,
+    matchNumber,
+    alliance,
+  }: { matchLevel: string; matchNumber: number; alliance: AllianceColor },
+) => {
+  const normalizedLevel = normalizeMatchLevel(matchLevel);
+
+  const candidates = schedule
+    .filter((row) => normalizeMatchLevel(row.matchLevel) === normalizedLevel)
+    .sort((a, b) => a.matchNumber - b.matchNumber);
+
+  for (const match of candidates) {
+    if (match.matchNumber > matchNumber) {
+      const params: Record<string, string> = {
+        matchLevel: match.matchLevel,
+        matchNumber: String(match.matchNumber),
+        alliance,
+      };
+
+      if (match.eventKey) {
+        params.eventKey = match.eventKey;
+      }
+
+      const allianceTeams =
+        alliance === 'red'
+          ? [match.red1Id, match.red2Id, match.red3Id]
+          : [match.blue1Id, match.blue2Id, match.blue3Id];
+
+      allianceTeams.forEach((teamNumber, index) => {
+        if (typeof teamNumber === 'number' && Number.isFinite(teamNumber)) {
+          params[`team${index + 1}`] = String(teamNumber);
+        }
+      });
+
+      return params;
+    }
+  }
+
+  return null;
+};
+
 export function createSuperScoutMatchScreenPropsFromParams(params: {
   matchLevel?: string | string[];
   matchNumber?: string | string[];
@@ -73,6 +125,7 @@ export function createSuperScoutMatchScreenPropsFromParams(params: {
   team1?: string | string[];
   team2?: string | string[];
   team3?: string | string[];
+  eventKey?: string | string[];
 }) {
   const toSingleValue = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] : value;
@@ -91,6 +144,7 @@ export function createSuperScoutMatchScreenPropsFromParams(params: {
   return {
     matchLevel: toSingleValue(params.matchLevel),
     matchNumber: parseNumberParam(params.matchNumber),
+    eventKey: toSingleValue(params.eventKey),
     alliance: normalizedAlliance,
     teams: [
       parseNumberParam(params.team1),
@@ -103,6 +157,7 @@ export function createSuperScoutMatchScreenPropsFromParams(params: {
 export interface SuperScoutMatchScreenProps {
   matchLevel?: string;
   matchNumber?: number;
+  eventKey?: string;
   alliance: AllianceColor;
   teams: (number | undefined)[];
   onClose: () => void;
@@ -111,10 +166,12 @@ export interface SuperScoutMatchScreenProps {
 export function SuperScoutMatchScreen({
   matchLevel,
   matchNumber,
+  eventKey,
   alliance,
   teams,
   onClose,
 }: SuperScoutMatchScreenProps) {
+  const router = useRouter();
   const [teamInputs, setTeamInputs] = useState<Record<string, TeamInputState>>(() => {
     const initial: Record<string, TeamInputState> = {};
     teams.forEach((teamNumber, index) => {
@@ -129,6 +186,7 @@ export function SuperScoutMatchScreen({
   );
 
   const [activeView, setActiveView] = useState<ViewKey>('starting');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setTeamInputs((current) => {
@@ -192,6 +250,11 @@ export function SuperScoutMatchScreen({
           .filter((field) => field.requiresDefenseRating)
           .map((field) => field.key),
       ),
+    [availableFields],
+  );
+
+  const availableFieldKeys = useMemo(
+    () => availableFields.map((field) => field.key),
     [availableFields],
   );
 
@@ -347,6 +410,278 @@ export function SuperScoutMatchScreen({
     </View>
   );
 
+  const handleConfirmSubmit = useCallback(async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    const resolvedMatchLevel = typeof matchLevel === 'string' && matchLevel.trim().length > 0 ? matchLevel : null;
+    const resolvedMatchNumber =
+      typeof matchNumber === 'number' && Number.isFinite(matchNumber) ? matchNumber : null;
+
+    if (!resolvedMatchLevel || resolvedMatchNumber === null) {
+      Alert.alert(
+        'Unable to submit',
+        'Match information is incomplete. Please return to the match schedule and try again.',
+      );
+      return;
+    }
+
+    const resolvedEventKey = (eventKey ?? getActiveEvent()) ?? null;
+
+    if (!resolvedEventKey) {
+      Alert.alert(
+        'Unable to submit',
+        'No active event is currently selected. Please sync or select an event before submitting.',
+      );
+      return;
+    }
+
+    const entries = teams
+      .map((teamNumber, index) => {
+        if (typeof teamNumber !== 'number' || !Number.isFinite(teamNumber)) {
+          return null;
+        }
+
+        const teamKey = String(teamNumber ?? `slot-${index}`);
+        const state = teamInputs[teamKey] ?? createDefaultTeamState();
+
+        return { teamNumber, state };
+      })
+      .filter((entry): entry is { teamNumber: number; state: TeamInputState } => entry !== null);
+
+    if (entries.length === 0) {
+      Alert.alert('Unable to submit', 'No valid teams are available for this match.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const db = getDbOrThrow();
+
+      db.transaction((tx) => {
+        for (const entry of entries) {
+          const { teamNumber, state } = entry;
+          const trimmedNotes = state.notes.trim();
+          const notesValue = trimmedNotes.length > 0 ? state.notes : null;
+          const defenseValue = state.defenseRating > 0 ? state.defenseRating : null;
+
+          tx
+            .insert(schema.superScoutData)
+            .values({
+              eventKey: resolvedEventKey,
+              teamNumber,
+              matchNumber: resolvedMatchNumber,
+              matchLevel: resolvedMatchLevel,
+              alliance,
+              startPosition: state.startingPosition,
+              notes: notesValue,
+              driverRating: state.driverRating,
+              robotOverall: state.robotOverall,
+              defenseRating: defenseValue,
+              submissionPending: 1,
+            })
+            .onConflictDoUpdate({
+              target: [
+                schema.superScoutData.eventKey,
+                schema.superScoutData.teamNumber,
+                schema.superScoutData.matchNumber,
+                schema.superScoutData.matchLevel,
+              ],
+              set: {
+                alliance,
+                startPosition: state.startingPosition,
+                notes: notesValue,
+                driverRating: state.driverRating,
+                robotOverall: state.robotOverall,
+                defenseRating: defenseValue,
+                submissionPending: 1,
+              },
+            })
+            .run();
+
+          tx
+            .delete(schema.superScoutSelections)
+            .where(
+              and(
+                eq(schema.superScoutSelections.eventKey, resolvedEventKey),
+                eq(schema.superScoutSelections.teamNumber, teamNumber),
+                eq(schema.superScoutSelections.matchNumber, resolvedMatchNumber),
+                eq(schema.superScoutSelections.matchLevel, resolvedMatchLevel),
+              ),
+            )
+            .run();
+
+          if (state.cannedComments.length > 0) {
+            const selectionRecords = state.cannedComments.map((fieldKey) => ({
+              eventKey: resolvedEventKey,
+              teamNumber,
+              matchNumber: resolvedMatchNumber,
+              matchLevel: resolvedMatchLevel,
+              fieldKey,
+            }));
+
+            tx.insert(schema.superScoutSelections).values(selectionRecords).onConflictDoNothing().run();
+          }
+        }
+      });
+
+      const successfulTeams: number[] = [];
+      let hadFailure = false;
+
+      for (const entry of entries) {
+        const { teamNumber, state } = entry;
+        const payload: Record<string, unknown> = {
+          team_number: teamNumber,
+          match_number: resolvedMatchNumber,
+          match_level: resolvedMatchLevel,
+          notes: state.notes,
+          driver_rating: state.driverRating,
+          robot_overall: state.robotOverall,
+        };
+
+        const startPositionValue =
+          state.startingPosition && state.startingPosition !== 'NO_SHOW'
+            ? state.startingPosition
+            : undefined;
+
+        if (startPositionValue) {
+          payload.startPosition = startPositionValue;
+        }
+
+        if (state.defenseRating > 0) {
+          payload.defense_rating = state.defenseRating;
+        }
+
+        availableFieldKeys.forEach((fieldKey) => {
+          payload[fieldKey] = state.cannedComments.includes(fieldKey);
+        });
+
+        try {
+          const abortController = new AbortController();
+          const timeoutId = setTimeout(() => abortController.abort(), 5000);
+
+          try {
+            await apiRequest('/scout/superscout', {
+              method: 'POST',
+              body: JSON.stringify(payload),
+              signal: abortController.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
+
+          successfulTeams.push(teamNumber);
+        } catch (error) {
+          hadFailure = true;
+          console.error('Failed to submit super scout data', error);
+        }
+      }
+
+      if (successfulTeams.length > 0) {
+        db
+          .update(schema.superScoutData)
+          .set({ submissionPending: 0 })
+          .where(
+            and(
+              eq(schema.superScoutData.eventKey, resolvedEventKey),
+              eq(schema.superScoutData.matchNumber, resolvedMatchNumber),
+              eq(schema.superScoutData.matchLevel, resolvedMatchLevel),
+              inArray(schema.superScoutData.teamNumber, successfulTeams),
+            ),
+          )
+          .run();
+      }
+
+      let nextMatchParams: Record<string, string> | null = null;
+
+      try {
+        const scheduleRows = db
+          .select()
+          .from(schema.matchSchedules)
+          .where(eq(schema.matchSchedules.eventKey, resolvedEventKey))
+          .all();
+
+        nextMatchParams = findNextMatchParams(scheduleRows, {
+          matchLevel: resolvedMatchLevel,
+          matchNumber: resolvedMatchNumber,
+          alliance,
+        });
+      } catch (scheduleError) {
+        console.error('Failed to determine next SuperScout match', scheduleError);
+      }
+
+      const navigateToNext = () => {
+        if (nextMatchParams) {
+          router.replace({ pathname: '/(drawer)/super-scout/match', params: nextMatchParams });
+        } else {
+          router.replace('/(drawer)/super-scout');
+        }
+      };
+
+      const buttonLabel = nextMatchParams ? 'Next Match' : 'Match Schedule';
+      const totalEntries = entries.length;
+
+      if (!hadFailure && successfulTeams.length === totalEntries) {
+        Alert.alert(
+          'SuperScout submitted',
+          'SuperScout data was saved and sent successfully.',
+          [{ text: buttonLabel, onPress: navigateToNext }],
+          { cancelable: false },
+        );
+      } else if (successfulTeams.length === 0) {
+        Alert.alert(
+          'SuperScout saved locally',
+          'The SuperScout data was saved on this device but could not be sent to the server.',
+          [{ text: buttonLabel, onPress: navigateToNext }],
+          { cancelable: false },
+        );
+      } else {
+        Alert.alert(
+          'SuperScout partially submitted',
+          'Some SuperScout data was sent successfully, but at least one submission failed and was saved locally.',
+          [{ text: buttonLabel, onPress: navigateToNext }],
+          { cancelable: false },
+        );
+      }
+    } catch (error) {
+      console.error('Failed to save super scout data', error);
+      Alert.alert(
+        'Submission failed',
+        'An unexpected error occurred while saving SuperScout data. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    alliance,
+    availableFieldKeys,
+    eventKey,
+    isSubmitting,
+    matchLevel,
+    matchNumber,
+    router,
+    teamInputs,
+    teams,
+  ]);
+
+  const handleSubmit = useCallback(() => {
+    if (!isRatingsComplete || isSubmitting) {
+      return;
+    }
+
+    Alert.alert('Submit SuperScout data', 'Submit comments for this match?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Confirm',
+        onPress: () => {
+          void handleConfirmSubmit();
+        },
+      },
+    ]);
+  }, [handleConfirmSubmit, isRatingsComplete, isSubmitting]);
+
   return (
     <ScreenContainer>
       <View style={styles.topBar}>
@@ -404,17 +739,16 @@ export function SuperScoutMatchScreen({
               style={[
                 styles.navButton,
                 {
-                  backgroundColor: isRatingsComplete ? allianceBackground : chipBackground,
-                  opacity: isRatingsComplete ? 1 : 0.5,
+                  backgroundColor:
+                    isRatingsComplete && !isSubmitting ? allianceBackground : chipBackground,
+                  opacity: isRatingsComplete && !isSubmitting ? 1 : 0.5,
                 },
               ]}
-              disabled={!isRatingsComplete}
-              onPress={() => {
-                // TODO: handle submit action here
-              }}
+              disabled={!isRatingsComplete || isSubmitting}
+              onPress={handleSubmit}
             >
               <ThemedText style={[styles.navButtonText, { color: allianceText }]}>
-                Submit Comments
+                {isSubmitting ? 'Submitting…' : 'Submit Comments'}
               </ThemedText>
             </Pressable>
           )}

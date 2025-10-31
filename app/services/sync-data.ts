@@ -6,7 +6,7 @@ import { syncAlreadyScoutedEntries } from './already-scouted';
 import { syncAlreadyPitScoutedEntries } from './pit-scouting';
 import { syncPendingRobotPhotos } from './robot-photos';
 import { getDbOrThrow, schema } from '@/db';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 export type SyncDataWithServerResult = {
   eventCode: string;
@@ -15,6 +15,7 @@ export type SyncDataWithServerResult = {
   matchDataSent: number;
   pitDataSent: number;
   prescoutDataSent: number;
+  superScoutDataSent: number;
   alreadyScoutedUpdated: number;
   alreadyPitScoutedUpdated: number;
   robotPhotosUploaded: number;
@@ -128,6 +129,8 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
 
   const superScoutFieldsSynced = await syncSuperScoutFields();
 
+  let superScoutDataSent = 0;
+
   const matchRows = db
     .select()
     .from(schema.matchData2025)
@@ -167,6 +170,109 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     });
   }
 
+  const pendingSuperScoutRows = db
+    .select()
+    .from(schema.superScoutData)
+    .where(
+      and(
+        eq(schema.superScoutData.eventKey, remoteEventCode),
+        eq(schema.superScoutData.submissionPending, 1),
+      ),
+    )
+    .all();
+
+  if (pendingSuperScoutRows.length > 0) {
+    const fieldRows = db.select().from(schema.superScoutFields).all();
+    const fieldKeys = fieldRows
+      .map((row) => row.key)
+      .filter((key): key is string => typeof key === 'string' && key.trim().length > 0);
+
+    const selectionRows = db
+      .select()
+      .from(schema.superScoutSelections)
+      .where(eq(schema.superScoutSelections.eventKey, remoteEventCode))
+      .all();
+
+    const selectionMap = new Map<string, Set<string>>();
+
+    selectionRows.forEach((row) => {
+      const key = `${row.eventKey}|${row.matchLevel}|${row.matchNumber}|${row.teamNumber}`;
+      let set = selectionMap.get(key);
+
+      if (!set) {
+        set = new Set<string>();
+        selectionMap.set(key, set);
+      }
+
+      if (typeof row.fieldKey === 'string' && row.fieldKey.trim().length > 0) {
+        set.add(row.fieldKey);
+      }
+    });
+
+    const successfullySubmitted: typeof pendingSuperScoutRows = [];
+
+    for (const row of pendingSuperScoutRows) {
+      const selectionKey = `${row.eventKey}|${row.matchLevel}|${row.matchNumber}|${row.teamNumber}`;
+      const selectedFields = selectionMap.get(selectionKey) ?? new Set<string>();
+
+      const payload: Record<string, unknown> = {
+        team_number: row.teamNumber,
+        match_number: row.matchNumber,
+        match_level: row.matchLevel,
+        notes: row.notes ?? '',
+        driver_rating: row.driverRating,
+        robot_overall: row.robotOverall,
+      };
+
+      const startPositionValue =
+        row.startPosition && row.startPosition !== 'NO_SHOW' ? row.startPosition : undefined;
+
+      if (startPositionValue) {
+        payload.startPosition = startPositionValue;
+      }
+
+      if (row.defenseRating && row.defenseRating > 0) {
+        payload.defense_rating = row.defenseRating;
+      }
+
+      fieldKeys.forEach((fieldKey) => {
+        payload[fieldKey] = selectedFields.has(fieldKey);
+      });
+
+      try {
+        await apiRequest('/scout/superscout', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+
+        successfullySubmitted.push(row);
+      } catch (error) {
+        console.error('Failed to submit pending super scout data', error);
+      }
+    }
+
+    if (successfullySubmitted.length > 0) {
+      db.transaction((tx) => {
+        for (const row of successfullySubmitted) {
+          tx
+            .update(schema.superScoutData)
+            .set({ submissionPending: 0 })
+            .where(
+              and(
+                eq(schema.superScoutData.eventKey, row.eventKey),
+                eq(schema.superScoutData.teamNumber, row.teamNumber),
+                eq(schema.superScoutData.matchNumber, row.matchNumber),
+                eq(schema.superScoutData.matchLevel, row.matchLevel),
+              ),
+            )
+            .run();
+        }
+      });
+
+      superScoutDataSent = successfullySubmitted.length;
+    }
+  }
+
   const alreadyScoutedUpdated = await syncAlreadyScoutedEntries(organizationId);
   const alreadyPitScoutedUpdated = await syncAlreadyPitScoutedEntries(organizationId);
   const robotPhotosUploaded = await syncPendingRobotPhotos();
@@ -178,6 +284,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     matchDataSent: matchRows.length,
     pitDataSent: pitRows.length,
     prescoutDataSent: prescoutRows.length,
+    superScoutDataSent,
     alreadyScoutedUpdated,
     alreadyPitScoutedUpdated,
     robotPhotosUploaded,

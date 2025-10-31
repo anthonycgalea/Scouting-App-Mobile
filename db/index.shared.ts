@@ -238,6 +238,22 @@ function initializeExpoSqliteDb() {
       key TEXT PRIMARY KEY NOT NULL,
       label TEXT NOT NULL
     );`,
+    `CREATE TABLE IF NOT EXISTS superscout_data (
+      event_key TEXT NOT NULL,
+      team_number INTEGER NOT NULL,
+      match_number INTEGER NOT NULL,
+      match_level TEXT NOT NULL,
+      alliance TEXT NOT NULL,
+      start_position TEXT,
+      notes TEXT,
+      driver_rating INTEGER NOT NULL DEFAULT 0,
+      robot_overall INTEGER NOT NULL DEFAULT 0,
+      defense_rating INTEGER,
+      submission_pending INTEGER NOT NULL DEFAULT 1,
+      PRIMARY KEY (event_key, team_number, match_number, match_level),
+      FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
+      FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
+    );`,
     `CREATE TABLE IF NOT EXISTS superscout_selection (
       event_key TEXT NOT NULL,
       team_number INTEGER NOT NULL,
