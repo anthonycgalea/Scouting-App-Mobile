@@ -134,7 +134,6 @@ function initializeExpoSqliteDb() {
       created INTEGER NOT NULL DEFAULT (strftime('%s','now')),
       last_updated INTEGER NOT NULL DEFAULT (strftime('%s','now')),
       favorited INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (season) REFERENCES season(id),
       FOREIGN KEY (organization_id) REFERENCES organization(id),
       FOREIGN KEY (event_key) REFERENCES frcevent(event_key)
     );`,

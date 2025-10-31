@@ -180,11 +180,6 @@ export const pickLists = sqliteTable(
     favorited: integer('favorited').notNull().default(0),
   },
   (table) => ({
-    seasonRef: foreignKey({
-      columns: [table.season],
-      foreignColumns: [seasons.id],
-      name: 'picklist_season_fk',
-    }),
     organizationRef: foreignKey({
       columns: [table.organizationId],
       foreignColumns: [organizations.id],
