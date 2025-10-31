@@ -10,24 +10,16 @@ import {
 } from 'react-native';
 
 import type { EventTeam, OrganizationEvent } from '@/app/services/api/events';
-import { fetchEventTeams, fetchOrganizationEvents } from '@/app/services/api/events';
-import type { PickList, PickListRank } from '@/app/services/api/pick-lists';
-import { fetchPickLists } from '@/app/services/api/pick-lists';
+import { fetchOrganizationEvents } from '@/app/services/api/events';
+import { getPickListsFromDatabase, type PickList } from '@/app/services/pick-lists';
 import { getActiveEvent } from '@/app/services/logged-in-event';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { PickListPreview } from '@/components/pick-lists/PickListPreview';
 import { ThemedText } from '@/components/themed-text';
 import { useOrganization } from '@/hooks/use-organization';
 import { useThemeColor } from '@/hooks/use-theme-color';
-
-const DEFAULT_ALLIANCE_COUNT = 8;
-
-type AllianceRecommendation = {
-  captain: PickListRank | null;
-  firstPick: PickListRank | null;
-  secondPick: PickListRank | null;
-  thirdPick: PickListRank | null;
-};
+import { getDbOrThrow, schema } from '@/db';
+import { eq } from 'drizzle-orm';
 
 const getTimestamp = (value: string | null | undefined) => {
   if (!value) {
@@ -36,55 +28,6 @@ const getTimestamp = (value: string | null | undefined) => {
 
   const timestamp = Date.parse(value);
   return Number.isNaN(timestamp) ? 0 : timestamp;
-};
-
-const buildAllianceRecommendations = (
-  ranks: PickListRank[],
-  allianceCount: number,
-): AllianceRecommendation[] => {
-  const available = ranks.filter((rank) => !rank.dnp);
-  const count = Math.min(allianceCount, available.length);
-
-  if (count === 0) {
-    return [];
-  }
-
-  const alliances: AllianceRecommendation[] = Array.from({ length: count }, () => ({
-    captain: null,
-    firstPick: null,
-    secondPick: null,
-    thirdPick: null,
-  }));
-
-  for (let index = 0; index < available.length; index += 1) {
-    const allianceIndex = index % count;
-    const round = Math.floor(index / count);
-    const targetAlliance = alliances[allianceIndex];
-
-    if (round === 0) {
-      targetAlliance.captain ??= available[index];
-      continue;
-    }
-
-    if (round === 1) {
-      targetAlliance.firstPick ??= available[index];
-      continue;
-    }
-
-    if (round === 2) {
-      targetAlliance.secondPick ??= available[index];
-      continue;
-    }
-
-    if (round === 3) {
-      targetAlliance.thirdPick ??= available[index];
-      continue;
-    }
-
-    break;
-  }
-
-  return alliances;
 };
 
 export function PickListsScreen() {
@@ -134,18 +77,6 @@ export function PickListsScreen() {
     [activeEventFromApi, localActiveEventKey],
   );
 
-  const activeEvent = useMemo(() => {
-    if (!activeEventKey) {
-      return null;
-    }
-
-    return (
-      organizationEvents.find((event) => event.eventKey === activeEventKey) ??
-      activeEventFromApi ??
-      ({ eventKey: activeEventKey, name: activeEventKey, isActive: true } as OrganizationEvent)
-    );
-  }, [activeEventFromApi, activeEventKey, organizationEvents]);
-
   const {
     data: pickLists = [],
     isLoading: isLoadingPickLists,
@@ -154,13 +85,10 @@ export function PickListsScreen() {
   } = useQuery<PickList[]>(
     {
       queryKey: ['picklists', selectedOrganization?.id ?? 'none', activeEventKey ?? 'all'],
-      queryFn: () =>
+      queryFn: async () =>
         selectedOrganization
-          ? fetchPickLists({
-              organizationId: selectedOrganization.id,
-              eventKey: activeEventKey ?? undefined,
-            })
-          : Promise.resolve([]),
+          ? getPickListsFromDatabase({ organizationId: selectedOrganization.id })
+          : [],
       enabled: Boolean(selectedOrganization),
       staleTime: 30 * 1000,
     },
@@ -174,8 +102,40 @@ export function PickListsScreen() {
   } = useQuery<EventTeam[]>(
     {
       queryKey: ['event-teams', activeEventKey ?? 'none'],
-      queryFn: () =>
-        activeEventKey ? fetchEventTeams({ eventKey: activeEventKey }) : Promise.resolve([]),
+      queryFn: async () => {
+        if (!activeEventKey) {
+          return [];
+        }
+
+        const db = getDbOrThrow();
+        const rows = db
+          .select({
+            teamNumber: schema.teamEvents.teamNumber,
+            teamName: schema.teamRecords.teamName,
+            teamLocation: schema.teamRecords.location,
+          })
+          .from(schema.teamEvents)
+          .innerJoin(
+            schema.teamRecords,
+            eq(schema.teamEvents.teamNumber, schema.teamRecords.teamNumber),
+          )
+          .where(eq(schema.teamEvents.eventKey, activeEventKey))
+          .all();
+
+        return rows.map((row) => {
+          const normalizedName =
+            typeof row.teamName === 'string' ? row.teamName.trim() : '';
+          const normalizedLocation =
+            typeof row.teamLocation === 'string' ? row.teamLocation.trim() : '';
+
+          return {
+            teamNumber: row.teamNumber,
+            teamName: normalizedName.length > 0 ? normalizedName : null,
+            nickname: null,
+            location: normalizedLocation.length > 0 ? normalizedLocation : null,
+          };
+        });
+      },
       enabled: Boolean(activeEventKey),
       staleTime: 5 * 60 * 1000,
     },
@@ -223,35 +183,6 @@ export function PickListsScreen() {
     [selectedPickListId, sortedPickLists],
   );
 
-  const allianceRecommendations = useMemo(() => {
-    if (!selectedPickList) {
-      return [];
-    }
-
-    return buildAllianceRecommendations(selectedPickList.ranks, DEFAULT_ALLIANCE_COUNT);
-  }, [selectedPickList]);
-
-  const hasThirdPicks = useMemo(
-    () => allianceRecommendations.some((alliance) => alliance.thirdPick !== null),
-    [allianceRecommendations],
-  );
-
-  const selectedTeamNumbers = useMemo(() => {
-    const numbers = new Set<number>();
-
-    allianceRecommendations.forEach((alliance) => {
-      [alliance.captain, alliance.firstPick, alliance.secondPick, alliance.thirdPick].forEach(
-        (slot) => {
-          if (slot) {
-            numbers.add(slot.teamNumber);
-          }
-        },
-      );
-    });
-
-    return numbers;
-  }, [allianceRecommendations]);
-
   const eventTeamsByNumber = useMemo(
     () => new Map(eventTeams.map((team) => [team.teamNumber, team])),
     [eventTeams],
@@ -284,42 +215,6 @@ export function PickListsScreen() {
     setSelectedPickListId(pickListId);
     setIsPickListDropdownOpen(false);
   }, []);
-
-  const renderAllianceSlot = useCallback(
-    (label: string, rank: PickListRank | null) => {
-      if (!rank) {
-        return (
-          <View style={styles.allianceSlot}>
-            <ThemedText style={[styles.allianceSlotLabel, { color: mutedText }]}>{label}</ThemedText>
-            <ThemedText style={[styles.allianceSlotEmpty, { color: mutedText }]}>No team assigned</ThemedText>
-          </View>
-        );
-      }
-
-      const teamDetails = eventTeamsByNumber.get(rank.teamNumber);
-      const teamName = teamDetails?.teamName ?? 'Team information unavailable';
-
-      return (
-        <View style={styles.allianceSlot}>
-          <ThemedText style={[styles.allianceSlotLabel, { color: mutedText }]}>{label}</ThemedText>
-          <View style={styles.allianceSlotContent}>
-            <View style={styles.allianceRankBadge}>
-              <ThemedText style={styles.allianceRankText}>#{rank.rank}</ThemedText>
-            </View>
-            <View style={styles.allianceTeamDetails}>
-              <ThemedText type="defaultSemiBold" style={styles.allianceTeamNumber}>
-                {rank.teamNumber}
-              </ThemedText>
-              <ThemedText style={[styles.allianceTeamName, { color: mutedText }]} numberOfLines={1}>
-                {teamName}
-              </ThemedText>
-            </View>
-          </View>
-        </View>
-      );
-    },
-    [eventTeamsByNumber, mutedText],
-  );
 
   return (
     <ScreenContainer>
@@ -360,38 +255,6 @@ export function PickListsScreen() {
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.contentWrapper}>
-            <View
-              style={[styles.card, styles.allianceCard, { backgroundColor: cardBackground, borderColor }]}
-            >
-              <View style={styles.sectionHeader}>
-                <ThemedText type="title" style={styles.sectionTitle}>
-                  Alliance Selection
-                </ThemedText>
-                <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>Recommendations based on the selected pick list.</ThemedText>
-              </View>
-              {allianceRecommendations.length === 0 ? (
-                <View style={styles.emptySection}>
-                  <ThemedText style={[styles.emptySectionText, { color: mutedText }]}>Add ranked teams to your pick list to generate alliance suggestions.</ThemedText>
-                </View>
-              ) : (
-                <View style={styles.allianceList}>
-                  {allianceRecommendations.map((alliance, index) => (
-                    <View
-                      key={`alliance-${index}`}
-                      style={[styles.allianceItem, { borderColor }]}
-                    >
-                      <ThemedText type="defaultSemiBold" style={styles.allianceTitle}>
-                        Alliance {index + 1}
-                      </ThemedText>
-                      {renderAllianceSlot('Captain', alliance.captain)}
-                      {renderAllianceSlot('First pick', alliance.firstPick)}
-                      {renderAllianceSlot('Second pick', alliance.secondPick)}
-                      {hasThirdPicks ? renderAllianceSlot('Third pick', alliance.thirdPick) : null}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
             <View
               style={[styles.card, styles.pickListCard, { backgroundColor: cardBackground, borderColor }]}
             >
@@ -451,7 +314,6 @@ export function PickListsScreen() {
                   <PickListPreview
                     ranks={selectedPickList.ranks}
                     eventTeamsByNumber={eventTeamsByNumber}
-                    selectedTeamNumbers={selectedTeamNumbers}
                   />
                 </View>
               ) : (
@@ -539,7 +401,6 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flexGrow: 1,
-    flexDirection: 'row',
     gap: 16,
   },
   card: {
@@ -549,9 +410,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 20,
     minWidth: 320,
-  },
-  allianceCard: {
-    flex: 1.1,
   },
   pickListCard: {
     flex: 1,
@@ -573,56 +431,6 @@ const styles = StyleSheet.create({
   },
   emptySectionText: {
     textAlign: 'center',
-  },
-  allianceList: {
-    gap: 12,
-  },
-  allianceItem: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-  },
-  allianceTitle: {
-    fontSize: 18,
-  },
-  allianceSlot: {
-    gap: 8,
-  },
-  allianceSlotLabel: {
-    fontSize: 13,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: '600',
-  },
-  allianceSlotEmpty: {
-    fontSize: 14,
-  },
-  allianceSlotContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  allianceRankBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(14, 165, 233, 0.12)',
-  },
-  allianceRankText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  allianceTeamDetails: {
-    flex: 1,
-    gap: 2,
-  },
-  allianceTeamNumber: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  allianceTeamName: {
-    fontSize: 14,
   },
   dropdownContainer: {
     position: 'relative',

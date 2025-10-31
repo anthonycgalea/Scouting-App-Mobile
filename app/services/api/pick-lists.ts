@@ -1,3 +1,5 @@
+import type { PickList, PickListRank } from '@/app/services/pick-lists/types';
+
 import { apiRequest, type ApiRequestParams } from './client';
 
 const toNumber = (value: unknown): number | null => {
@@ -73,13 +75,6 @@ const extractCollection = (response: unknown): unknown[] => {
   return [];
 };
 
-export interface PickListRank {
-  rank: number;
-  teamNumber: number;
-  notes: string;
-  dnp: boolean;
-}
-
 const normalizePickListRank = (value: unknown): PickListRank | null => {
   if (!value || typeof value !== 'object') {
     return null;
@@ -113,19 +108,6 @@ const normalizePickListRank = (value: unknown): PickListRank | null => {
     dnp,
   };
 };
-
-export interface PickList {
-  id: string;
-  season: number | null;
-  organizationId: number | null;
-  eventKey: string | null;
-  title: string;
-  notes: string;
-  createdAt: string | null;
-  updatedAt: string | null;
-  favorited: boolean;
-  ranks: PickListRank[];
-}
 
 const normalizePickList = (value: unknown): PickList | null => {
   if (!value || typeof value !== 'object') {

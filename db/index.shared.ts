@@ -126,9 +126,9 @@ function initializeExpoSqliteDb() {
     );`,
     `CREATE TABLE IF NOT EXISTS picklist (
       id TEXT PRIMARY KEY NOT NULL,
-      season INTEGER NOT NULL,
+      season INTEGER,
       organization_id INTEGER NOT NULL,
-      event_key TEXT NOT NULL,
+      event_key TEXT,
       title TEXT NOT NULL DEFAULT 'Pick List',
       notes TEXT NOT NULL DEFAULT '',
       created INTEGER NOT NULL DEFAULT (strftime('%s','now')),
