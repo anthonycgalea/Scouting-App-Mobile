@@ -6,6 +6,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
 import { DEFAULT_SUPER_SCOUT_FIELDS, SuperScoutFieldDefinition } from '@/constants/superScout';
+import { getDbOrThrow, schema } from '@/db';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
@@ -34,11 +35,9 @@ const ALLIANCE_DETAILS: Record<AllianceColor, { label: string }> = {
   blue: { label: 'Blue Alliance' },
 };
 
-const VIEW_DEFINITIONS: { key: ViewKey; label: string }[] = [
-  { key: 'starting', label: 'Starting Position' },
-  { key: 'comments', label: 'Canned Comments' },
-  { key: 'ratings', label: 'Performance Ratings' },
-];
+const DEFAULT_DEFENSE_REQUIRED_KEYS = new Set(
+  DEFAULT_SUPER_SCOUT_FIELDS.filter((field) => field.requiresDefenseRating).map((field) => field.key),
+);
 
 const createDefaultTeamState = (): TeamInputState => ({
   startingPosition: null,
@@ -125,6 +124,10 @@ export function SuperScoutMatchScreen({
     return initial;
   });
 
+  const [availableFields, setAvailableFields] = useState<SuperScoutFieldDefinition[]>(
+    DEFAULT_SUPER_SCOUT_FIELDS,
+  );
+
   const [activeView, setActiveView] = useState<ViewKey>('starting');
 
   useEffect(() => {
@@ -137,6 +140,90 @@ export function SuperScoutMatchScreen({
       return updated;
     });
   }, [teams]);
+
+  useEffect(() => {
+    try {
+      const db = getDbOrThrow();
+      const rows = db.select().from(schema.superScoutFields).all();
+
+      if (!Array.isArray(rows) || rows.length === 0) {
+        setAvailableFields(DEFAULT_SUPER_SCOUT_FIELDS);
+        return;
+      }
+
+      const mapped = rows
+        .map((row) => {
+          if (typeof row?.key !== 'string' || typeof row?.label !== 'string') {
+            return null;
+          }
+
+          const normalizedKey = row.key.trim();
+
+          if (normalizedKey.length === 0) {
+            return null;
+          }
+
+          const normalizedLabel = row.label.trim();
+
+          const field: SuperScoutFieldDefinition = {
+            key: normalizedKey,
+            label: normalizedLabel.length > 0 ? normalizedLabel : normalizedKey,
+          };
+
+          if (DEFAULT_DEFENSE_REQUIRED_KEYS.has(normalizedKey)) {
+            field.requiresDefenseRating = true;
+          }
+
+          return field;
+        })
+        .filter((field): field is SuperScoutFieldDefinition => field !== null);
+
+      setAvailableFields(mapped.length > 0 ? mapped : DEFAULT_SUPER_SCOUT_FIELDS);
+    } catch (error) {
+      console.error('Failed to load super scout fields', error);
+      setAvailableFields(DEFAULT_SUPER_SCOUT_FIELDS);
+    }
+  }, []);
+
+  const defenseRequiredKeys = useMemo(
+    () =>
+      new Set(
+        availableFields
+          .filter((field) => field.requiresDefenseRating)
+          .map((field) => field.key),
+      ),
+    [availableFields],
+  );
+
+  useEffect(() => {
+    const validKeys = new Set(availableFields.map((field) => field.key));
+
+    setTeamInputs((current) => {
+      let hasChanges = false;
+      const nextState: Record<string, TeamInputState> = {};
+
+      Object.entries(current).forEach(([teamKey, state]) => {
+        const filteredComments = state.cannedComments.filter((key) => validKeys.has(key));
+        const hasDefenseComment = filteredComments.some((key) => defenseRequiredKeys.has(key));
+        const needsUpdate =
+          filteredComments.length !== state.cannedComments.length ||
+          (!hasDefenseComment && state.defenseRating !== 0);
+
+        if (needsUpdate) {
+          hasChanges = true;
+          nextState[teamKey] = {
+            ...state,
+            cannedComments: filteredComments,
+            defenseRating: hasDefenseComment ? state.defenseRating : 0,
+          };
+        } else {
+          nextState[teamKey] = state;
+        }
+      });
+
+      return hasChanges ? nextState : current;
+    });
+  }, [availableFields, defenseRequiredKeys]);
 
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -171,9 +258,8 @@ export function SuperScoutMatchScreen({
   const isRatingsComplete = Object.values(teamInputs).every((t) => {
     const hasDriver = t.driverRating > 0;
     const hasOverall = t.robotOverall > 0;
-    const hasDefense = t.cannedComments.includes('played_defense')
-      ? t.defenseRating > 0
-      : true;
+    const requiresDefenseRating = t.cannedComments.some((key) => defenseRequiredKeys.has(key));
+    const hasDefense = requiresDefenseRating ? t.defenseRating > 0 : true;
     return hasDriver && hasOverall && hasDefense;
   });
 
@@ -185,14 +271,13 @@ export function SuperScoutMatchScreen({
         ? existing.cannedComments.filter((key) => key !== field.key)
         : [...existing.cannedComments, field.key];
 
+      const hasDefenseComment = nextComments.some((key) => defenseRequiredKeys.has(key));
+
       const nextState: TeamInputState = {
         ...existing,
         cannedComments: nextComments,
+        defenseRating: hasDefenseComment ? existing.defenseRating : 0,
       };
-
-      if (!nextComments.includes('played_defense')) {
-        nextState.defenseRating = 0;
-      }
 
       return { ...current, [teamKey]: nextState };
     });
@@ -233,7 +318,7 @@ export function SuperScoutMatchScreen({
   };
 
   const isDefenseCommentSelected = (teamKey: string) =>
-    (teamInputs[teamKey]?.cannedComments ?? []).includes('played_defense');
+    (teamInputs[teamKey]?.cannedComments ?? []).some((key) => defenseRequiredKeys.has(key));
 
   const renderStarRating = (
     teamKey: string,
@@ -400,7 +485,7 @@ export function SuperScoutMatchScreen({
                       Canned Comments
                     </ThemedText>
                     <View style={styles.chipRow}>
-                      {DEFAULT_SUPER_SCOUT_FIELDS.map((field) => {
+                      {availableFields.map((field) => {
                         const isSelected = state.cannedComments.includes(field.key);
                         return (
                           <Pressable
