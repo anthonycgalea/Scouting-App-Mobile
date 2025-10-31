@@ -6,6 +6,7 @@ import { Colors } from '@/constants/theme';
 import { ROUTES } from '@/constants/routes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useIsTablet } from '@/hooks/use-is-tablet';
+import { useOrganizationRole } from '@/hooks/use-organization-role';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -52,10 +53,14 @@ export const LANDSCAPE_DRAWER_ROUTE_PATHS = new Set(LANDSCAPE_ROUTE_PREFIXES);
 
 export function useDrawerItems() {
   const isTablet = useIsTablet();
+  const { canManagePickLists } = useOrganizationRole();
 
   return useMemo(() => {
+    const pickListFilter = (item: DrawerItem) =>
+      canManagePickLists || item.name !== 'pick-lists/index';
+
     if (!isTablet) {
-      return BASE_DRAWER_ITEMS;
+      return BASE_DRAWER_ITEMS.filter(pickListFilter);
     }
 
     const items = [...BASE_DRAWER_ITEMS];
@@ -69,8 +74,8 @@ export function useDrawerItems() {
       items.push(...tabletItems);
     }
 
-    return items;
-  }, [isTablet]);
+    return items.filter(pickListFilter);
+  }, [canManagePickLists, isTablet]);
 }
 
 export function useDrawerScreenOptions() {
