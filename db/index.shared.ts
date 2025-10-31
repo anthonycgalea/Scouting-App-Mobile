@@ -234,6 +234,21 @@ function initializeExpoSqliteDb() {
       FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
       FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
     );`,
+    `CREATE TABLE IF NOT EXISTS superscout_field (
+      key TEXT PRIMARY KEY NOT NULL,
+      label TEXT NOT NULL
+    );`,
+    `CREATE TABLE IF NOT EXISTS superscout_selection (
+      event_key TEXT NOT NULL,
+      team_number INTEGER NOT NULL,
+      match_number INTEGER NOT NULL,
+      match_level TEXT NOT NULL,
+      field_key TEXT NOT NULL,
+      PRIMARY KEY (event_key, team_number, match_number, match_level, field_key),
+      FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
+      FOREIGN KEY (team_number) REFERENCES teamrecord(team_number),
+      FOREIGN KEY (field_key) REFERENCES superscout_field(key)
+    );`,
   ];
 
   for (const statement of createStatements) {
