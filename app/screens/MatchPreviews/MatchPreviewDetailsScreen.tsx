@@ -93,6 +93,14 @@ type SummaryMetric = {
   variant?: 'red' | 'blue';
 };
 
+type PreviewViewKey = 'overview' | 'red' | 'blue';
+
+const PREVIEW_VIEW_OPTIONS: { key: PreviewViewKey; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'red', label: 'Red Alliance' },
+  { key: 'blue', label: 'Blue Alliance' },
+];
+
 const PHASE_METRIC_FIELDS = [
   { key: 'level4', label: 'Level 4' },
   { key: 'level3', label: 'Level 3' },
@@ -167,6 +175,7 @@ export function MatchPreviewDetailsScreen({
   const [simulation, setSimulation] = useState<MatchSimulationResponse | null>(null);
   const [simulationError, setSimulationError] = useState<string | null>(null);
   const [hasLoadedSimulation, setHasLoadedSimulation] = useState(false);
+  const [activeView, setActiveView] = useState<PreviewViewKey>('overview');
 
   const accentColor = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
   const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
@@ -499,44 +508,117 @@ export function MatchPreviewDetailsScreen({
       const cardBorder = alliance === 'red' ? '#DC2626' : '#2563EB';
 
       return (
-        <View key={team.team_number} style={[styles.teamCard, { borderColor: cardBorder }]}>
-          <ThemedText type="defaultSemiBold" style={styles.teamCardTitle}>
-            Team {team.team_number}
-          </ThemedText>
-          <View style={styles.teamMetricsRow}>
-            <View style={styles.teamMetric}>
-              <ThemedText style={styles.metricLabel}>Auto</ThemedText>
-              <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.auto.total_points)}</ThemedText>
+        <View key={team.team_number} style={styles.teamCardWrapper}>
+          <View style={[styles.teamCard, { borderColor: cardBorder }]}>
+            <ThemedText type="defaultSemiBold" style={styles.teamCardTitle}>
+              Team {team.team_number}
+            </ThemedText>
+            <View style={styles.teamMetricsRow}>
+              <View style={styles.teamMetric}>
+                <ThemedText style={styles.metricLabel}>Auto</ThemedText>
+                <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.auto.total_points)}</ThemedText>
+              </View>
+              <View style={styles.teamMetric}>
+                <ThemedText style={styles.metricLabel}>Teleop</ThemedText>
+                <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.teleop.total_points)}</ThemedText>
+              </View>
+              <View style={styles.teamMetric}>
+                <ThemedText style={styles.metricLabel}>Endgame</ThemedText>
+                <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.endgame)}</ThemedText>
+              </View>
+              <View style={styles.teamMetric}>
+                <ThemedText style={styles.metricLabel}>Total</ThemedText>
+                <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.total_points)}</ThemedText>
+              </View>
             </View>
-            <View style={styles.teamMetric}>
-              <ThemedText style={styles.metricLabel}>Teleop</ThemedText>
-              <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.teleop.total_points)}</ThemedText>
+            <View style={styles.teamBreakdowns}>
+              {renderPhaseTable(
+                'Auto Breakdown',
+                (field) => formatStatWithDeviation(team.auto[field.key]),
+                { variant: alliance },
+              )}
+              {renderPhaseTable(
+                'Teleop Breakdown',
+                (field) => formatStatWithDeviation(team.teleop[field.key]),
+                { variant: alliance },
+              )}
             </View>
-            <View style={styles.teamMetric}>
-              <ThemedText style={styles.metricLabel}>Endgame</ThemedText>
-              <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.endgame)}</ThemedText>
-            </View>
-            <View style={styles.teamMetric}>
-              <ThemedText style={styles.metricLabel}>Total</ThemedText>
-              <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.total_points)}</ThemedText>
-            </View>
-          </View>
-          <View style={styles.teamBreakdowns}>
-            {renderPhaseTable(
-              'Auto Breakdown',
-              (field) => formatStatWithDeviation(team.auto[field.key]),
-              { variant: alliance },
-            )}
-            {renderPhaseTable(
-              'Teleop Breakdown',
-              (field) => formatStatWithDeviation(team.teleop[field.key]),
-              { variant: alliance },
-            )}
           </View>
         </View>
       );
     },
     [renderPhaseTable],
+  );
+
+  const renderAllianceSummaryCard = useCallback(
+    (variant: 'red' | 'blue') => {
+      const isRed = variant === 'red';
+      const summary = isRed ? redAllianceSummary : blueAllianceSummary;
+      const autoBreakdown = isRed ? redAllianceAutoBreakdown : blueAllianceAutoBreakdown;
+      const teleopBreakdown = isRed ? redAllianceTeleopBreakdown : blueAllianceTeleopBreakdown;
+      const title = isRed ? 'Red Alliance' : 'Blue Alliance';
+      const variantStyle = isRed ? styles.redText : styles.blueText;
+
+      return (
+        <View
+          key={`${variant}-summary`}
+          style={[styles.summaryColumnCard, { backgroundColor: cardBackground, borderColor }]}
+        >
+          <ThemedText type="defaultSemiBold" style={[styles.columnTitle, variantStyle]}>
+            {title}
+          </ThemedText>
+          <View style={styles.columnMetrics}>
+            {summary.map((metric) => (
+              <View key={metric.key} style={styles.columnMetricRow}>
+                <ThemedText style={[styles.columnMetricLabel, { color: mutedText }]}>
+                  {metric.label}
+                </ThemedText>
+                <ThemedText style={[styles.columnMetricValue, variantStyle]}>{metric.value}</ThemedText>
+              </View>
+            ))}
+          </View>
+          <View style={styles.breakdownGrid}>
+            {renderPhaseTable('Auto Breakdown', (field) => autoBreakdown[field.key], { variant })}
+            {renderPhaseTable('Teleop Breakdown', (field) => teleopBreakdown[field.key], { variant })}
+          </View>
+        </View>
+      );
+    },
+    [
+      blueAllianceAutoBreakdown,
+      blueAllianceSummary,
+      blueAllianceTeleopBreakdown,
+      cardBackground,
+      borderColor,
+      mutedText,
+      redAllianceAutoBreakdown,
+      redAllianceSummary,
+      redAllianceTeleopBreakdown,
+      renderPhaseTable,
+    ],
+  );
+
+  const renderAllianceTeamsSection = useCallback(
+    (variant: 'red' | 'blue') => {
+      const isRed = variant === 'red';
+      const teams = isRed ? redTeams : blueTeams;
+      const teamNumbers = isRed ? redTeamNumbers : blueTeamNumbers;
+      const allianceLabel = isRed ? 'Red Alliance Teams' : 'Blue Alliance Teams';
+      const variantStyle = isRed ? styles.redText : styles.blueText;
+
+      return (
+        <View key={`${variant}-teams`} style={styles.teamListSection}>
+          <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, variantStyle]}>
+            {allianceLabel}
+          </ThemedText>
+          <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>
+            Teams: {teamNumbers.length > 0 ? teamNumbers.join(', ') : 'TBD'}
+          </ThemedText>
+          <View style={styles.teamList}>{teams.map((team) => renderTeamCard(team, variant))}</View>
+        </View>
+      );
+    },
+    [blueTeamNumbers, blueTeams, mutedText, redTeamNumbers, redTeams, renderTeamCard],
   );
 
   return (
@@ -575,266 +657,250 @@ export function MatchPreviewDetailsScreen({
           <ThemedText style={[styles.stateMessage, { color: mutedText }]}>{errorMessage}</ThemedText>
         </View>
       ) : preview ? (
-        <ScrollView contentContainerStyle={styles.previewContent}>
-          <View style={styles.summaryColumns}>
-            <View style={[styles.summaryColumnCard, { backgroundColor: cardBackground, borderColor }]}
-            >
-              <ThemedText type="defaultSemiBold" style={[styles.columnTitle, styles.redText]}>
-                Red Alliance
-              </ThemedText>
-              <View style={styles.columnMetrics}>
-                {redAllianceSummary.map((metric) => (
-                  <View key={metric.key} style={styles.columnMetricRow}>
-                    <ThemedText style={[styles.columnMetricLabel, { color: mutedText }]}>
-                      {metric.label}
-                    </ThemedText>
-                    <ThemedText style={[styles.columnMetricValue, styles.redText]}>
-                      {metric.value}
-                    </ThemedText>
-                  </View>
-                ))}
-              </View>
-              <View style={styles.breakdownGrid}>
-                {renderPhaseTable(
-                  'Auto Breakdown',
-                  (field) => redAllianceAutoBreakdown[field.key],
-                  { variant: 'red' },
-                )}
-                {renderPhaseTable(
-                  'Teleop Breakdown',
-                  (field) => redAllianceTeleopBreakdown[field.key],
-                  { variant: 'red' },
-                )}
-              </View>
-            </View>
+        <>
+          <View style={styles.viewSelector}>
+            {PREVIEW_VIEW_OPTIONS.map((option) => {
+              const isActive = option.key === activeView;
 
-            <View style={styles.simulationColumn}>
-              {simulation2025 ? (
-                <>
-                  <View
-                    style={[styles.simulationPredictionCard, { backgroundColor: cardBackground, borderColor }]}
-                  >
-                    <ThemedText type="defaultSemiBold" style={styles.simulationSectionTitle}>
-                      Predicted Winner
-                    </ThemedText>
-                    <View style={styles.predictionRow}>
-                      <ThemedText
-                        style={[
-                          styles.predictionWinner,
-                          simulationWinner?.isRedFavorite
-                            ? styles.redText
-                            : simulationWinner?.isBlueFavorite
-                            ? styles.blueText
-                            : null,
-                        ]}
-                      >
-                        {simulationWinner?.winnerLabel ?? '—'}
-                      </ThemedText>
-                      <View
-                        style={[
-                          styles.winBadge,
-                          simulationWinner?.isRedFavorite
-                            ? styles.winBadgeRed
-                            : simulationWinner?.isBlueFavorite
-                            ? styles.winBadgeBlue
-                            : styles.winBadgeNeutral,
-                        ]}
-                      >
-                        <ThemedText style={styles.winBadgeText}>
-                          {formatPercentage(simulationWinner?.winnerPct ?? null)}
-                        </ThemedText>
-                      </View>
-                    </View>
-                    {simulationWinner &&
-                    !simulationWinner.isRedFavorite &&
-                    !simulationWinner.isBlueFavorite ? (
-                      <ThemedText style={[styles.predictionDescription, { color: mutedText }]}
-                      >
-                        Both alliances have an equal chance of winning based on the current simulation.
-                      </ThemedText>
-                    ) : null}
-                  </View>
-
-                  <View style={styles.simulationAllianceGrid}>
-                    <View
-                      style={[styles.simulationAllianceCard, { backgroundColor: cardBackground, borderColor }]}
-                    >
-                      <ThemedText type="defaultSemiBold" style={[styles.simulationAllianceTitle, styles.redText]}>
-                        Red RP
-                      </ThemedText>
-                      <View style={styles.simulationMetricRow}>
-                        <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}
-                        >
-                          Auto RP
-                        </ThemedText>
-                        <ThemedText style={styles.simulationMetricValue}>
-                          {formatPercentage(simulation2025.red_auto_rp)}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.simulationMetricGroup}>
-                        <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}
-                        >
-                          Coral Success
-                        </ThemedText>
-                        <View style={styles.simulationMetricSubGroup}>
-                          <View style={styles.simulationMetricSubRow}>
-                            <ThemedText style={[styles.simulationMetricSubLabel, { color: mutedText }]}
-                            >
-                              Win
-                            </ThemedText>
-                            <ThemedText style={styles.simulationMetricValue}>
-                              {formatPercentage(simulation2025.red_w_coral_rp)}
-                            </ThemedText>
-                          </View>
-                          <View style={styles.simulationMetricSubRow}>
-                            <ThemedText style={[styles.simulationMetricSubLabel, { color: mutedText }]}
-                            >
-                              RP
-                            </ThemedText>
-                            <ThemedText style={styles.simulationMetricValue}>
-                              {formatPercentage(simulation2025.red_r_coral_rp)}
-                            </ThemedText>
-                          </View>
-                        </View>
-                      </View>
-                      <View style={styles.simulationMetricRow}>
-                        <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}
-                        >
-                          Endgame RP
-                        </ThemedText>
-                        <ThemedText style={styles.simulationMetricValue}>
-                          {formatPercentage(simulation2025.red_endgame_rp)}
-                        </ThemedText>
-                      </View>
-                    </View>
-
-                    <View
-                      style={[styles.simulationAllianceCard, { backgroundColor: cardBackground, borderColor }]}
-                    >
-                      <ThemedText type="defaultSemiBold" style={[styles.simulationAllianceTitle, styles.blueText]}>
-                        Blue RP
-                      </ThemedText>
-                      <View style={styles.simulationMetricRow}>
-                        <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}
-                        >
-                          Auto RP
-                        </ThemedText>
-                        <ThemedText style={styles.simulationMetricValue}>
-                          {formatPercentage(simulation2025.blue_auto_rp)}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.simulationMetricGroup}>
-                        <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}
-                        >
-                          Coral Success
-                        </ThemedText>
-                        <View style={styles.simulationMetricSubGroup}>
-                          <View style={styles.simulationMetricSubRow}>
-                            <ThemedText style={[styles.simulationMetricSubLabel, { color: mutedText }]}
-                            >
-                              Win
-                            </ThemedText>
-                            <ThemedText style={styles.simulationMetricValue}>
-                              {formatPercentage(simulation2025.blue_w_coral_rp)}
-                            </ThemedText>
-                          </View>
-                          <View style={styles.simulationMetricSubRow}>
-                            <ThemedText style={[styles.simulationMetricSubLabel, { color: mutedText }]}
-                            >
-                              RP
-                            </ThemedText>
-                            <ThemedText style={styles.simulationMetricValue}>
-                              {formatPercentage(simulation2025.blue_r_coral_rp)}
-                            </ThemedText>
-                          </View>
-                        </View>
-                      </View>
-                      <View style={styles.simulationMetricRow}>
-                        <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}
-                        >
-                          Endgame RP
-                        </ThemedText>
-                        <ThemedText style={styles.simulationMetricValue}>
-                          {formatPercentage(simulation2025.blue_endgame_rp)}
-                        </ThemedText>
-                      </View>
-                    </View>
-                  </View>
-                </>
-              ) : simulationFallbackMessage ? (
-                <View
-                  style={[styles.simulationMessageCard, { backgroundColor: cardBackground, borderColor }]}
-                >
-                  <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}
-                  >
-                    {simulationFallbackMessage}
-                  </ThemedText>
-                </View>
-              ) : (
-                <View
-                  style={[
-                    styles.simulationMessageCard,
-                    styles.simulationLoadingCard,
-                    { backgroundColor: cardBackground, borderColor },
+              return (
+                <Pressable
+                  key={option.key}
+                  onPress={() => setActiveView(option.key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  style={({ pressed }) => [
+                    styles.viewSelectorButton,
+                    { borderColor },
+                    isActive ? { backgroundColor: accentColor, borderColor: accentColor } : null,
+                    { opacity: pressed ? 0.85 : 1 },
                   ]}
                 >
-                  <ActivityIndicator color={accentColor} />
-                  <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}
+                  <ThemedText
+                    type="defaultSemiBold"
+                    style={[
+                      styles.viewSelectorLabel,
+                      { color: mutedText },
+                      isActive ? styles.viewSelectorLabelActive : null,
+                    ]}
                   >
-                    Loading simulation…
+                    {option.label}
                   </ThemedText>
-                </View>
-              )}
-            </View>
+                </Pressable>
+              );
+            })}
+          </View>
+          <ScrollView contentContainerStyle={styles.previewContent}>
+            {activeView === 'overview' ? (
+              <>
+                <View style={styles.summaryColumns}>
+                  {renderAllianceSummaryCard('red')}
+                  <View style={styles.simulationColumn}>
+                    {simulation2025 ? (
+                      <>
+                        <View
+                          style={[
+                            styles.simulationPredictionCard,
+                            { backgroundColor: cardBackground, borderColor },
+                          ]}
+                        >
+                          <ThemedText type="defaultSemiBold" style={styles.simulationSectionTitle}>
+                            Predicted Winner
+                          </ThemedText>
+                          <View style={styles.predictionRow}>
+                            <ThemedText
+                              style={[
+                                styles.predictionWinner,
+                                simulationWinner?.isRedFavorite
+                                  ? styles.redText
+                                  : simulationWinner?.isBlueFavorite
+                                    ? styles.blueText
+                                    : null,
+                              ]}
+                            >
+                              {simulationWinner?.winnerLabel ?? '—'}
+                            </ThemedText>
+                            <View
+                              style={[
+                                styles.winBadge,
+                                simulationWinner?.isRedFavorite
+                                  ? styles.winBadgeRed
+                                  : simulationWinner?.isBlueFavorite
+                                    ? styles.winBadgeBlue
+                                    : styles.winBadgeNeutral,
+                              ]}
+                            >
+                              <ThemedText style={styles.winBadgeText}>
+                                {formatPercentage(simulationWinner?.winnerPct ?? null)}
+                              </ThemedText>
+                            </View>
+                          </View>
+                          {simulationWinner &&
+                          !simulationWinner.isRedFavorite &&
+                          !simulationWinner.isBlueFavorite ? (
+                            <ThemedText style={[styles.predictionDescription, { color: mutedText }]}>
+                              Both alliances have an equal chance of winning based on the current simulation.
+                            </ThemedText>
+                          ) : null}
+                        </View>
 
-            <View style={[styles.summaryColumnCard, { backgroundColor: cardBackground, borderColor }]}
-            >
-              <ThemedText type="defaultSemiBold" style={[styles.columnTitle, styles.blueText]}>
-                Blue Alliance
-              </ThemedText>
-              <View style={styles.columnMetrics}>
-                {blueAllianceSummary.map((metric) => (
-                  <View key={metric.key} style={styles.columnMetricRow}>
-                    <ThemedText style={[styles.columnMetricLabel, { color: mutedText }]}>
-                      {metric.label}
-                    </ThemedText>
-                    <ThemedText style={[styles.columnMetricValue, styles.blueText]}>
-                      {metric.value}
-                    </ThemedText>
+                        <View style={styles.simulationAllianceGrid}>
+                          <View
+                            style={[
+                              styles.simulationAllianceCard,
+                              { backgroundColor: cardBackground, borderColor },
+                            ]}
+                          >
+                            <ThemedText
+                              type="defaultSemiBold"
+                              style={[styles.simulationAllianceTitle, styles.redText]}
+                            >
+                              Red RP
+                            </ThemedText>
+                            <View style={styles.simulationMetricRow}>
+                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
+                                Auto RP
+                              </ThemedText>
+                              <ThemedText style={styles.simulationMetricValue}>
+                                {formatPercentage(simulation2025.red_auto_rp)}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.simulationMetricGroup}>
+                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
+                                Coral Success
+                              </ThemedText>
+                              <View style={styles.simulationMetricSubGroup}>
+                                <View style={styles.simulationMetricSubRow}>
+                                  <ThemedText
+                                    style={[styles.simulationMetricSubLabel, { color: mutedText }]}
+                                  >
+                                    Win
+                                  </ThemedText>
+                                  <ThemedText style={styles.simulationMetricValue}>
+                                    {formatPercentage(simulation2025.red_w_coral_rp)}
+                                  </ThemedText>
+                                </View>
+                                <View style={styles.simulationMetricSubRow}>
+                                  <ThemedText
+                                    style={[styles.simulationMetricSubLabel, { color: mutedText }]}
+                                  >
+                                    RP
+                                  </ThemedText>
+                                  <ThemedText style={styles.simulationMetricValue}>
+                                    {formatPercentage(simulation2025.red_r_coral_rp)}
+                                  </ThemedText>
+                                </View>
+                              </View>
+                            </View>
+                            <View style={styles.simulationMetricRow}>
+                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
+                                Endgame RP
+                              </ThemedText>
+                              <ThemedText style={styles.simulationMetricValue}>
+                                {formatPercentage(simulation2025.red_endgame_rp)}
+                              </ThemedText>
+                            </View>
+                          </View>
+
+                          <View
+                            style={[
+                              styles.simulationAllianceCard,
+                              { backgroundColor: cardBackground, borderColor },
+                            ]}
+                          >
+                            <ThemedText
+                              type="defaultSemiBold"
+                              style={[styles.simulationAllianceTitle, styles.blueText]}
+                            >
+                              Blue RP
+                            </ThemedText>
+                            <View style={styles.simulationMetricRow}>
+                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
+                                Auto RP
+                              </ThemedText>
+                              <ThemedText style={styles.simulationMetricValue}>
+                                {formatPercentage(simulation2025.blue_auto_rp)}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.simulationMetricGroup}>
+                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
+                                Coral Success
+                              </ThemedText>
+                              <View style={styles.simulationMetricSubGroup}>
+                                <View style={styles.simulationMetricSubRow}>
+                                  <ThemedText
+                                    style={[styles.simulationMetricSubLabel, { color: mutedText }]}
+                                  >
+                                    Win
+                                  </ThemedText>
+                                  <ThemedText style={styles.simulationMetricValue}>
+                                    {formatPercentage(simulation2025.blue_w_coral_rp)}
+                                  </ThemedText>
+                                </View>
+                                <View style={styles.simulationMetricSubRow}>
+                                  <ThemedText
+                                    style={[styles.simulationMetricSubLabel, { color: mutedText }]}
+                                  >
+                                    RP
+                                  </ThemedText>
+                                  <ThemedText style={styles.simulationMetricValue}>
+                                    {formatPercentage(simulation2025.blue_r_coral_rp)}
+                                  </ThemedText>
+                                </View>
+                              </View>
+                            </View>
+                            <View style={styles.simulationMetricRow}>
+                              <ThemedText style={[styles.simulationMetricLabel, { color: mutedText }]}>
+                                Endgame RP
+                              </ThemedText>
+                              <ThemedText style={styles.simulationMetricValue}>
+                                {formatPercentage(simulation2025.blue_endgame_rp)}
+                              </ThemedText>
+                            </View>
+                          </View>
+                        </View>
+                      </>
+                    ) : simulationFallbackMessage ? (
+                      <View
+                        style={[
+                          styles.simulationMessageCard,
+                          { backgroundColor: cardBackground, borderColor },
+                        ]}
+                      >
+                        <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}>
+                          {simulationFallbackMessage}
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.simulationMessageCard,
+                          styles.simulationLoadingCard,
+                          { backgroundColor: cardBackground, borderColor },
+                        ]}
+                      >
+                        <ActivityIndicator color={accentColor} />
+                        <ThemedText style={[styles.simulationMessageText, { color: mutedText }]}>
+                          Loading simulation…
+                        </ThemedText>
+                      </View>
+                    )}
                   </View>
-                ))}
-              </View>
-              <View style={styles.breakdownGrid}>
-                {renderPhaseTable(
-                  'Auto Breakdown',
-                  (field) => blueAllianceAutoBreakdown[field.key],
-                  { variant: 'blue' },
-                )}
-                {renderPhaseTable(
-                  'Teleop Breakdown',
-                  (field) => blueAllianceTeleopBreakdown[field.key],
-                  { variant: 'blue' },
-                )}
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.teamListSection}>
-            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              Red Alliance
-            </ThemedText>
-            <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>Teams: {redTeamNumbers.length > 0 ? redTeamNumbers.join(', ') : 'TBD'}</ThemedText>
-            <View style={styles.teamList}>{redTeams.map((team) => renderTeamCard(team, 'red'))}</View>
-          </View>
-
-          <View style={styles.teamListSection}>
-            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              Blue Alliance
-            </ThemedText>
-            <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>Teams: {blueTeamNumbers.length > 0 ? blueTeamNumbers.join(', ') : 'TBD'}</ThemedText>
-            <View style={styles.teamList}>{blueTeams.map((team) => renderTeamCard(team, 'blue'))}</View>
-          </View>
-        </ScrollView>
+                  {renderAllianceSummaryCard('blue')}
+                </View>
+              </>
+            ) : activeView === 'red' ? (
+              <>
+                {renderAllianceSummaryCard('red')}
+                {renderAllianceTeamsSection('red')}
+              </>
+            ) : (
+              <>
+                {renderAllianceSummaryCard('blue')}
+                {renderAllianceTeamsSection('blue')}
+              </>
+            )}
+          </ScrollView>
+        </>
       ) : (
         <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>
           <ThemedText type="defaultSemiBold" style={[styles.stateTitle, { color: textColor }]}>
@@ -940,6 +1006,25 @@ const styles = StyleSheet.create({
   previewContent: {
     gap: 20,
     paddingBottom: 40,
+  },
+  viewSelector: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  viewSelectorButton: {
+    flex: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  viewSelectorLabel: {
+    fontSize: 15,
+  },
+  viewSelectorLabelActive: {
+    color: '#F8FAFC',
   },
   summaryColumns: {
     flexDirection: 'row',
@@ -1093,13 +1178,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   teamList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
+  teamCardWrapper: {
+    flexGrow: 1,
+    width: '32%',
+    minWidth: 0,
+  },
   teamCard: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: 16,
     padding: 14,
     gap: 12,
+    minWidth: 0,
   },
   teamCardTitle: {
     fontSize: 16,
