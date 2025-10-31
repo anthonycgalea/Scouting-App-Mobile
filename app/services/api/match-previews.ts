@@ -46,6 +46,26 @@ export interface MatchPreviewResponse {
   blue: AllianceMatchPreview;
 }
 
+export interface MatchSimulationBase {
+  season: number;
+}
+
+export interface MatchSimulation2025 extends MatchSimulationBase {
+  season: 1;
+  red_alliance_win_pct: number | null;
+  blue_alliance_win_pct: number | null;
+  red_auto_rp: number | null;
+  red_w_coral_rp: number | null;
+  red_r_coral_rp: number | null;
+  red_endgame_rp: number | null;
+  blue_auto_rp: number | null;
+  blue_w_coral_rp: number | null;
+  blue_r_coral_rp: number | null;
+  blue_endgame_rp: number | null;
+}
+
+export type MatchSimulationResponse = MatchSimulation2025 | MatchSimulationBase;
+
 export interface FetchMatchScheduleParams {
   eventKey?: string;
 }
@@ -73,6 +93,26 @@ export const fetchMatchPreview = ({ matchLevel, matchNumber, eventKey }: FetchMa
 
   return apiRequest<MatchPreviewResponse>(
     `/event/match/${encodeURIComponent(normalizedLevel)}/${matchNumber}/preview`,
+    { method: 'GET', params: requestParams }
+  );
+};
+
+export interface FetchMatchSimulationParams {
+  matchLevel: string;
+  matchNumber: number;
+  eventKey?: string;
+}
+
+export const fetchMatchSimulation = ({
+  matchLevel,
+  matchNumber,
+  eventKey,
+}: FetchMatchSimulationParams) => {
+  const normalizedLevel = matchLevel.toLowerCase();
+  const requestParams: ApiRequestParams | undefined = eventKey ? { eventKey } : undefined;
+
+  return apiRequest<MatchSimulationResponse>(
+    `/event/match/${encodeURIComponent(normalizedLevel)}/${matchNumber}/simulation`,
     { method: 'GET', params: requestParams }
   );
 };
