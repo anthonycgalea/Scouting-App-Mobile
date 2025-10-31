@@ -481,9 +481,6 @@ export function SuperScoutMatchScreen({
 
                 {activeView === 'comments' && (
                   <View style={styles.section}>
-                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                      Canned Comments
-                    </ThemedText>
                     <View style={styles.chipRow}>
                       {availableFields.map((field) => {
                         const isSelected = state.cannedComments.includes(field.key);
@@ -636,7 +633,7 @@ const styles = StyleSheet.create({
   chip: {
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 8,
   },
   chipLabel: {
