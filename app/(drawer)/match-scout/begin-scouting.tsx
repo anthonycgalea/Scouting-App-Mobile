@@ -657,72 +657,21 @@ export default function BeginScoutingRoute() {
     teamNumber,
   ]);
 
-  const handleSubmit = async () => {
-    if (isSubmitting) {
-      return;
-    }
-
-    if (!selectedOrganization && !isPrescoutMode) {
-      Alert.alert(
-        'Select an organization',
-        'Choose the organization you are scouting for before submitting match data.'
-      );
-      return;
-    }
-
-    const normalizedEventKey = resolvedEventKey.trim();
-    const resolvedMatchLevel = isPrescoutMode ? 'qm' : matchLevel?.trim();
-    const resolvedTeamNumber = teamNumber || initialTeamNumber;
-
-    const parsedTeamNumber = parseInteger(resolvedTeamNumber);
-    const parsedMatchNumber = parseInteger(matchNumber || initialMatchNumber);
-
-    if (!normalizedEventKey) {
-      Alert.alert(
-        isPrescoutMode ? 'No event selected' : 'Missing match details',
-        isPrescoutMode
-          ? 'Select an event before submitting prescout data.'
-          : 'An event key and match level are required before submitting match data.',
-      );
-      return;
-    }
-
-    if (!resolvedMatchLevel) {
-      Alert.alert(
-        'Missing match details',
-        'A match level is required before submitting match data.'
-      );
-      return;
-    }
-
-    if (Number.isNaN(parsedTeamNumber)) {
-      Alert.alert(
-        'Invalid match details',
-        'Team number must be a valid number before submitting match data.'
-      );
-      return;
-    }
-
-    if (!isPrescoutMode && Number.isNaN(parsedMatchNumber)) {
-      Alert.alert(
-        'Invalid match details',
-        'Team number and match number must be valid numbers before submitting match data.'
-      );
-      return;
-    }
-
-    const noteValue = generalNotes.trim();
-    const normalizedNotes = noteValue.length > 0 ? noteValue : "";
-
-    const endgameMap = {
-      none: 'NONE',
-      park: 'PARK',
-      shallow: 'SHALLOW',
-      deep: 'DEEP',
-    } as const;
-
-    const endgameValue = endgameMap[endgameSelection];
-
+  const submitMatchData = async ({
+    normalizedEventKey,
+    resolvedMatchLevel,
+    parsedTeamNumber,
+    parsedMatchNumber,
+    normalizedNotes,
+    endgameValue,
+  }: {
+    normalizedEventKey: string;
+    resolvedMatchLevel: string;
+    parsedTeamNumber: number;
+    parsedMatchNumber: number | null;
+    normalizedNotes: string;
+    endgameValue: 'NONE' | 'PARK' | 'SHALLOW' | 'DEEP';
+  }) => {
     setIsSubmitting(true);
 
     try {
@@ -745,7 +694,7 @@ export default function BeginScoutingRoute() {
         aNet: autoCounts.net,
         tNet: teleCounts.net,
         endgame: endgameValue,
-      } as const;
+      };
 
       if (isPrescoutMode) {
         const existingMatches = db
@@ -850,6 +799,10 @@ export default function BeginScoutingRoute() {
         return;
       }
 
+      if (parsedMatchNumber == null) {
+        throw new Error('Match number is required to submit match data.');
+      }
+
       const record: typeof schema.matchData2025.$inferInsert = {
         ...sharedRecordFields,
         matchNumber: parsedMatchNumber,
@@ -891,7 +844,7 @@ export default function BeginScoutingRoute() {
           teamNumber: parsedTeamNumber,
           matchNumber: parsedMatchNumber,
           matchLevel: resolvedMatchLevel,
-          organizationId: selectedOrganization.id,
+          organizationId: selectedOrganization!.id,
         })
         .onConflictDoNothing()
         .run();
@@ -975,7 +928,7 @@ export default function BeginScoutingRoute() {
         }
 
         try {
-          await syncAlreadyScoutedEntries(selectedOrganization.id);
+          await syncAlreadyScoutedEntries(selectedOrganization!.id);
         } catch (syncError) {
           console.error('Failed to refresh already scouted entries from API', syncError);
         }
@@ -994,6 +947,95 @@ export default function BeginScoutingRoute() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (!selectedOrganization && !isPrescoutMode) {
+      Alert.alert(
+        'Select an organization',
+        'Choose the organization you are scouting for before submitting match data.'
+      );
+      return;
+    }
+
+    const normalizedEventKey = resolvedEventKey.trim();
+    const resolvedMatchLevel = isPrescoutMode ? 'qm' : matchLevel?.trim();
+    const resolvedTeamNumber = teamNumber || initialTeamNumber;
+
+    const parsedTeamNumber = parseInteger(resolvedTeamNumber);
+    const parsedMatchNumberCandidate = parseInteger(matchNumber || initialMatchNumber);
+
+    if (!normalizedEventKey) {
+      Alert.alert(
+        isPrescoutMode ? 'No event selected' : 'Missing match details',
+        isPrescoutMode
+          ? 'Select an event before submitting prescout data.'
+          : 'An event key and match level are required before submitting match data.',
+      );
+      return;
+    }
+
+    if (!resolvedMatchLevel) {
+      Alert.alert(
+        'Missing match details',
+        'A match level is required before submitting match data.'
+      );
+      return;
+    }
+
+    if (Number.isNaN(parsedTeamNumber)) {
+      Alert.alert(
+        'Invalid match details',
+        'Team number must be a valid number before submitting match data.'
+      );
+      return;
+    }
+
+    if (!isPrescoutMode && Number.isNaN(parsedMatchNumberCandidate)) {
+      Alert.alert(
+        'Invalid match details',
+        'Team number and match number must be valid numbers before submitting match data.'
+      );
+      return;
+    }
+
+    const noteValue = generalNotes.trim();
+    const normalizedNotes = noteValue.length > 0 ? noteValue : "";
+
+    const endgameMap = {
+      none: 'NONE',
+      park: 'PARK',
+      shallow: 'SHALLOW',
+      deep: 'DEEP',
+    } as const;
+
+    const endgameValue = endgameMap[endgameSelection];
+
+    const submissionDetails = {
+      normalizedEventKey,
+      resolvedMatchLevel,
+      parsedTeamNumber,
+      parsedMatchNumber: isPrescoutMode ? null : parsedMatchNumberCandidate,
+      normalizedNotes,
+      endgameValue,
+    };
+
+    Alert.alert('Submit match?', 'Are you sure you would like to submit this match?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Submit',
+        onPress: () => {
+          void submitMatchData(submissionDetails);
+        },
+      },
+    ]);
   };
 
   return (
