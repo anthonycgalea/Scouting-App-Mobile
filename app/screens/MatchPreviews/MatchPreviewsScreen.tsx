@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { getActiveEvent } from '@/app/services/logged-in-event';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
@@ -196,32 +196,6 @@ export function MatchPreviewsScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.header}>
-        <View style={styles.headerTextContainer}>
-          <ThemedText type="title">Match Previews</ThemedText>
-          <ThemedText type="subtitle">
-            Browse the event match schedule and open a matchup to view its preview data.
-          </ThemedText>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleRefresh}
-          style={({ pressed }) => [
-            styles.refreshButton,
-            {
-              backgroundColor: accentColor,
-              opacity: pressed || isRefreshing ? 0.9 : 1,
-            },
-          ]}
-        >
-          {isRefreshing ? (
-            <ActivityIndicator color="#F8FAFC" />
-          ) : (
-            <ThemedText style={styles.refreshButtonText}>Refresh schedule</ThemedText>
-          )}
-        </Pressable>
-      </View>
-
       {isLoading ? (
         <View style={styles.stateWrapper}>
           <ActivityIndicator accessibilityLabel="Loading match schedule" color={accentColor} />

@@ -562,25 +562,6 @@ export function MatchPreviewDetailsScreen({
           <ThemedText style={styles.closeButtonText}>Close</ThemedText>
         </Pressable>
       </View>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={handleRefresh}
-        style={({ pressed }) => [
-          styles.refreshButton,
-          {
-            backgroundColor: accentColor,
-            opacity: pressed || isRefreshing ? 0.9 : 1,
-          },
-        ]}
-      >
-        {isRefreshing ? (
-          <ActivityIndicator color="#F8FAFC" />
-        ) : (
-          <ThemedText style={styles.refreshButtonText}>Refresh preview</ThemedText>
-        )}
-      </Pressable>
-
       {isLoading ? (
         <View style={styles.stateWrapper}>
           <ActivityIndicator accessibilityLabel="Loading match preview" color={accentColor} />
