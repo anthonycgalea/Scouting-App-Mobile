@@ -691,9 +691,11 @@ export function SuperScoutMatchScreen({
         </Pressable>
 
         <View style={styles.matchDescriptor}>
-          <ThemedText type="title" style={[styles.matchSubtitle, { color: textColor }]}>
-            {matchLabel}: {allianceLabel}
-          </ThemedText>
+          <View style={[styles.matchBadge, { backgroundColor: allianceBackground }]}> 
+            <ThemedText type="title" style={[styles.matchSubtitle, { color: allianceText }]}> 
+              {matchLabel}: {allianceLabel}
+            </ThemedText>
+          </View>
         </View>
 
         <View style={styles.navButtonContainer}>
@@ -918,6 +920,11 @@ const styles = StyleSheet.create({
   matchDescriptor: {
     flex: 1,
     alignItems: 'center',
+  },
+  matchBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   backButton: {
     flexDirection: 'row',
