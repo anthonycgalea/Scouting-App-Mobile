@@ -1,6 +1,7 @@
 import { getUserEvent } from './api/user';
 import { apiRequest } from './api/client';
 import { retrieveEventInfo, type RetrieveEventInfoResult } from './event-info';
+import { syncPickLists, type SyncPickListsResult } from './pick-lists';
 import { getActiveEvent, setActiveEvent } from './logged-in-event';
 import { syncAlreadyScoutedEntries } from './already-scouted';
 import { syncAlreadyPitScoutedEntries } from './pit-scouting';
@@ -21,6 +22,7 @@ export type SyncDataWithServerResult = {
   alreadySuperScoutedUpdated: number;
   robotPhotosUploaded: number;
   superScoutFieldsSynced: number;
+  pickLists: SyncPickListsResult;
 };
 
 const normalizeEventCode = (rawEventCode: unknown): string | null => {
@@ -126,6 +128,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
   }
 
   const eventInfo = await retrieveEventInfo();
+  const pickLists = await syncPickLists(organizationId);
   const db = getDbOrThrow();
 
   const superScoutFieldsSynced = await syncSuperScoutFields();
@@ -292,5 +295,6 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     alreadySuperScoutedUpdated,
     robotPhotosUploaded,
     superScoutFieldsSynced,
+    pickLists,
   };
 }

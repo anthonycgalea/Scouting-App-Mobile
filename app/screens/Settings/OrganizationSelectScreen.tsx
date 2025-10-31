@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -50,6 +51,7 @@ const showSyncSuccessAlert = (result: SyncDataWithServerResult) => {
   ].join('\n');
 
   const alreadyScoutedSummary = `Already scouted updates: matches ${result.alreadyScoutedUpdated}, pit ${result.alreadyPitScoutedUpdated}, super ${result.alreadySuperScoutedUpdated}`;
+  const pickListSummary = `Pick lists: received ${result.pickLists.received}, created ${result.pickLists.created}, updated ${result.pickLists.updated}, removed ${result.pickLists.removed}`;
   const submissionSummary =
     `Submitted ${result.matchDataSent} match entries, ${result.pitDataSent} pit entries, ${result.prescoutDataSent} prescout entries, ${result.superScoutDataSent} SuperScout entries, and uploaded ${result.robotPhotosUploaded} robot photos.`;
   const superScoutSummary = `Super scout fields synced: ${result.superScoutFieldsSynced}`;
@@ -59,6 +61,7 @@ const showSyncSuccessAlert = (result: SyncDataWithServerResult) => {
     submissionSummary,
     superScoutSummary,
     eventInfoSummary,
+    pickListSummary,
     alreadyScoutedSummary,
   ].join('\n\n');
 
@@ -72,6 +75,7 @@ export function OrganizationSelectScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingUserOrganizationId, setPendingUserOrganizationId] = useState<number | null>(null);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   const accentColor = '#0a7ea4';
@@ -210,6 +214,8 @@ export function OrganizationSelectScreen() {
 
         try {
           const syncResult = await syncDataWithServer(newOrganizationId);
+          queryClient.invalidateQueries({ queryKey: ['picklists'] });
+          queryClient.invalidateQueries({ queryKey: ['event-teams'] });
           showSyncSuccessAlert(syncResult);
         } catch (syncError) {
           console.error('Failed to sync data with server after switching organization', syncError);
@@ -232,7 +238,13 @@ export function OrganizationSelectScreen() {
         setPendingUserOrganizationId(null);
       }
     },
-    [pendingUserOrganizationId, selectedOrganization, setSelectedOrganization, userOrganizations],
+    [
+      pendingUserOrganizationId,
+      queryClient,
+      selectedOrganization,
+      setSelectedOrganization,
+      userOrganizations,
+    ],
   );
 
   return (

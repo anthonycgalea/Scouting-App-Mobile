@@ -170,9 +170,9 @@ export const pickLists = sqliteTable(
   'picklist',
   {
     id: text('id').primaryKey(),
-    season: integer('season').notNull(),
+    season: integer('season'),
     organizationId: integer('organization_id').notNull(),
-    eventKey: text('event_key').notNull(),
+    eventKey: text('event_key'),
     title: text('title').notNull().default('Pick List'),
     notes: text('notes').notNull().default(''),
     created: integer('created').notNull().default(sql`(strftime('%s','now'))`),

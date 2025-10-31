@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import type { EventTeam } from '@/app/services/api/events';
-import type { PickListRank } from '@/app/services/api/pick-lists';
+import type { PickListRank } from '@/app/services/pick-lists';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 interface PickListPreviewProps {
   ranks: PickListRank[];
   eventTeamsByNumber: Map<number, EventTeam>;
-  selectedTeamNumbers: Set<number>;
+  selectedTeamNumbers?: Set<number>;
 }
 
 type NormalizedPickListRanks = {
@@ -117,10 +117,12 @@ const PickListItem = ({
   );
 };
 
+const EMPTY_SELECTED_TEAMS = new Set<number>();
+
 export function PickListPreview({
   ranks,
   eventTeamsByNumber,
-  selectedTeamNumbers,
+  selectedTeamNumbers = EMPTY_SELECTED_TEAMS,
 }: PickListPreviewProps) {
   const { teams, dnp } = useMemo(
     () => normalizeRanks(ranks, selectedTeamNumbers),

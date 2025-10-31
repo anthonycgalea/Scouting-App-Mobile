@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -32,6 +33,7 @@ function formatOrganizationLabel(organization: Organization) {
 export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
   const { isAuthenticated, logout, displayName } = useAuth();
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
+  const queryClient = useQueryClient();
   const colorScheme = useColorScheme();
   const activeRouteName = state.routes[state.index]?.name;
   const drawerItems = useDrawerItems();
@@ -112,6 +114,9 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
     try {
       const result = await syncDataWithServer(selectedOrganization.id);
 
+      queryClient.invalidateQueries({ queryKey: ['picklists'] });
+      queryClient.invalidateQueries({ queryKey: ['event-teams'] });
+
       navigation.closeDrawer();
 
       const eventInfoSummary = [
@@ -120,11 +125,11 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
       ].join('\n');
 
       const alreadyScoutedSummary = `Already scouted updates: matches ${result.alreadyScoutedUpdated}, pit ${result.alreadyPitScoutedUpdated}, super ${result.alreadySuperScoutedUpdated}`;
-
+      const pickListSummary = `Pick lists: received ${result.pickLists.received}, created ${result.pickLists.created}, updated ${result.pickLists.updated}, removed ${result.pickLists.removed}`;
       const submissionSummary = `Submitted ${result.matchDataSent} match entries, ${result.pitDataSent} pit entries, ${result.prescoutDataSent} prescout entries, ${result.superScoutDataSent} SuperScout entries.`;
 
       const title = result.eventChanged ? 'Event synchronized' : 'Sync complete';
-      const message = [`Event: ${result.eventCode}`, submissionSummary, eventInfoSummary, alreadyScoutedSummary].join('\n\n');
+      const message = [`Event: ${result.eventCode}`, submissionSummary, eventInfoSummary, pickListSummary, alreadyScoutedSummary].join('\n\n');
 
       Alert.alert(title, message);
     } catch (error) {
@@ -138,7 +143,13 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
     } finally {
       setIsSyncing(false);
     }
-  }, [isAuthenticated, isSyncing, navigation, selectedOrganization]);
+  }, [
+    isAuthenticated,
+    isSyncing,
+    navigation,
+    queryClient,
+    selectedOrganization,
+  ]);
 
   return (
     <View style={styles.container}>
