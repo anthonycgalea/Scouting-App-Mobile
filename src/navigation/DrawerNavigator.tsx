@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../hooks/useAuth';
 import LoginScreen from '../screens/LoginScreen';
+import PickListsScreen from '../screens/PickListsScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -87,6 +88,13 @@ const DrawerNavigator = () => {
       )}
     >
       <Drawer.Screen name="Home" component={HomeScreen} />
+      <Drawer.Screen
+        name="PickLists"
+        component={PickListsScreen}
+        options={{
+          title: 'Pick Lists',
+        }}
+      />
       <Drawer.Screen
         name="Login"
         component={LoginScreen}
