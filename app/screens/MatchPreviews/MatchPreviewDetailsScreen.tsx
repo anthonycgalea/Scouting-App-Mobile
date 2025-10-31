@@ -8,6 +8,7 @@ import {
   type MatchSimulation2025,
   type MatchSimulationResponse,
   type MetricStatistics,
+  type PhaseMetrics,
 } from '@/app/services/api/match-previews';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -91,6 +92,18 @@ type SummaryMetric = {
   value: string;
   variant?: 'red' | 'blue';
 };
+
+const PHASE_METRIC_FIELDS = [
+  { key: 'level4', label: 'Level 4' },
+  { key: 'level3', label: 'Level 3' },
+  { key: 'level2', label: 'Level 2' },
+  { key: 'level1', label: 'Level 1' },
+  { key: 'net', label: 'Net' },
+  { key: 'processor', label: 'Processor' },
+  { key: 'total_points', label: 'Total Points' },
+] as const;
+
+type PhaseMetricFieldKey = (typeof PHASE_METRIC_FIELDS)[number]['key'];
 
 const ALLIANCE_METRIC_FIELDS: {
   key: string;
@@ -356,6 +369,20 @@ export function MatchPreviewDetailsScreen({
     }));
   }, []);
 
+  const buildAlliancePhaseBreakdown = useCallback(
+    (teams: AllianceTeam[], selector: (team: AllianceTeam) => PhaseMetrics) => {
+      const breakdown = {} as Record<PhaseMetricFieldKey, string>;
+
+      PHASE_METRIC_FIELDS.forEach((field) => {
+        const total = sumTeamAverages(teams, (team) => selector(team)[field.key]);
+        breakdown[field.key] = formatNumber(total) ?? '—';
+      });
+
+      return breakdown;
+    },
+    [],
+  );
+
   const redAllianceSummary = useMemo(
     () => buildAllianceSummary(redTeams, 'red'),
     [buildAllianceSummary, redTeams],
@@ -363,6 +390,23 @@ export function MatchPreviewDetailsScreen({
   const blueAllianceSummary = useMemo(
     () => buildAllianceSummary(blueTeams, 'blue'),
     [blueTeams, buildAllianceSummary],
+  );
+
+  const redAllianceAutoBreakdown = useMemo(
+    () => buildAlliancePhaseBreakdown(redTeams, (team) => team.auto),
+    [buildAlliancePhaseBreakdown, redTeams],
+  );
+  const redAllianceTeleopBreakdown = useMemo(
+    () => buildAlliancePhaseBreakdown(redTeams, (team) => team.teleop),
+    [buildAlliancePhaseBreakdown, redTeams],
+  );
+  const blueAllianceAutoBreakdown = useMemo(
+    () => buildAlliancePhaseBreakdown(blueTeams, (team) => team.auto),
+    [blueTeams, buildAlliancePhaseBreakdown],
+  );
+  const blueAllianceTeleopBreakdown = useMemo(
+    () => buildAlliancePhaseBreakdown(blueTeams, (team) => team.teleop),
+    [buildAlliancePhaseBreakdown, blueTeams],
   );
 
   const simulation2025 = useMemo(
@@ -410,6 +454,46 @@ export function MatchPreviewDetailsScreen({
     return null;
   }, [hasLoadedSimulation, simulationError]);
 
+  const renderPhaseTable = useCallback(
+    (
+      title: string,
+      getValue: (field: (typeof PHASE_METRIC_FIELDS)[number]) => string,
+      options?: { variant?: 'red' | 'blue' },
+    ) => {
+      const variantStyle =
+        options?.variant === 'red'
+          ? styles.redText
+          : options?.variant === 'blue'
+            ? styles.blueText
+            : null;
+
+      return (
+        <View style={styles.breakdownSection}>
+          <ThemedText type="defaultSemiBold" style={[styles.breakdownSectionTitle, variantStyle]}>
+            {title}
+          </ThemedText>
+          <View style={[styles.breakdownTable, { borderColor }]}>
+            {PHASE_METRIC_FIELDS.map((field, index) => (
+              <View
+                key={field.key}
+                style={[
+                  styles.breakdownTableRow,
+                  index !== PHASE_METRIC_FIELDS.length - 1
+                    ? { borderBottomWidth: StyleSheet.hairlineWidth, borderColor }
+                    : null,
+                ]}
+              >
+                <ThemedText style={[styles.breakdownLabel, { color: mutedText }]}>{field.label}</ThemedText>
+                <ThemedText style={[styles.breakdownValue, variantStyle]}>{getValue(field)}</ThemedText>
+              </View>
+            ))}
+          </View>
+        </View>
+      );
+    },
+    [borderColor, mutedText],
+  );
+
   const renderTeamCard = useCallback(
     (team: AllianceTeam, alliance: 'red' | 'blue') => {
       const cardBorder = alliance === 'red' ? '#DC2626' : '#2563EB';
@@ -437,10 +521,22 @@ export function MatchPreviewDetailsScreen({
               <ThemedText style={styles.metricValue}>{formatStatWithDeviation(team.total_points)}</ThemedText>
             </View>
           </View>
+          <View style={styles.teamBreakdowns}>
+            {renderPhaseTable(
+              'Auto Breakdown',
+              (field) => formatStatWithDeviation(team.auto[field.key]),
+              { variant: alliance },
+            )}
+            {renderPhaseTable(
+              'Teleop Breakdown',
+              (field) => formatStatWithDeviation(team.teleop[field.key]),
+              { variant: alliance },
+            )}
+          </View>
         </View>
       );
     },
-    [],
+    [renderPhaseTable],
   );
 
   return (
@@ -516,6 +612,18 @@ export function MatchPreviewDetailsScreen({
                     </ThemedText>
                   </View>
                 ))}
+              </View>
+              <View style={styles.breakdownGrid}>
+                {renderPhaseTable(
+                  'Auto Breakdown',
+                  (field) => redAllianceAutoBreakdown[field.key],
+                  { variant: 'red' },
+                )}
+                {renderPhaseTable(
+                  'Teleop Breakdown',
+                  (field) => redAllianceTeleopBreakdown[field.key],
+                  { variant: 'red' },
+                )}
               </View>
             </View>
 
@@ -714,6 +822,18 @@ export function MatchPreviewDetailsScreen({
                     </ThemedText>
                   </View>
                 ))}
+              </View>
+              <View style={styles.breakdownGrid}>
+                {renderPhaseTable(
+                  'Auto Breakdown',
+                  (field) => blueAllianceAutoBreakdown[field.key],
+                  { variant: 'blue' },
+                )}
+                {renderPhaseTable(
+                  'Teleop Breakdown',
+                  (field) => blueAllianceTeleopBreakdown[field.key],
+                  { variant: 'blue' },
+                )}
               </View>
             </View>
           </View>
@@ -1017,6 +1137,38 @@ const styles = StyleSheet.create({
     color: 'rgba(15, 23, 42, 0.7)',
   },
   metricValue: {
+    fontWeight: '600',
+  },
+  teamBreakdowns: {
+    gap: 16,
+  },
+  breakdownGrid: {
+    gap: 16,
+  },
+  breakdownSection: {
+    gap: 8,
+  },
+  breakdownSectionTitle: {
+    fontSize: 15,
+  },
+  breakdownTable: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  breakdownTableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  breakdownLabel: {
+    flex: 1,
+    fontSize: 13,
+  },
+  breakdownValue: {
     fontWeight: '600',
   },
 });
