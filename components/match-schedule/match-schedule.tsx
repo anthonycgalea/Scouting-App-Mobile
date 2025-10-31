@@ -27,6 +27,7 @@ interface MatchScheduleProps {
   isValidationError?: boolean;
   onMatchPress?: (match: MatchScheduleEntry) => void;
   scoutedTeamMatches?: Set<string>;
+  preserveMatchOrder?: boolean;
 }
 
 const createMatchKey = (matchLevel: string, matchNumber: number) =>
@@ -35,15 +36,22 @@ const createMatchKey = (matchLevel: string, matchNumber: number) =>
 const createTeamMatchKey = (matchLevel: string, matchNumber: number, teamNumber: number) =>
   `${matchLevel.toLowerCase()}-${matchNumber}-${teamNumber}`;
 
+interface CreateRowDataOptions {
+  playedMatches?: Set<string>;
+  isValidationReady?: boolean;
+  scoutedTeamMatches?: Set<string>;
+  preserveMatchOrder?: boolean;
+}
+
 const createRowData = (
   matches: MatchScheduleEntry[],
-  playedMatches?: Set<string>,
-  isValidationReady?: boolean,
-  scoutedTeamMatches?: Set<string>
-): RowData[] =>
-  [...matches]
-    .sort((a, b) => a.match_number - b.match_number)
-    .map((match) => {
+  { playedMatches, isValidationReady, scoutedTeamMatches, preserveMatchOrder }: CreateRowDataOptions = {}
+): RowData[] => {
+  const sourceMatches = preserveMatchOrder
+    ? matches
+    : [...matches].sort((a, b) => a.match_number - b.match_number);
+
+  return sourceMatches.map((match) => {
       const matchKey = createMatchKey(match.match_level, match.match_number);
       const redTeams = [match.red1_id, match.red2_id, match.red3_id];
       const blueTeams = [match.blue1_id, match.blue2_id, match.blue3_id];
@@ -79,6 +87,7 @@ const createRowData = (
         played: isValidationReady ? playedMatches?.has(matchKey) ?? false : undefined,
       };
     });
+};
 
 const renderTeamNumber = (value?: number | null) => (value === null || value === undefined ? '-' : value);
 
@@ -111,6 +120,7 @@ export function MatchSchedule({
   isValidationLoading = false,
   onMatchPress,
   scoutedTeamMatches,
+  preserveMatchOrder = false,
 }: MatchScheduleProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -133,8 +143,14 @@ export function MatchSchedule({
   }, [validationEntries, isValidationReady]);
 
   const schedule = useMemo(
-    () => createRowData(matches, playedMatches, isValidationReady, scoutedTeamMatches),
-    [matches, playedMatches, isValidationReady, scoutedTeamMatches]
+    () =>
+      createRowData(matches, {
+        playedMatches,
+        isValidationReady,
+        scoutedTeamMatches,
+        preserveMatchOrder,
+      }),
+    [matches, playedMatches, isValidationReady, scoutedTeamMatches, preserveMatchOrder]
   );
 
   const dividerColor = isDark ? 'rgba(63, 63, 70, 0.6)' : 'rgba(226, 232, 240, 0.9)';

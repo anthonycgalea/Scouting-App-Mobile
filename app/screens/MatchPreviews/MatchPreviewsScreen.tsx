@@ -312,12 +312,16 @@ export function MatchPreviewsScreen() {
               <ThemedText type="defaultSemiBold" style={[styles.stateTitle, { color: textColor }]}>
                 Select an organization to view your matches
               </ThemedText>
-              <ThemedText style={[styles.stateMessage, { color: mutedText }]}> 
+              <ThemedText style={[styles.stateMessage, { color: mutedText }]}>
                 Choose an organization with a team number to filter matches assigned to your team.
               </ThemedText>
             </View>
           ) : (
-            <MatchSchedule matches={selectedMatches} onMatchPress={handleMatchPress} />
+            <MatchSchedule
+              matches={selectedMatches}
+              onMatchPress={handleMatchPress}
+              preserveMatchOrder={selectedSection === 'my-matches'}
+            />
           )}
         </>
       ) : (
