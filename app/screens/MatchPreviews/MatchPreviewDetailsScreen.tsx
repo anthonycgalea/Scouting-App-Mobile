@@ -1,5 +1,5 @@
 // app/match-previews/[view].tsx (or similar)
-import { useLocalSearchParams, useNavigation } from 'expo-router'; // ✅ useNavigation instead of Stack
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router'; // ✅ useNavigation instead of Stack
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -417,6 +417,9 @@ export default function MatchPreviewDetailsScreen() {
     [redTeams, blueTeams, renderTeamCard, renderAllianceSummaryCard],
   );
 
+  const router = useRouter();
+
+
   return (
     <ScreenContainer>
       {/* Tab selector + Close in one row under router header */}
@@ -442,16 +445,17 @@ export default function MatchPreviewDetailsScreen() {
           })}
         </View>
         <Pressable
-          onPress={() => history.back()}
+          onPress={() => router.push('/match-previews')}
           style={({ pressed }) => [
             styles.closeButton,
             { backgroundColor: closeButtonBackground, opacity: pressed ? 0.85 : 1 },
           ]}
         >
           <ThemedText style={styles.closeButtonText}>Close</ThemedText>
-        </Pressable>
-      </View>
+      </Pressable>
 
+
+      </View>
       {isLoading ? (
         <View style={styles.stateWrapper}>
           <ActivityIndicator color={accentColor} />
@@ -718,7 +722,7 @@ const styles = StyleSheet.create({
   },
   stateMessage: { textAlign: 'center', fontSize: 16 },
   previewContent: { gap: 20, paddingBottom: 40 },
-  summaryColumns: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  summaryColumns: { flexDirection: 'row', flexWrap: 'nowrap', gap: 16 },
   summaryColumnCard: { flex: 1, minWidth: 220, borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
   simulationColumn: { flex: 1, minWidth: 220, gap: 16 },
   simulationPredictionCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
