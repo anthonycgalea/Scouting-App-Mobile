@@ -69,6 +69,24 @@ const formatStatWithDeviation = (stat?: MetricStatistics) => {
 
 type AllianceTeam = MatchPreviewResponse['red']['teams'][number];
 
+type SummaryMetric = {
+  key: string;
+  label: string;
+  value: string;
+  variant?: 'red' | 'blue';
+};
+
+const ALLIANCE_METRIC_FIELDS: {
+  key: string;
+  label: string;
+  selector: (team: AllianceTeam) => MetricStatistics | undefined;
+}[] = [
+  { key: 'auto', label: 'Auto Total', selector: (team) => team.auto.total_points },
+  { key: 'teleop', label: 'Teleop Total', selector: (team) => team.teleop.total_points },
+  { key: 'endgame', label: 'Endgame', selector: (team) => team.endgame },
+  { key: 'total', label: 'Total Score', selector: (team) => team.total_points },
+];
+
 const sumTeamAverages = (
   teams: AllianceTeam[],
   selector: (team: AllianceTeam) => MetricStatistics | undefined,
@@ -234,29 +252,93 @@ export function MatchPreviewDetailsScreen({
     [blue1, blue2, blue3, blueTeams],
   );
 
-  const allianceSummaries = useMemo(() => {
-    if (!preview) {
-      return null;
-    }
-
-    const fields: {
-      key: string;
-      label: string;
-      selector: (team: AllianceTeam) => MetricStatistics | undefined;
-    }[] = [
-      { key: 'auto', label: 'Auto Total', selector: (team) => team.auto.total_points },
-      { key: 'teleop', label: 'Teleop Total', selector: (team) => team.teleop.total_points },
-      { key: 'endgame', label: 'Endgame', selector: (team) => team.endgame },
-      { key: 'total', label: 'Total Score', selector: (team) => team.total_points },
-    ];
-
-    return fields.map((field) => ({
+  const buildAllianceSummary = useCallback((teams: AllianceTeam[], variant: 'red' | 'blue') => {
+    return ALLIANCE_METRIC_FIELDS.map<SummaryMetric>((field) => ({
       key: field.key,
       label: field.label,
-      red: formatNumber(sumTeamAverages(redTeams, field.selector)),
-      blue: formatNumber(sumTeamAverages(blueTeams, field.selector)),
+      value: formatNumber(sumTeamAverages(teams, field.selector)) ?? '—',
+      variant,
     }));
-  }, [blueTeams, preview, redTeams]);
+  }, []);
+
+  const redAllianceSummary = useMemo(
+    () => buildAllianceSummary(redTeams, 'red'),
+    [buildAllianceSummary, redTeams],
+  );
+  const blueAllianceSummary = useMemo(
+    () => buildAllianceSummary(blueTeams, 'blue'),
+    [blueTeams, buildAllianceSummary],
+  );
+
+  const redTotalAverage = useMemo(
+    () => sumTeamAverages(redTeams, (team) => team.total_points),
+    [redTeams],
+  );
+  const blueTotalAverage = useMemo(
+    () => sumTeamAverages(blueTeams, (team) => team.total_points),
+    [blueTeams],
+  );
+
+  const overallSimulationSummary = useMemo<SummaryMetric[]>(() => {
+    const formattedRedTotal = formatNumber(redTotalAverage);
+    const formattedBlueTotal = formatNumber(blueTotalAverage);
+    const hasBothTotals =
+      formattedRedTotal !== undefined && formattedBlueTotal !== undefined;
+
+    const margin =
+      redTotalAverage !== undefined && blueTotalAverage !== undefined
+        ? redTotalAverage - blueTotalAverage
+        : undefined;
+
+    const marginVariant: SummaryMetric['variant'] =
+      margin === undefined || margin === 0 ? undefined : margin > 0 ? 'red' : 'blue';
+
+    const projectedWinner = (() => {
+      if (margin === undefined) {
+        return '—';
+      }
+
+      if (margin > 0) {
+        return 'Red Alliance';
+      }
+
+      if (margin < 0) {
+        return 'Blue Alliance';
+      }
+
+      return 'Dead heat';
+    })();
+
+    let marginLabel: string | undefined;
+    if (margin !== undefined) {
+      if (margin === 0) {
+        marginLabel = 'Even';
+      } else {
+        const formattedMargin = formatNumber(Math.abs(margin));
+        if (formattedMargin) {
+          marginLabel = `${margin > 0 ? 'Red' : 'Blue'} +${formattedMargin}`;
+        }
+      }
+    }
+
+    const combinedTotal =
+      redTotalAverage !== undefined && blueTotalAverage !== undefined
+        ? redTotalAverage + blueTotalAverage
+        : undefined;
+
+    const projectedScore = hasBothTotals
+      ? `Red ${formattedRedTotal} – Blue ${formattedBlueTotal}`
+      : '—';
+
+    const combinedLabel = formatNumber(combinedTotal) ?? '—';
+
+    return [
+      { key: 'winner', label: 'Projected Winner', value: projectedWinner, variant: marginVariant },
+      { key: 'score', label: 'Projected Score', value: projectedScore },
+      { key: 'margin', label: 'Score Margin', value: marginLabel ?? '—', variant: marginVariant },
+      { key: 'combined', label: 'Combined Score', value: combinedLabel },
+    ];
+  }, [blueTotalAverage, redTotalAverage]);
 
   const renderTeamCard = useCallback(
     (team: AllianceTeam, alliance: 'red' | 'blue') => {
@@ -347,29 +429,72 @@ export function MatchPreviewDetailsScreen({
         </View>
       ) : preview ? (
         <ScrollView contentContainerStyle={styles.previewContent}>
-          <View style={[styles.summaryCard, { backgroundColor: cardBackground, borderColor }]}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.summaryTitle}>Alliance Summary</ThemedText>
-            <View style={styles.summaryHeaderRow}>
-              <ThemedText style={styles.summaryHeaderLabel}>Metric</ThemedText>
-              <View style={styles.summaryValuesHeader}>
-                <ThemedText style={[styles.summaryAllianceLabel, styles.redText]}>Red</ThemedText>
-                <ThemedText style={[styles.summaryAllianceLabel, styles.blueText]}>Blue</ThemedText>
+          <View style={styles.summaryColumns}>
+            <View style={[styles.summaryColumnCard, { backgroundColor: cardBackground, borderColor }]}
+            >
+              <ThemedText type="defaultSemiBold" style={[styles.columnTitle, styles.redText]}>
+                Red Alliance
+              </ThemedText>
+              <View style={styles.columnMetrics}>
+                {redAllianceSummary.map((metric) => (
+                  <View key={metric.key} style={styles.columnMetricRow}>
+                    <ThemedText style={[styles.columnMetricLabel, { color: mutedText }]}>
+                      {metric.label}
+                    </ThemedText>
+                    <ThemedText style={[styles.columnMetricValue, styles.redText]}>
+                      {metric.value}
+                    </ThemedText>
+                  </View>
+                ))}
               </View>
             </View>
-            {allianceSummaries?.map((field) => (
-              <View key={field.key} style={styles.summaryRow}>
-                <ThemedText style={styles.summaryLabel}>{field.label}</ThemedText>
-                <View style={styles.summaryValues}>
-                  <ThemedText style={[styles.summaryValue, styles.redText]}>
-                    {field.red ?? '—'}
-                  </ThemedText>
-                  <ThemedText style={[styles.summaryValue, styles.blueText]}>
-                    {field.blue ?? '—'}
-                  </ThemedText>
-                </View>
+
+            <View style={[styles.summaryColumnCard, { backgroundColor: cardBackground, borderColor }]}
+            >
+              <ThemedText type="defaultSemiBold" style={styles.columnTitle}>
+                Overall Simulation
+              </ThemedText>
+              <View style={styles.columnMetrics}>
+                {overallSimulationSummary.map((metric) => (
+                  <View key={metric.key} style={styles.columnMetricRow}>
+                    <ThemedText style={[styles.columnMetricLabel, { color: mutedText }]}>
+                      {metric.label}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.columnMetricValue,
+                        metric.variant === 'red'
+                          ? styles.redText
+                          : metric.variant === 'blue'
+                          ? styles.blueText
+                          : null,
+                      ]}
+                    >
+                      {metric.value}
+                    </ThemedText>
+                  </View>
+                ))}
               </View>
-            ))}
+            </View>
+
+            <View style={[styles.summaryColumnCard, { backgroundColor: cardBackground, borderColor }]}
+            >
+              <ThemedText type="defaultSemiBold" style={[styles.columnTitle, styles.blueText]}>
+                Blue Alliance
+              </ThemedText>
+              <View style={styles.columnMetrics}>
+                {blueAllianceSummary.map((metric) => (
+                  <View key={metric.key} style={styles.columnMetricRow}>
+                    <ThemedText style={[styles.columnMetricLabel, { color: mutedText }]}>
+                      {metric.label}
+                    </ThemedText>
+                    <ThemedText style={[styles.columnMetricValue, styles.blueText]}>
+                      {metric.value}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            </View>
           </View>
 
           <View style={styles.teamListSection}>
@@ -494,48 +619,36 @@ const styles = StyleSheet.create({
     gap: 20,
     paddingBottom: 40,
   },
-  summaryCard: {
+  summaryColumns: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  summaryColumnCard: {
+    flex: 1,
+    minWidth: 220,
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
     gap: 12,
   },
-  summaryTitle: {
+  columnTitle: {
     fontSize: 18,
   },
-  summaryHeaderRow: {
+  columnMetrics: {
+    gap: 12,
+  },
+  columnMetricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
-  summaryHeaderLabel: {
-    fontWeight: '600',
-  },
-  summaryValuesHeader: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  summaryAllianceLabel: {
-    fontWeight: '600',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(148, 163, 184, 0.3)',
-  },
-  summaryLabel: {
+  columnMetricLabel: {
     flex: 1,
+    fontSize: 14,
   },
-  summaryValues: {
-    flexDirection: 'row',
-    gap: 24,
-    minWidth: 160,
-    justifyContent: 'flex-end',
-  },
-  summaryValue: {
+  columnMetricValue: {
     fontWeight: '600',
   },
   redText: {
