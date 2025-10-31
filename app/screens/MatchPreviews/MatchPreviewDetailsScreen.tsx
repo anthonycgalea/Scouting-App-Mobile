@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   fetchMatchPreview,
@@ -55,7 +55,7 @@ const formatNumber = (value: number | null | undefined) => {
   });
 };
 
-const formatStatWithDeviation = (stat?: MetricStatistics) => {
+const formatStatWithDeviation = (stat?: MetricStatistics): ReactNode => {
   const average = formatNumber(stat?.average);
 
   if (!average) {
@@ -65,7 +65,12 @@ const formatStatWithDeviation = (stat?: MetricStatistics) => {
   const deviation = formatNumber(stat?.standard_deviation);
 
   if (deviation && deviation !== '0.0') {
-    return `${average} ±${deviation}`;
+    return (
+      <>
+        {average}
+        <Text style={styles.standardDeviationSuperscript}>±{deviation}</Text>
+      </>
+    );
   }
 
   return average;
@@ -466,7 +471,7 @@ export function MatchPreviewDetailsScreen({
   const renderPhaseTable = useCallback(
     (
       title: string,
-      getValue: (field: (typeof PHASE_METRIC_FIELDS)[number]) => string,
+      getValue: (field: (typeof PHASE_METRIC_FIELDS)[number]) => ReactNode,
       options?: { variant?: 'red' | 'blue' },
     ) => {
       const variantStyle =
@@ -551,19 +556,19 @@ export function MatchPreviewDetailsScreen({
   );
 
   const renderAllianceSummaryCard = useCallback(
-    (variant: 'red' | 'blue') => {
+    (variant: 'red' | 'blue', options?: { layout?: 'column' | 'grid' }) => {
       const isRed = variant === 'red';
       const summary = isRed ? redAllianceSummary : blueAllianceSummary;
       const autoBreakdown = isRed ? redAllianceAutoBreakdown : blueAllianceAutoBreakdown;
       const teleopBreakdown = isRed ? redAllianceTeleopBreakdown : blueAllianceTeleopBreakdown;
       const title = isRed ? 'Red Alliance' : 'Blue Alliance';
       const variantStyle = isRed ? styles.redText : styles.blueText;
+      const layout = options?.layout ?? 'column';
+      const containerStyle =
+        layout === 'column' ? styles.summaryColumnCard : styles.teamSummaryCard;
 
-      return (
-        <View
-          key={`${variant}-summary`}
-          style={[styles.summaryColumnCard, { backgroundColor: cardBackground, borderColor }]}
-        >
+      const card = (
+        <View style={[containerStyle, { backgroundColor: cardBackground, borderColor }]}>
           <ThemedText type="defaultSemiBold" style={[styles.columnTitle, variantStyle]}>
             {title}
           </ThemedText>
@@ -583,6 +588,16 @@ export function MatchPreviewDetailsScreen({
           </View>
         </View>
       );
+
+      if (layout === 'grid') {
+        return (
+          <View key={`${variant}-summary`} style={styles.teamCardWrapper}>
+            {card}
+          </View>
+        );
+      }
+
+      return card;
     },
     [
       blueAllianceAutoBreakdown,
@@ -614,11 +629,22 @@ export function MatchPreviewDetailsScreen({
           <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>
             Teams: {teamNumbers.length > 0 ? teamNumbers.join(', ') : 'TBD'}
           </ThemedText>
-          <View style={styles.teamList}>{teams.map((team) => renderTeamCard(team, variant))}</View>
+          <View style={styles.teamList}>
+            {teams.map((team) => renderTeamCard(team, variant))}
+            {renderAllianceSummaryCard(variant, { layout: 'grid' })}
+          </View>
         </View>
       );
     },
-    [blueTeamNumbers, blueTeams, mutedText, redTeamNumbers, redTeams, renderTeamCard],
+    [
+      blueTeamNumbers,
+      blueTeams,
+      mutedText,
+      redTeamNumbers,
+      redTeams,
+      renderAllianceSummaryCard,
+      renderTeamCard,
+    ],
   );
 
   return (
@@ -889,15 +915,9 @@ export function MatchPreviewDetailsScreen({
                 </View>
               </>
             ) : activeView === 'red' ? (
-              <>
-                {renderAllianceSummaryCard('red')}
-                {renderAllianceTeamsSection('red')}
-              </>
+              renderAllianceTeamsSection('red')
             ) : (
-              <>
-                {renderAllianceSummaryCard('blue')}
-                {renderAllianceTeamsSection('blue')}
-              </>
+              renderAllianceTeamsSection('blue')
             )}
           </ScrollView>
         </>
@@ -1181,17 +1201,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    alignItems: 'stretch',
   },
   teamCardWrapper: {
     flexGrow: 1,
-    width: '32%',
-    minWidth: 0,
+    flexShrink: 1,
+    width: '24%',
+    minWidth: 220,
   },
   teamCard: {
     flex: 1,
     borderWidth: 1,
     borderRadius: 16,
     padding: 14,
+    gap: 12,
+    minWidth: 0,
+  },
+  teamSummaryCard: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
     gap: 12,
     minWidth: 0,
   },
@@ -1245,5 +1275,11 @@ const styles = StyleSheet.create({
   },
   breakdownValue: {
     fontWeight: '600',
+  },
+  standardDeviationSuperscript: {
+    fontSize: 12,
+    marginLeft: 2,
+    lineHeight: 12,
+    transform: [{ translateY: -6 }],
   },
 });
