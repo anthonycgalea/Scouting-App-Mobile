@@ -9,16 +9,23 @@ import {
   type MatchScheduleEntry,
   type MatchScheduleSection,
   MatchScheduleToggle,
+  type MatchScheduleToggleOption,
   SECTION_DEFINITIONS,
   groupMatchesBySection,
 } from '@/components/match-schedule';
 import { ThemedText } from '@/components/themed-text';
 import { getDbOrThrow, schema } from '@/db';
 import type { MatchSchedule as MatchScheduleRow } from '@/db/schema';
+import { useOrganization } from '@/hooks/use-organization';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { eq } from 'drizzle-orm';
 
 const SECTION_ORDER: MatchScheduleSection[] = ['qualification', 'playoffs', 'finals'];
+
+const MATCH_PREVIEW_SECTION_OPTIONS: MatchScheduleToggleOption[] = [
+  ...SECTION_DEFINITIONS,
+  { value: 'my-matches', label: 'My Matches' },
+];
 
 const mapScheduleRow = (row: MatchScheduleRow): MatchScheduleEntry => ({
   match_number: row.matchNumber,
@@ -37,6 +44,26 @@ const MATCH_LEVEL_ORDER: Record<string, number> = {
   qf: 1,
   sf: 2,
   f: 3,
+};
+
+const MY_MATCH_LEVEL_ORDER: Record<string, number> = {
+  qm: 0,
+  sf: 1,
+  f: 2,
+  qf: 3,
+};
+
+const createMatchKey = (matchLevel?: string | null, matchNumber?: number | null) => {
+  if (typeof matchLevel !== 'string' || typeof matchNumber !== 'number') {
+    return null;
+  }
+
+  const normalizedLevel = matchLevel.toLowerCase();
+  if (!normalizedLevel) {
+    return null;
+  }
+
+  return `${normalizedLevel}-${matchNumber}`;
 };
 
 const buildMatchRouteParams = (match: MatchScheduleEntry) => {
@@ -73,6 +100,9 @@ export function MatchPreviewsScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [playedMatchKeys, setPlayedMatchKeys] = useState<Set<string>>(new Set());
+
+  const { selectedOrganization } = useOrganization();
 
   const accentColor = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
   const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
@@ -97,6 +127,23 @@ export function MatchPreviewsScreen() {
       .where(eq(schema.matchSchedules.eventKey, eventKey))
       .all();
 
+    const playedRows = db
+      .select({
+        matchLevel: schema.matchData2025.matchLevel,
+        matchNumber: schema.matchData2025.matchNumber,
+      })
+      .from(schema.matchData2025)
+      .where(eq(schema.matchData2025.eventKey, eventKey))
+      .all();
+
+    const playedKeys = new Set<string>();
+    playedRows.forEach((row) => {
+      const key = createMatchKey(row.matchLevel, row.matchNumber);
+      if (key) {
+        playedKeys.add(key);
+      }
+    });
+
     const normalizedMatches = rows.map(mapScheduleRow).sort((a, b) => {
       const levelA = MATCH_LEVEL_ORDER[a.match_level?.toLowerCase() ?? ''] ?? Number.MAX_SAFE_INTEGER;
       const levelB = MATCH_LEVEL_ORDER[b.match_level?.toLowerCase() ?? ''] ?? Number.MAX_SAFE_INTEGER;
@@ -108,13 +155,14 @@ export function MatchPreviewsScreen() {
       return a.match_number - b.match_number;
     });
 
-    return { eventKey, matches: normalizedMatches };
+    return { eventKey, matches: normalizedMatches, playedMatchKeys: playedKeys };
   }, []);
 
   const applyScheduleResult = useCallback(
-    (result: { eventKey: string; matches: MatchScheduleEntry[] }) => {
+    (result: { eventKey: string; matches: MatchScheduleEntry[]; playedMatchKeys: Set<string> }) => {
       setActiveEventKey(result.eventKey);
       setMatches(result.matches);
+      setPlayedMatchKeys(new Set(result.playedMatchKeys));
       setErrorMessage(null);
     },
     [],
@@ -129,6 +177,7 @@ export function MatchPreviewsScreen() {
     setErrorMessage(message);
     setMatches([]);
     setActiveEventKey(null);
+    setPlayedMatchKeys(new Set());
   }, []);
 
   useFocusEffect(
@@ -147,6 +196,55 @@ export function MatchPreviewsScreen() {
       return () => {};
     }, [applyScheduleResult, handleScheduleError, loadSchedule]),
   );
+
+  const organizationTeamNumber =
+    typeof selectedOrganization?.teamNumber === 'number' && Number.isFinite(selectedOrganization.teamNumber)
+      ? selectedOrganization.teamNumber
+      : null;
+
+  const myMatches = useMemo(() => {
+    if (organizationTeamNumber === null) {
+      return [] as MatchScheduleEntry[];
+    }
+
+    const teamMatches = matches.filter((match) => {
+      const alliances = [
+        match.red1_id,
+        match.red2_id,
+        match.red3_id,
+        match.blue1_id,
+        match.blue2_id,
+        match.blue3_id,
+      ];
+
+      return alliances.includes(organizationTeamNumber);
+    });
+
+    return teamMatches.sort((a, b) => {
+      const keyA = createMatchKey(a.match_level, a.match_number);
+      const keyB = createMatchKey(b.match_level, b.match_number);
+      const isPlayedA = keyA ? playedMatchKeys.has(keyA) : false;
+      const isPlayedB = keyB ? playedMatchKeys.has(keyB) : false;
+
+      if (isPlayedA !== isPlayedB) {
+        return isPlayedA ? 1 : -1;
+      }
+
+      const levelA = MY_MATCH_LEVEL_ORDER[a.match_level?.toLowerCase() ?? ''] ?? Number.MAX_SAFE_INTEGER;
+      const levelB = MY_MATCH_LEVEL_ORDER[b.match_level?.toLowerCase() ?? ''] ?? Number.MAX_SAFE_INTEGER;
+
+      if (levelA !== levelB) {
+        return levelA - levelB;
+      }
+
+      return a.match_number - b.match_number;
+    });
+  }, [matches, organizationTeamNumber, playedMatchKeys]);
+
+  const groupedMatches = useMemo(() => {
+    const grouped = groupMatchesBySection(matches);
+    return { ...grouped, 'my-matches': myMatches };
+  }, [matches, myMatches]);
 
   const handleRefresh = useCallback(() => {
     if (isRefreshing) {
@@ -173,16 +271,14 @@ export function MatchPreviewsScreen() {
       return;
     }
 
-    const grouped = groupMatchesBySection(matches);
-    if (grouped[selectedSection].length === 0) {
-      const fallback = SECTION_ORDER.find((section) => grouped[section].length > 0);
+    const currentSectionMatches = groupedMatches[selectedSection];
+    if (currentSectionMatches.length === 0) {
+      const fallback = SECTION_ORDER.find((section) => groupedMatches[section].length > 0);
       if (fallback && fallback !== selectedSection) {
         setSelectedSection(fallback);
       }
     }
-  }, [matches, selectedSection]);
-
-  const groupedMatches = useMemo(() => groupMatchesBySection(matches), [matches]);
+  }, [groupedMatches, matches.length, selectedSection]);
 
   const handleMatchPress = useCallback(
     (match: MatchScheduleEntry) => {
@@ -193,6 +289,9 @@ export function MatchPreviewsScreen() {
   );
 
   const hasMatches = matches.length > 0;
+  const hasOrganizationTeam = organizationTeamNumber !== null;
+  const selectedMatches = groupedMatches[selectedSection];
+  const shouldShowOrganizationPrompt = selectedSection === 'my-matches' && !hasOrganizationTeam;
 
   return (
     <ScreenContainer>
@@ -206,13 +305,24 @@ export function MatchPreviewsScreen() {
           <MatchScheduleToggle
             value={selectedSection}
             onChange={setSelectedSection}
-            options={SECTION_DEFINITIONS}
+            options={MATCH_PREVIEW_SECTION_OPTIONS}
           />
-          <MatchSchedule matches={groupedMatches[selectedSection]} onMatchPress={handleMatchPress} />
+          {shouldShowOrganizationPrompt ? (
+            <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>
+              <ThemedText type="defaultSemiBold" style={[styles.stateTitle, { color: textColor }]}>
+                Select an organization to view your matches
+              </ThemedText>
+              <ThemedText style={[styles.stateMessage, { color: mutedText }]}> 
+                Choose an organization with a team number to filter matches assigned to your team.
+              </ThemedText>
+            </View>
+          ) : (
+            <MatchSchedule matches={selectedMatches} onMatchPress={handleMatchPress} />
+          )}
         </>
       ) : (
-        <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}>
-          <ThemedText type="defaultSemiBold" style={[styles.stateTitle, { color: textColor }]}>
+        <View style={[styles.stateCard, { backgroundColor: cardBackground, borderColor }]}> 
+          <ThemedText type="defaultSemiBold" style={[styles.stateTitle, { color: textColor }]}> 
             {errorMessage ? 'Unable to load match schedule' : 'No match schedule available'}
           </ThemedText>
           <ThemedText style={[styles.stateMessage, { color: mutedText }]}>

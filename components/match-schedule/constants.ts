@@ -1,6 +1,6 @@
 import type { MatchScheduleEntry } from './types';
 
-export type MatchScheduleSection = 'qualification' | 'playoffs' | 'finals';
+export type MatchScheduleSection = 'qualification' | 'playoffs' | 'finals' | 'my-matches';
 
 export interface MatchScheduleToggleOption {
   label: string;
@@ -21,6 +21,7 @@ export const groupMatchesBySection = (matches: MatchScheduleEntry[]) => {
     qualification: [],
     playoffs: [],
     finals: [],
+    'my-matches': [],
   };
 
   matches.forEach((match) => {
