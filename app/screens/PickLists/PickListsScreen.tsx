@@ -10,10 +10,10 @@ import {
   View,
 } from 'react-native';
 
-import { fetchEventTeams, fetchOrganizationEvents } from '@/app/services/api/events';
 import type { EventTeam, OrganizationEvent } from '@/app/services/api/events';
-import { fetchPickLists } from '@/app/services/api/pick-lists';
+import { fetchEventTeams, fetchOrganizationEvents } from '@/app/services/api/events';
 import type { PickList, PickListRank } from '@/app/services/api/pick-lists';
+import { fetchPickLists } from '@/app/services/api/pick-lists';
 import { getActiveEvent } from '@/app/services/logged-in-event';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { PickListPreview } from '@/components/pick-lists/PickListPreview';
@@ -327,23 +327,6 @@ export function PickListsScreen() {
     <ScreenContainer>
       <Stack.Screen options={{ title: 'Pick Lists' }} />
       <View style={styles.pageContent}>
-        <View style={styles.header}>
-          <View>
-            <ThemedText type="title" style={styles.title}>
-              Alliance Selection
-            </ThemedText>
-            <ThemedText style={[styles.subtitle, { color: mutedText }]}>View pick lists and draft planning tools.</ThemedText>
-          </View>
-          {activeEvent ? (
-            <View style={styles.eventBadge}>
-              <ThemedText style={[styles.eventBadgeText, { color: accentColor }]}>Active event</ThemedText>
-              <ThemedText type="defaultSemiBold" style={styles.eventBadgeName}>
-                {activeEvent.name ?? activeEvent.eventKey}
-              </ThemedText>
-            </View>
-          ) : null}
-        </View>
-
         {organizationEventsErrorMessage ? (
           <View style={[styles.banner, { borderColor: errorColor }]}>
             <ThemedText style={[styles.bannerText, { color: errorColor }]}>{organizationEventsErrorMessage}</ThemedText>
