@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -242,10 +242,9 @@ export function SuperScoutMatchScreen({
           <ThemedText style={[styles.backButtonLabel, { color: textColor }]}>Back</ThemedText>
         </Pressable>
         <View style={styles.matchDescriptor}>
-          <ThemedText type="title" style={[styles.matchTitle, { color: textColor }]}>
-            {matchLabel}
+          <ThemedText type="title" style={[styles.matchSubtitle, { color: textColor }]}>
+            {matchLabel}: {allianceLabel}
           </ThemedText>
-          <ThemedText style={[styles.matchSubtitle, { color: mutedText }]}>{allianceLabel}</ThemedText>
         </View>
       </View>
       <View style={styles.contentWrapper}>
@@ -391,9 +390,6 @@ export function SuperScoutMatchScreen({
           <Pressable style={[styles.submitButton, { backgroundColor: allianceBackground }]} disabled>
             <ThemedText style={[styles.submitButtonText, { color: allianceText }]}>Submit Comments</ThemedText>
           </Pressable>
-          <ThemedText style={[styles.footerHint, { color: mutedText }]}>
-            Submission will be available soon.
-          </ThemedText>
         </View>
       </View>
     </ScreenContainer>
@@ -438,16 +434,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: 0,
   },
   matchDescriptor: {
     flex: 1,
     alignItems: 'flex-end',
-    gap: 2,
+    gap: 0,
+    paddingVertical: 0,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 0,
   },
   backButtonLabel: {
     fontSize: 16,
@@ -461,11 +459,12 @@ const styles = StyleSheet.create({
   matchSubtitle: {
     fontSize: 16,
     opacity: 0.9,
-    textAlign: 'right',
+    textAlign: 'center',
+    marginTop: -2,    // optional fine-tuning
   },
   contentWrapper: {
     flex: 1,
-    gap: 16,
+    gap: 0,
   },
   scrollContent: {
     flexGrow: 1,
@@ -549,16 +548,16 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    gap: 8,
+    gap: 1,
   },
   submitButton: {
     borderRadius: 999,
     paddingHorizontal: 24,
-    paddingVertical: 14,
+    paddingVertical: 8,
     opacity: 0.6,
   },
   submitButtonText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
   },
   footerHint: {
