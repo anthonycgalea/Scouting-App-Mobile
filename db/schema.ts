@@ -413,6 +413,41 @@ export const superScoutFields = sqliteTable('superscout_field', {
 export type SuperScoutField = InferSelectModel<typeof superScoutFields>;
 export type NewSuperScoutField = InferInsertModel<typeof superScoutFields>;
 
+export const superScoutData = sqliteTable(
+  'superscout_data',
+  {
+    eventKey: text('event_key').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    matchNumber: integer('match_number').notNull(),
+    matchLevel: text('match_level').notNull(),
+    alliance: text('alliance').notNull(),
+    startPosition: text('start_position'),
+    notes: text('notes'),
+    driverRating: integer('driver_rating').notNull().default(0),
+    robotOverall: integer('robot_overall').notNull().default(0),
+    defenseRating: integer('defense_rating'),
+    submissionPending: integer('submission_pending').notNull().default(1),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.eventKey, table.teamNumber, table.matchNumber, table.matchLevel],
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'superscout_data_event_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'superscout_data_team_fk',
+    }),
+  })
+);
+
+export type SuperScoutData = InferSelectModel<typeof superScoutData>;
+export type NewSuperScoutData = InferInsertModel<typeof superScoutData>;
+
 export const superScoutSelections = sqliteTable(
   'superscout_selection',
   {
