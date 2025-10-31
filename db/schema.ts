@@ -404,3 +404,45 @@ export const prescoutMatchData2025 = sqliteTable(
 
 export type PrescoutMatchData2025 = InferSelectModel<typeof prescoutMatchData2025>;
 export type NewPrescoutMatchData2025 = InferInsertModel<typeof prescoutMatchData2025>;
+
+export const superScoutFields = sqliteTable('superscout_field', {
+  key: text('key').primaryKey(),
+  label: text('label').notNull(),
+});
+
+export type SuperScoutField = InferSelectModel<typeof superScoutFields>;
+export type NewSuperScoutField = InferInsertModel<typeof superScoutFields>;
+
+export const superScoutSelections = sqliteTable(
+  'superscout_selection',
+  {
+    eventKey: text('event_key').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    matchNumber: integer('match_number').notNull(),
+    matchLevel: text('match_level').notNull(),
+    fieldKey: text('field_key').notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.eventKey, table.teamNumber, table.matchNumber, table.matchLevel, table.fieldKey],
+    }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'superscout_selection_event_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'superscout_selection_team_fk',
+    }),
+    fieldRef: foreignKey({
+      columns: [table.fieldKey],
+      foreignColumns: [superScoutFields.key],
+      name: 'superscout_selection_field_fk',
+    }),
+  }),
+);
+
+export type SuperScoutSelection = InferSelectModel<typeof superScoutSelections>;
+export type NewSuperScoutSelection = InferInsertModel<typeof superScoutSelections>;
