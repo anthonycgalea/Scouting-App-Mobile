@@ -3,10 +3,12 @@ import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 
@@ -22,7 +24,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { getDbOrThrow, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 
-const ALLIANCE_GRID_COLUMNS = 3;
+const ALLIANCE_GRID_COLUMNS = 4;
 const ALLIANCE_GRID_ROWS = 8;
 const ALLIANCE_CELL_COUNT = ALLIANCE_GRID_COLUMNS * ALLIANCE_GRID_ROWS;
 
@@ -319,53 +321,71 @@ export function PickListsScreen() {
                     Keep track of alliance picks as they happen.
                   </ThemedText>
                 </View>
-                <View style={styles.allianceContent}>
-                  <ThemedText style={[styles.allianceHelperText, { color: mutedText }]}>
-                    Enter a team number into each slot. Teams that match the active pick list are hidden
-                    from the rankings.
-                  </ThemedText>
-                  <View style={styles.allianceGrid}>
-                    {Array.from({ length: ALLIANCE_GRID_ROWS }).map((_, rowIndex) => (
-                      <View key={`row-${rowIndex}`} style={styles.allianceGridRow}>
-                        {Array.from({ length: ALLIANCE_GRID_COLUMNS }).map((_, columnIndex) => {
-                          const cellIndex = rowIndex * ALLIANCE_GRID_COLUMNS + columnIndex;
-                          const value = allianceSelections[cellIndex] ?? '';
-                          const trimmedValue = value.trim();
-                          const matchesPickList =
-                            trimmedValue.length > 0 &&
-                            pickListTeamNumbers.has(Number.parseInt(trimmedValue, 10));
-
-                          return (
-                            <View
-                              key={`cell-${cellIndex}`}
-                              style={[
-                                styles.allianceGridCell,
-                                { borderColor },
-                                matchesPickList
-                                  ? { borderColor: accentColor, backgroundColor: selectionHighlight }
-                                  : null,
-                              ]}
+                <TouchableWithoutFeedback
+                  accessible={false}
+                  onPress={Keyboard.dismiss}
+                >
+                  <View style={styles.allianceContent}>
+                    <ThemedText style={[styles.allianceHelperText, { color: mutedText }]}>
+                      Enter a team number into each slot. Teams that match the active pick list are hidden
+                      from the rankings.
+                    </ThemedText>
+                    <View style={styles.allianceGrid}>
+                      {Array.from({ length: ALLIANCE_GRID_ROWS }).map((_, rowIndex) => (
+                        <View key={`row-${rowIndex}`} style={styles.allianceGridRow}>
+                          <View
+                            style={[
+                              styles.allianceRowLabelCell,
+                              { borderColor, backgroundColor: chipBackground },
+                            ]}
+                          >
+                            <ThemedText
+                              type="defaultSemiBold"
+                              style={[styles.allianceRowLabelText, { color: mutedText }]}
                             >
-                              <TextInput
-                                value={value}
-                                onChangeText={(text) => handleAllianceSelectionChange(cellIndex, text)}
-                                keyboardType="number-pad"
-                                inputMode="numeric"
-                                autoCorrect={false}
-                                autoCapitalize="none"
-                                placeholder=""
-                                placeholderTextColor={placeholderColor}
-                                style={[styles.allianceGridInput, { color: textColor }]}
-                                maxLength={5}
-                                returnKeyType="next"
-                              />
-                            </View>
-                          );
-                        })}
-                      </View>
-                    ))}
+                              Alliance {rowIndex + 1}
+                            </ThemedText>
+                          </View>
+                          {Array.from({ length: ALLIANCE_GRID_COLUMNS }).map((_, columnIndex) => {
+                            const cellIndex = rowIndex * ALLIANCE_GRID_COLUMNS + columnIndex;
+                            const value = allianceSelections[cellIndex] ?? '';
+                            const trimmedValue = value.trim();
+                            const matchesPickList =
+                              trimmedValue.length > 0 &&
+                              pickListTeamNumbers.has(Number.parseInt(trimmedValue, 10));
+
+                            return (
+                              <View
+                                key={`cell-${cellIndex}`}
+                                style={[
+                                  styles.allianceGridCell,
+                                  { borderColor },
+                                  matchesPickList
+                                    ? { borderColor: accentColor, backgroundColor: selectionHighlight }
+                                    : null,
+                                ]}
+                              >
+                                <TextInput
+                                  value={value}
+                                  onChangeText={(text) => handleAllianceSelectionChange(cellIndex, text)}
+                                  keyboardType="number-pad"
+                                  inputMode="numeric"
+                                  autoCorrect={false}
+                                  autoCapitalize="none"
+                                  placeholder=""
+                                  placeholderTextColor={placeholderColor}
+                                  style={[styles.allianceGridInput, { color: textColor }]}
+                                  maxLength={5}
+                                  returnKeyType="next"
+                                />
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                </View>
+                </TouchableWithoutFeedback>
               </View>
               <View
                 style={[styles.card, styles.pickListCard, { backgroundColor: cardBackground, borderColor }]}
@@ -578,13 +598,27 @@ const styles = StyleSheet.create({
   },
   allianceGridRow: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     gap: 12,
   },
   allianceGridCell: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 2,
     borderRadius: 12,
     justifyContent: 'center',
+  },
+  allianceRowLabelCell: {
+    minWidth: 112,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 2,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  allianceRowLabelText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   allianceGridInput: {
     paddingVertical: 10,
