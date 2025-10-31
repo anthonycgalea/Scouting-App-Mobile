@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -91,6 +90,7 @@ const buildAllianceRecommendations = (
 export function PickListsScreen() {
   const { selectedOrganization } = useOrganization();
   const [selectedPickListId, setSelectedPickListId] = useState<string | null>(null);
+  const [isPickListDropdownOpen, setIsPickListDropdownOpen] = useState(false);
   const [localActiveEventKey] = useState<string | null>(() => getActiveEvent());
 
   const accentColor = useThemeColor({ light: '#0a7ea4', dark: '#7cd4f7' }, 'tint');
@@ -104,10 +104,6 @@ export function PickListsScreen() {
   const chipBackground = useThemeColor(
     { light: 'rgba(15, 23, 42, 0.05)', dark: 'rgba(148, 163, 184, 0.15)' },
     'text',
-  );
-  const chipSelectedBackground = useThemeColor(
-    { light: 'rgba(14, 165, 233, 0.14)', dark: 'rgba(56, 189, 248, 0.2)' },
-    'tint',
   );
   const errorColor = useThemeColor({ light: '#dc2626', dark: '#fca5a5' }, 'text');
 
@@ -219,6 +215,7 @@ export function PickListsScreen() {
 
       return sortedPickLists[0]?.id ?? null;
     });
+    setIsPickListDropdownOpen(false);
   }, [sortedPickLists]);
 
   const selectedPickList = useMemo(
@@ -285,6 +282,7 @@ export function PickListsScreen() {
 
   const handleSelectPickList = useCallback((pickListId: string) => {
     setSelectedPickListId(pickListId);
+    setIsPickListDropdownOpen(false);
   }, []);
 
   const renderAllianceSlot = useCallback(
@@ -367,7 +365,7 @@ export function PickListsScreen() {
             >
               <View style={styles.sectionHeader}>
                 <ThemedText type="title" style={styles.sectionTitle}>
-                  Alliance overview
+                  Alliance Selection
                 </ThemedText>
                 <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>Recommendations based on the selected pick list.</ThemedText>
               </View>
@@ -399,42 +397,54 @@ export function PickListsScreen() {
             >
               <View style={styles.sectionHeader}>
                 <ThemedText type="title" style={styles.sectionTitle}>
-                  Pick lists
+                  Pick List
                 </ThemedText>
                 <ThemedText style={[styles.sectionSubtitle, { color: mutedText }]}>Select a pick list to view the current rankings.</ThemedText>
               </View>
-              <View style={styles.pickListChips}>
-                {sortedPickLists.map((pickList) => {
-                  const isSelected = pickList.id === selectedPickListId;
-                  return (
-                    <Pressable
-                      key={pickList.id}
-                      onPress={() => handleSelectPickList(pickList.id)}
-                      style={[
-                        styles.pickListChip,
-                        { backgroundColor: chipBackground, borderColor },
-                        isSelected ? { backgroundColor: chipSelectedBackground, borderColor: accentColor } : null,
-                      ]}
-                    >
-                      {pickList.favorited ? (
-                        <Ionicons
-                          name="star"
-                          size={14}
-                          color={accentColor}
-                          style={styles.favoriteIcon}
-                          accessibilityElementsHidden
-                        />
-                      ) : null}
-                      <ThemedText
-                        type="defaultSemiBold"
-                        style={[styles.pickListChipLabel, { color: isSelected ? accentColor : textColor }]}
-                        numberOfLines={1}
-                      >
-                        {pickList.title}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
+              <View style={styles.dropdownContainer}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: isPickListDropdownOpen }}
+                  onPress={() => setIsPickListDropdownOpen((current) => !current)}
+                  style={[styles.dropdownTrigger, { borderColor, backgroundColor: chipBackground }]}
+                >
+                  <ThemedText
+                    type="defaultSemiBold"
+                    style={[styles.dropdownLabel, { color: textColor }]}
+                    numberOfLines={1}
+                  >
+                    {selectedPickList?.title ?? 'Select a pick list'}
+                  </ThemedText>
+                  <ThemedText style={[styles.dropdownIcon, { color: mutedText }]}> 
+                    {isPickListDropdownOpen ? '▲' : '▼'}
+                  </ThemedText>
+                </Pressable>
+                {isPickListDropdownOpen ? (
+                  <View style={[styles.dropdownList, { borderColor, backgroundColor: cardBackground }]}>
+                    <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
+                      {sortedPickLists.map((pickList) => {
+                        const isSelected = pickList.id === selectedPickListId;
+                        return (
+                          <Pressable
+                            key={pickList.id}
+                            onPress={() => handleSelectPickList(pickList.id)}
+                            style={[
+                              styles.dropdownOption,
+                              isSelected ? { backgroundColor: chipBackground } : null,
+                            ]}
+                          >
+                            <ThemedText
+                              style={[styles.dropdownOptionLabel, { color: textColor }]}
+                              numberOfLines={1}
+                            >
+                              {pickList.title}
+                            </ThemedText>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                ) : null}
               </View>
               {selectedPickList ? (
                 <View style={styles.previewContainer}>
@@ -614,25 +624,42 @@ const styles = StyleSheet.create({
   allianceTeamName: {
     fontSize: 14,
   },
-  pickListChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  dropdownContainer: {
+    position: 'relative',
+    zIndex: 1,
   },
-  pickListChip: {
+  dropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    gap: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  pickListChipLabel: {
-    maxWidth: 200,
+  dropdownLabel: {
+    flex: 1,
   },
-  favoriteIcon: {
-    marginRight: 2,
+  dropdownIcon: {
+    fontSize: 14,
+  },
+  dropdownList: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+    maxHeight: 240,
+  },
+  dropdownScroll: {
+    maxHeight: 240,
+  },
+  dropdownOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownOptionLabel: {
+    fontSize: 15,
   },
   previewContainer: {
     flex: 1,
