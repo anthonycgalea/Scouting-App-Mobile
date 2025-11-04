@@ -27,5 +27,11 @@ export function PrescoutScreen() {
     });
   };
 
-  return <TeamListScreen title="Prescout" onTeamPress={handleTeamPress} />;
+  return (
+    <TeamListScreen
+      title="Prescout"
+      onTeamPress={handleTeamPress}
+      showPrescoutProgress
+    />
+  );
 }

@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { Stack, useFocusEffect } from 'expo-router';
 
 import { retrieveEventInfo } from '@/app/services/event-info';
@@ -30,6 +30,7 @@ export interface TeamListScreenProps {
   title: string;
   onTeamPress?: (team: TeamListItem) => void;
   showPitScoutingStatus?: boolean;
+  showPrescoutProgress?: boolean;
 }
 
 const normalizeText = (value: string) =>
@@ -38,7 +39,12 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = false }: TeamListScreenProps) {
+export function TeamListScreen({
+  title,
+  onTeamPress,
+  showPitScoutingStatus = false,
+  showPrescoutProgress = false,
+}: TeamListScreenProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [teams, setTeams] = useState<TeamListItem[]>([]);
   const [activeEventKey, setActiveEventKey] = useState<string | null>(null);
@@ -46,6 +52,7 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [scoutedTeamNumbers, setScoutedTeamNumbers] = useState<number[]>([]);
+  const [prescoutMatchCounts, setPrescoutMatchCounts] = useState<Record<number, number>>({});
 
   const backgroundCard = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
   const searchBackground = useThemeColor({ light: '#F1F5F9', dark: '#1F2937' }, 'background');
@@ -63,6 +70,9 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
   const buttonTextColor = '#F8FAFC';
   const scoutedRowBackground = useThemeColor({ light: '#E2E8F0', dark: '#1F2937' }, 'background');
   const scoutedRowTextColor = useThemeColor({ light: '#475569', dark: '#CBD5F5' }, 'text');
+  const prescoutHighlightColor = useThemeColor({ light: '#DCFCE7', dark: 'rgba(34, 197, 94, 0.25)' }, 'background');
+  const prescoutHighlightBorderColor = useThemeColor({ light: '#86EFAC', dark: 'rgba(134, 239, 172, 0.6)' }, 'tint');
+  const prescoutHighlightTextColor = useThemeColor({ light: '#166534', dark: '#86EFAC' }, 'text');
   const { selectedOrganization } = useOrganization();
   const selectedOrganizationId = selectedOrganization?.id ?? null;
 
@@ -104,6 +114,7 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
       .sort((a, b) => a.number - b.number);
 
     let alreadyScoutedTeams: number[] = [];
+    const prescoutMatchCountsByTeam: Record<number, number> = {};
 
     if (showPitScoutingStatus && selectedOrganizationId !== null) {
       const scoutedRows = db
@@ -120,18 +131,36 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
       alreadyScoutedTeams = scoutedRows.map((row) => row.teamNumber);
     }
 
-    return { eventKey, teams: mapped, alreadyScoutedTeams };
-  }, [showPitScoutingStatus, selectedOrganizationId]);
+    if (showPrescoutProgress) {
+      const prescoutRows = db
+        .select({
+          teamNumber: schema.prescoutMatchData2025.teamNumber,
+          matchCount: sql<number>`count(*)`.as('matchCount'),
+        })
+        .from(schema.prescoutMatchData2025)
+        .where(eq(schema.prescoutMatchData2025.eventKey, eventKey))
+        .groupBy(schema.prescoutMatchData2025.teamNumber)
+        .all();
+
+      prescoutRows.forEach((row) => {
+        prescoutMatchCountsByTeam[row.teamNumber] = Number(row.matchCount ?? 0);
+      });
+    }
+
+    return { eventKey, teams: mapped, alreadyScoutedTeams, prescoutMatchCountsByTeam };
+  }, [showPitScoutingStatus, selectedOrganizationId, showPrescoutProgress]);
 
   useFocusEffect(
     useCallback(() => {
       setIsLoading(true);
 
       try {
-        const { eventKey, teams: data, alreadyScoutedTeams } = loadTeamsFromDb();
+        const { eventKey, teams: data, alreadyScoutedTeams, prescoutMatchCountsByTeam } =
+          loadTeamsFromDb();
         setActiveEventKey(eventKey);
         setTeams(data);
         setScoutedTeamNumbers(alreadyScoutedTeams);
+        setPrescoutMatchCounts(prescoutMatchCountsByTeam);
         setErrorMessage(null);
       } catch (error) {
         console.error('Failed to load team list', error);
@@ -143,6 +172,7 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
         setActiveEventKey(null);
         setTeams([]);
         setScoutedTeamNumbers([]);
+        setPrescoutMatchCounts({});
       } finally {
         setIsLoading(false);
       }
@@ -202,10 +232,12 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
     try {
       setIsDownloading(true);
       await retrieveEventInfo();
-      const { eventKey, teams: data, alreadyScoutedTeams } = loadTeamsFromDb();
+      const { eventKey, teams: data, alreadyScoutedTeams, prescoutMatchCountsByTeam } =
+        loadTeamsFromDb();
       setActiveEventKey(eventKey);
       setTeams(data);
       setScoutedTeamNumbers(alreadyScoutedTeams);
+      setPrescoutMatchCounts(prescoutMatchCountsByTeam);
       setErrorMessage(null);
 
       if (data.length === 0) {
@@ -343,39 +375,59 @@ export function TeamListScreen({ title, onTeamPress, showPitScoutingStatus = fal
                   ) : null}
                 </>
               ) : (
-                filteredTeams.map((team) => (
-                  <Pressable
-                    key={team.number}
-                    accessibilityRole={isInteractive ? 'button' : undefined}
-                    disabled={!isInteractive}
-                    onPress={isInteractive ? () => onTeamPress(team) : undefined}
-                    style={({ pressed }) => [
-                      styles.teamRow,
-                      {
-                        backgroundColor: backgroundCard,
-                        borderColor,
-                        opacity: pressed && isInteractive ? 0.95 : 1,
-                      },
-                    ]}
-                  >
-                    <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
-                      {team.number}
-                    </ThemedText>
-                    <View style={styles.teamDetails}>
-                      <ThemedText type="defaultSemiBold" style={styles.teamName}>
-                        {team.name}
+                filteredTeams.map((team) => {
+                  const prescoutCount = showPrescoutProgress
+                    ? prescoutMatchCounts[team.number] ?? 0
+                    : 0;
+                  const hasCompletedPrescout = showPrescoutProgress && prescoutCount >= 10;
+
+                  return (
+                    <Pressable
+                      key={team.number}
+                      accessibilityRole={isInteractive ? 'button' : undefined}
+                      disabled={!isInteractive}
+                      onPress={isInteractive ? () => onTeamPress(team) : undefined}
+                      style={({ pressed }) => [
+                        styles.teamRow,
+                        {
+                          backgroundColor: hasCompletedPrescout ? prescoutHighlightColor : backgroundCard,
+                          borderColor: hasCompletedPrescout ? prescoutHighlightBorderColor : borderColor,
+                          opacity: pressed && isInteractive ? 0.95 : 1,
+                        },
+                      ]}
+                    >
+                      <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
+                        {team.number}
                       </ThemedText>
-                      {team.location ? (
-                        <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}> 
-                          {team.location}
+                      <View style={styles.teamDetails}>
+                        <ThemedText type="defaultSemiBold" style={styles.teamName}>
+                          {team.name}
                         </ThemedText>
+                        {team.location ? (
+                          <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}>
+                            {team.location}
+                          </ThemedText>
+                        ) : null}
+                      </View>
+                      {showPrescoutProgress ? (
+                        <View style={styles.teamPrescoutProgress}>
+                          <ThemedText
+                            type="defaultSemiBold"
+                            style={[
+                              styles.teamPrescoutCount,
+                              { color: hasCompletedPrescout ? prescoutHighlightTextColor : mutedTextColor },
+                            ]}
+                          >
+                            ({prescoutCount}/10)
+                          </ThemedText>
+                        </View>
                       ) : null}
-                    </View>
-                  </Pressable>
-                ))
+                    </Pressable>
+                  );
+                })
               )
             ) : (
-              <View style={[styles.noResultsCard, { borderColor }]}> 
+              <View style={[styles.noResultsCard, { borderColor }]}>
                 <ThemedText style={[styles.noResultsText, { color: mutedTextColor }]}>No teams match your search.</ThemedText>
               </View>
             )}
@@ -472,6 +524,13 @@ const styles = StyleSheet.create({
   },
   teamLocation: {
     fontSize: 14,
+  },
+  teamPrescoutProgress: {
+    marginLeft: 8,
+    alignItems: 'flex-end',
+  },
+  teamPrescoutCount: {
+    fontSize: 16,
   },
   stateWrapper: {
     flex: 1,
