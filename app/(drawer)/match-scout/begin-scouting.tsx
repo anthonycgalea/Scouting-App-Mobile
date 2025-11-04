@@ -95,6 +95,52 @@ const createInitialPhaseCounts = (): PhaseCounts => ({
   processor: 0,
 });
 
+const getNextPrescoutMatchNumber = (
+  db: ReturnType<typeof getDbOrThrow>,
+  eventKey: string,
+  teamNumber: number,
+) => {
+  const localMatches = db
+    .select({ matchNumber: schema.prescoutMatchData2025.matchNumber })
+    .from(schema.prescoutMatchData2025)
+    .where(
+      and(
+        eq(schema.prescoutMatchData2025.eventKey, eventKey),
+        eq(schema.prescoutMatchData2025.teamNumber, teamNumber),
+      ),
+    )
+    .all();
+
+  let highestMatchNumber = 0;
+
+  localMatches.forEach((row) => {
+    const candidate = typeof row.matchNumber === 'number' ? row.matchNumber : 0;
+    if (candidate > highestMatchNumber) {
+      highestMatchNumber = candidate;
+    }
+  });
+
+  const recordedMatches = db
+    .select({ matchNumber: schema.alreadyPrescouteds.matchNumber })
+    .from(schema.alreadyPrescouteds)
+    .where(
+      and(
+        eq(schema.alreadyPrescouteds.eventKey, eventKey),
+        eq(schema.alreadyPrescouteds.teamNumber, teamNumber),
+      ),
+    )
+    .all();
+
+  recordedMatches.forEach((row) => {
+    const candidate = typeof row.matchNumber === 'number' ? row.matchNumber : 0;
+    if (candidate > highestMatchNumber) {
+      highestMatchNumber = candidate;
+    }
+  });
+
+  return highestMatchNumber + 1;
+};
+
 const getMatchLevelLabel = (matchLevel: string | undefined) => {
   const normalized = matchLevel?.toLowerCase();
 
@@ -632,19 +678,11 @@ export default function BeginScoutingRoute() {
     }
 
     const db = getDbOrThrow();
-    const existingMatches = db
-      .select({ matchNumber: schema.prescoutMatchData2025.matchNumber })
-      .from(schema.prescoutMatchData2025)
-      .where(
-        and(
-          eq(schema.prescoutMatchData2025.eventKey, normalizedEventKey),
-          eq(schema.prescoutMatchData2025.teamNumber, parsedTeamNumber),
-        ),
-      )
-      .all();
-
-    const nextMatchNumber =
-      existingMatches.reduce((max, row) => Math.max(max, row.matchNumber ?? 0), 0) + 1;
+    const nextMatchNumber = getNextPrescoutMatchNumber(
+      db,
+      normalizedEventKey,
+      parsedTeamNumber,
+    );
     const nextMatchNumberValue = String(nextMatchNumber);
 
     if (matchNumber !== nextMatchNumberValue) {
@@ -698,19 +736,11 @@ export default function BeginScoutingRoute() {
       };
 
       if (isPrescoutMode) {
-        const existingMatches = db
-          .select({ matchNumber: schema.prescoutMatchData2025.matchNumber })
-          .from(schema.prescoutMatchData2025)
-          .where(
-            and(
-              eq(schema.prescoutMatchData2025.eventKey, normalizedEventKey),
-              eq(schema.prescoutMatchData2025.teamNumber, parsedTeamNumber),
-            ),
-          )
-          .all();
-
-        const nextMatchNumber =
-          existingMatches.reduce((max, row) => Math.max(max, row.matchNumber ?? 0), 0) + 1;
+        const nextMatchNumber = getNextPrescoutMatchNumber(
+          db,
+          normalizedEventKey,
+          parsedTeamNumber,
+        );
 
         const prescoutRecord: typeof schema.prescoutMatchData2025.$inferInsert = {
           ...sharedRecordFields,
@@ -744,6 +774,17 @@ export default function BeginScoutingRoute() {
               endgame: prescoutRecord.endgame,
             },
           })
+          .run();
+
+        await db
+          .insert(schema.alreadyPrescouteds)
+          .values({
+            eventKey: normalizedEventKey,
+            teamNumber: parsedTeamNumber,
+            matchNumber: nextMatchNumber,
+            matchLevel: resolvedMatchLevel,
+          })
+          .onConflictDoNothing()
           .run();
 
         const [row] = await db

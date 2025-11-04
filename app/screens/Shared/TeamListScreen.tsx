@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { Stack, useFocusEffect } from 'expo-router';
 
 import { retrieveEventInfo } from '@/app/services/event-info';
@@ -132,18 +132,53 @@ export function TeamListScreen({
     }
 
     if (showPrescoutProgress) {
-      const prescoutRows = db
+      const recordedPrescoutMatches = db
         .select({
           teamNumber: schema.alreadyPrescouteds.teamNumber,
-          matchCount: sql<number>`count(*)`.as('matchCount'),
+          matchNumber: schema.alreadyPrescouteds.matchNumber,
+          matchLevel: schema.alreadyPrescouteds.matchLevel,
         })
         .from(schema.alreadyPrescouteds)
         .where(eq(schema.alreadyPrescouteds.eventKey, eventKey))
-        .groupBy(schema.alreadyPrescouteds.teamNumber)
         .all();
 
-      prescoutRows.forEach((row) => {
-        prescoutMatchCountsByTeam[row.teamNumber] = Number(row.matchCount ?? 0);
+      const localPrescoutMatches = db
+        .select({
+          teamNumber: schema.prescoutMatchData2025.teamNumber,
+          matchNumber: schema.prescoutMatchData2025.matchNumber,
+          matchLevel: schema.prescoutMatchData2025.matchLevel,
+        })
+        .from(schema.prescoutMatchData2025)
+        .where(eq(schema.prescoutMatchData2025.eventKey, eventKey))
+        .all();
+
+      const matchSets = new Map<number, Set<string>>();
+      const addMatch = (teamNumber: number, matchNumber: number | null, matchLevel: string | null) => {
+        if (matchNumber == null) {
+          return;
+        }
+
+        const normalizedLevel = (matchLevel ?? '').toLowerCase();
+        const key = `${normalizedLevel}-${matchNumber}`;
+        const existingSet = matchSets.get(teamNumber);
+
+        if (existingSet) {
+          existingSet.add(key);
+        } else {
+          matchSets.set(teamNumber, new Set([key]));
+        }
+      };
+
+      recordedPrescoutMatches.forEach((row) => {
+        addMatch(row.teamNumber, row.matchNumber, row.matchLevel);
+      });
+
+      localPrescoutMatches.forEach((row) => {
+        addMatch(row.teamNumber, row.matchNumber, row.matchLevel);
+      });
+
+      matchSets.forEach((set, teamNumber) => {
+        prescoutMatchCountsByTeam[teamNumber] = set.size;
       });
     }
 
