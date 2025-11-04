@@ -17,6 +17,7 @@ import { getDbOrThrow, schema } from '@/db';
 import type { MatchSchedule } from '@/db/schema';
 import { syncAlreadyScoutedEntries } from '../../services/already-scouted';
 import { apiRequest } from '../../services/api';
+import { syncAlreadyPrescoutedEntries } from '../../services/prescouted';
 import { getActiveEvent } from '../../services/logged-in-event';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
@@ -776,6 +777,12 @@ export default function BeginScoutingRoute() {
             });
           } finally {
             clearTimeout(timeoutId);
+          }
+
+          try {
+            await syncAlreadyPrescoutedEntries(normalizedEventKey);
+          } catch (syncError) {
+            console.error('Failed to refresh already prescouted entries from API', syncError);
           }
 
           Alert.alert('Prescout submitted', 'Prescout data was saved and sent successfully.', [

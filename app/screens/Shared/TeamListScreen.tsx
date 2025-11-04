@@ -134,12 +134,12 @@ export function TeamListScreen({
     if (showPrescoutProgress) {
       const prescoutRows = db
         .select({
-          teamNumber: schema.prescoutMatchData2025.teamNumber,
+          teamNumber: schema.alreadyPrescouteds.teamNumber,
           matchCount: sql<number>`count(*)`.as('matchCount'),
         })
-        .from(schema.prescoutMatchData2025)
-        .where(eq(schema.prescoutMatchData2025.eventKey, eventKey))
-        .groupBy(schema.prescoutMatchData2025.teamNumber)
+        .from(schema.alreadyPrescouteds)
+        .where(eq(schema.alreadyPrescouteds.eventKey, eventKey))
+        .groupBy(schema.alreadyPrescouteds.teamNumber)
         .all();
 
       prescoutRows.forEach((row) => {
