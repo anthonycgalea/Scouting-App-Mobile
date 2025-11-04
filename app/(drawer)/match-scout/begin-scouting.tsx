@@ -1133,6 +1133,22 @@ export default function BeginScoutingRoute() {
                 </View>
               ))}
             </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setSelectedTab('auto')}
+              style={({ pressed }) => [
+                styles.beginScoutingButton,
+                { backgroundColor: toggleActiveBackground },
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <ThemedText
+                type="defaultSemiBold"
+                style={[styles.beginScoutingButtonText, { color: toggleActiveTextColor }]}
+              >
+                Begin Scouting
+              </ThemedText>
+            </Pressable>
           </View>
         ) : null}
 
@@ -1448,6 +1464,16 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     gap: 16,
+  },
+  beginScoutingButton: {
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  beginScoutingButtonText: {
+    fontSize: 16,
   },
   infoCard: {
     borderWidth: 1,
