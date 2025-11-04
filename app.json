@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "codystats",
+    "name": "CodyStats",
     "slug": "codystats",
     "version": "1.0.0",
     "orientation": "default",
@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.codystats.app",
+      "buildNumber": "1.0.0",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,10 +27,14 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.codystats.app",
       "permissions": [
-        "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_AUDIO"
       ]
     },
     "androidStatusBar": {
@@ -41,7 +50,11 @@
       "favicon": "./assets/images/favicon.png"
     },
     "extra": {
-      "supabaseRedirect": "codystats://auth"
+      "supabaseRedirect": "codystats://auth",
+      "router": {},
+      "eas": {
+        "projectId": "1e685698-30fe-4abd-bc3a-090e74e9bcc9"
+      }
     },
     "plugins": [
       "expo-router",
