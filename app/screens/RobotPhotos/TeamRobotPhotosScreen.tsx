@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { and, eq } from 'drizzle-orm';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
@@ -41,6 +41,7 @@ const getCarouselImageWidth = () => {
 
 export function TeamRobotPhotosScreen() {
   const params = useLocalSearchParams<{ teamNumber?: string | string[]; teamName?: string | string[] }>();
+  const router = useRouter();
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTakingPhoto, setIsTakingPhoto] = useState(false);
@@ -51,6 +52,8 @@ export function TeamRobotPhotosScreen() {
   const mutedTextColor = useThemeColor({ light: '#475569', dark: '#CBD5F5' }, 'text');
   const borderColor = useThemeColor({ light: 'rgba(15, 23, 42, 0.08)', dark: 'rgba(148, 163, 184, 0.25)' }, 'text');
   const backgroundCard = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
+  const backButtonBackground = useThemeColor({ light: '#E2E8F0', dark: '#1F2937' }, 'background');
+  const backButtonTextColor = useThemeColor({ light: '#0F172A', dark: '#E2E8F0' }, 'text');
 
   const teamNumberParam = Array.isArray(params.teamNumber) ? params.teamNumber[0] : params.teamNumber;
   const teamNameParam = Array.isArray(params.teamName) ? params.teamName[0] : params.teamName;
@@ -173,9 +176,25 @@ export function TeamRobotPhotosScreen() {
 
   const hasPhotos = photos.length > 0;
 
+  const handleGoBack = useCallback(() => {
+    router.replace('/(drawer)/robot-photos');
+  }, [router]);
+
   return (
     <ScreenContainer>
       <Stack.Screen options={{ title: headerTitle }} />
+      <Pressable
+        accessibilityLabel="Go back to the robot photos team list"
+        accessibilityRole="button"
+        onPress={handleGoBack}
+        style={({ pressed }) => [
+          styles.backButton,
+          { backgroundColor: backButtonBackground },
+          pressed ? styles.backButtonPressed : null,
+        ]}
+      >
+        <ThemedText style={[styles.backButtonLabel, { color: backButtonTextColor }]}>Back</ThemedText>
+      </Pressable>
       {isLoading ? (
         <View style={styles.stateWrapper}>
           <ActivityIndicator accessibilityLabel="Loading robot photos" color={accentColor} />
@@ -237,6 +256,20 @@ export function TeamRobotPhotosScreen() {
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  backButtonPressed: {
+    opacity: 0.85,
+  },
+  backButtonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
