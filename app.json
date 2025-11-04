@@ -4,8 +4,13 @@
     "slug": "codystats",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/CodyStatsLogoSmall.png",
     "scheme": "codystats",
+    "splash": {
+      "image": "./assets/images/CodyStatsTransparent.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
