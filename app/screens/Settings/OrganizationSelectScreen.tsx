@@ -12,7 +12,6 @@ import { getDbOrThrow, schema } from '@/db';
 import { refreshUserOrganizations } from '@/app/services/general-data';
 import { syncDataWithServer } from '@/app/services/sync-data';
 import { updateUserOrganizationSelection } from '@/app/services/api/user';
-import type { SyncDataWithServerResult } from '@/app/services/sync-data';
 import type { Organization } from '@/db/schema';
 import type { UserOrganizationSelectionResponse } from '@/app/services/api/user';
 
@@ -44,28 +43,8 @@ const extractOrganizationId = (
   throw new Error('Server response did not include a valid organization id.');
 };
 
-const showSyncSuccessAlert = (result: SyncDataWithServerResult) => {
-  const eventInfoSummary = [
-    `Match schedule: received ${result.eventInfo.matchSchedule.received}, created ${result.eventInfo.matchSchedule.created}, updated ${result.eventInfo.matchSchedule.updated}, removed ${result.eventInfo.matchSchedule.removed}`,
-    `Team list: received ${result.eventInfo.teamEvents.received}, created ${result.eventInfo.teamEvents.created}, removed ${result.eventInfo.teamEvents.removed}`,
-  ].join('\n');
-
-  const alreadyScoutedSummary = `Already scouted updates: matches ${result.alreadyScoutedUpdated}, pit ${result.alreadyPitScoutedUpdated}, super ${result.alreadySuperScoutedUpdated}`;
-  const pickListSummary = `Pick lists: received ${result.pickLists.received}, created ${result.pickLists.created}, updated ${result.pickLists.updated}, removed ${result.pickLists.removed}`;
-  const submissionSummary =
-    `Submitted ${result.matchDataSent} match entries, ${result.pitDataSent} pit entries, ${result.prescoutDataSent} prescout entries, ${result.superScoutDataSent} SuperScout entries, and uploaded ${result.robotPhotosUploaded} robot photos.`;
-  const superScoutSummary = `Super scout fields synced: ${result.superScoutFieldsSynced}`;
-  const title = result.eventChanged ? 'Event synchronized' : 'Sync complete';
-  const message = [
-    `Event: ${result.eventCode}`,
-    submissionSummary,
-    superScoutSummary,
-    eventInfoSummary,
-    pickListSummary,
-    alreadyScoutedSummary,
-  ].join('\n\n');
-
-  Alert.alert(title, message);
+const showSyncSuccessAlert = () => {
+  Alert.alert('Sync Successful');
 };
 
 export function OrganizationSelectScreen() {
@@ -216,7 +195,7 @@ export function OrganizationSelectScreen() {
           const syncResult = await syncDataWithServer(newOrganizationId);
           queryClient.invalidateQueries({ queryKey: ['picklists'] });
           queryClient.invalidateQueries({ queryKey: ['event-teams'] });
-          showSyncSuccessAlert(syncResult);
+          showSyncSuccessAlert();
         } catch (syncError) {
           console.error('Failed to sync data with server after switching organization', syncError);
           Alert.alert(
