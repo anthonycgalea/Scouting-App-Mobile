@@ -209,7 +209,6 @@ function initializeExpoSqliteDb() {
       t_processor INTEGER NOT NULL DEFAULT 0,
       a_net INTEGER NOT NULL DEFAULT 0,
       t_net INTEGER NOT NULL DEFAULT 0,
-      already_uploaded INTEGER NOT NULL DEFAULT 0,
       endgame TEXT NOT NULL DEFAULT 'NONE' CHECK (endgame IN ('NONE', 'PARK', 'SHALLOW', 'DEEP')),
       PRIMARY KEY (event_key, team_number, match_number, match_level),
       FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
