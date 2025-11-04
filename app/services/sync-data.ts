@@ -4,6 +4,7 @@ import { retrieveEventInfo, type RetrieveEventInfoResult } from './event-info';
 import { syncPickLists, type SyncPickListsResult } from './pick-lists';
 import { getActiveEvent, setActiveEvent } from './logged-in-event';
 import { syncAlreadyScoutedEntries } from './already-scouted';
+import { syncAlreadyPrescoutedEntries } from './prescouted';
 import { syncAlreadyPitScoutedEntries } from './pit-scouting';
 import { syncPendingRobotPhotos } from './robot-photos';
 import { getDbOrThrow, schema } from '@/db';
@@ -18,6 +19,7 @@ export type SyncDataWithServerResult = {
   prescoutDataSent: number;
   superScoutDataSent: number;
   alreadyScoutedUpdated: number;
+  alreadyPrescoutedUpdated: number;
   alreadyPitScoutedUpdated: number;
   alreadySuperScoutedUpdated: number;
   robotPhotosUploaded: number;
@@ -278,6 +280,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
   }
 
   const alreadyScoutedUpdated = await syncAlreadyScoutedEntries(organizationId);
+  const alreadyPrescoutedUpdated = await syncAlreadyPrescoutedEntries(remoteEventCode);
   const alreadyPitScoutedUpdated = await syncAlreadyPitScoutedEntries(organizationId);
   const alreadySuperScoutedUpdated = eventInfo.alreadySuperScouted.created;
   const robotPhotosUploaded = await syncPendingRobotPhotos();
@@ -291,6 +294,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     prescoutDataSent: prescoutRows.length,
     superScoutDataSent,
     alreadyScoutedUpdated,
+    alreadyPrescoutedUpdated,
     alreadyPitScoutedUpdated,
     alreadySuperScoutedUpdated,
     robotPhotosUploaded,
