@@ -4,16 +4,16 @@ import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { useDrawerItems } from '@/app/navigation';
 import type { DrawerItem } from '@/app/navigation';
-import { ROUTES } from '@/constants/routes';
-import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuth } from '@/hooks/use-authentication';
-import { useOrganization } from '@/hooks/use-organization';
-import type { Organization } from '@/db/schema';
+import { useDrawerItems } from '@/app/navigation';
 import { syncDataWithServer } from '@/app/services/sync-data';
+import { ThemedText } from '@/components/themed-text';
+import { ROUTES } from '@/constants/routes';
+import { Colors } from '@/constants/theme';
+import type { Organization } from '@/db/schema';
+import { useAuth } from '@/hooks/use-authentication';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useOrganization } from '@/hooks/use-organization';
 
 export type DrawerContentProps = {
   state: {
@@ -126,17 +126,8 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
         router.replace(activeDrawerItem.href);
       }
 
-      const eventInfoSummary = [
-        `Match schedule: received ${result.eventInfo.matchSchedule.received}, created ${result.eventInfo.matchSchedule.created}, updated ${result.eventInfo.matchSchedule.updated}, removed ${result.eventInfo.matchSchedule.removed}`,
-        `Team list: received ${result.eventInfo.teamEvents.received}, created ${result.eventInfo.teamEvents.created}, removed ${result.eventInfo.teamEvents.removed}`,
-      ].join('\n');
-
-      const alreadyScoutedSummary = `Already scouted updates: matches ${result.alreadyScoutedUpdated}, prescout ${result.alreadyPrescoutedUpdated}, pit ${result.alreadyPitScoutedUpdated}, super ${result.alreadySuperScoutedUpdated}`;
-      const pickListSummary = `Pick lists: received ${result.pickLists.received}, created ${result.pickLists.created}, updated ${result.pickLists.updated}, removed ${result.pickLists.removed}`;
-      const submissionSummary = `Submitted ${result.matchDataSent} match entries, ${result.pitDataSent} pit entries, ${result.prescoutDataSent} prescout entries, ${result.superScoutDataSent} SuperScout entries.`;
-
       const title = result.eventChanged ? 'Event synchronized' : 'Sync complete';
-      const message = [`Event: ${result.eventCode}`, submissionSummary, eventInfoSummary, pickListSummary, alreadyScoutedSummary].join('\n\n');
+      const message = "Success";
 
       Alert.alert(title, message);
     } catch (error) {
