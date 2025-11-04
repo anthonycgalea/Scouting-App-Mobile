@@ -714,7 +714,6 @@ export default function BeginScoutingRoute() {
         const prescoutRecord: typeof schema.prescoutMatchData2025.$inferInsert = {
           ...sharedRecordFields,
           matchNumber: nextMatchNumber,
-          alreadyUploaded: 0,
         };
 
         await db
@@ -742,7 +741,6 @@ export default function BeginScoutingRoute() {
               aNet: prescoutRecord.aNet,
               tNet: prescoutRecord.tNet,
               endgame: prescoutRecord.endgame,
-              alreadyUploaded: 0,
             },
           })
           .run();
@@ -771,26 +769,11 @@ export default function BeginScoutingRoute() {
           const timeoutId = setTimeout(() => abortController.abort(), 5000);
 
           try {
-            const { alreadyUploaded: _alreadyUploaded, ...prescoutPayload } = row;
-
             await apiRequest('/scout/prescout', {
               method: 'POST',
-              body: JSON.stringify(prescoutPayload),
+              body: JSON.stringify(row),
               signal: abortController.signal,
             });
-
-            await db
-              .update(schema.prescoutMatchData2025)
-              .set({ alreadyUploaded: 1 })
-              .where(
-                and(
-                  eq(schema.prescoutMatchData2025.eventKey, normalizedEventKey),
-                  eq(schema.prescoutMatchData2025.teamNumber, parsedTeamNumber),
-                  eq(schema.prescoutMatchData2025.matchNumber, nextMatchNumber),
-                  eq(schema.prescoutMatchData2025.matchLevel, resolvedMatchLevel),
-                ),
-              )
-              .run();
           } finally {
             clearTimeout(timeoutId);
           }

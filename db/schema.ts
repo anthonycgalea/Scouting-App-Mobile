@@ -322,7 +322,6 @@ export const matchData2025 = sqliteTable(
     tProcessor: integer('t_processor').notNull().default(0),
     aNet: integer('a_net').notNull().default(0),
     tNet: integer('t_net').notNull().default(0),
-    alreadyUploaded: integer('already_uploaded').notNull().default(0),
     endgame: text('endgame', { enum: ['NONE', 'PARK', 'SHALLOW', 'DEEP'] })
       .notNull()
       .default('NONE'),
