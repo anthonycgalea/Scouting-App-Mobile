@@ -119,6 +119,13 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
 
       navigation.closeDrawer();
 
+      const activeDrawerItem = drawerItems.find(
+        (item) => item.name === activeRouteName,
+      );
+      if (activeDrawerItem) {
+        router.replace(activeDrawerItem.href);
+      }
+
       const eventInfoSummary = [
         `Match schedule: received ${result.eventInfo.matchSchedule.received}, created ${result.eventInfo.matchSchedule.created}, updated ${result.eventInfo.matchSchedule.updated}, removed ${result.eventInfo.matchSchedule.removed}`,
         `Team list: received ${result.eventInfo.teamEvents.received}, created ${result.eventInfo.teamEvents.created}, removed ${result.eventInfo.teamEvents.removed}`,
@@ -144,6 +151,8 @@ export function AppDrawerContent({ state, navigation }: DrawerContentProps) {
       setIsSyncing(false);
     }
   }, [
+    activeRouteName,
+    drawerItems,
     isAuthenticated,
     isSyncing,
     navigation,
