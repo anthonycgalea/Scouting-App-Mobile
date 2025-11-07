@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { and, eq } from 'drizzle-orm';
 import {
@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { SmallScreenHeader } from '@/components/layout/SmallScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useOrganization } from '@/hooks/use-organization';
@@ -313,7 +312,7 @@ export default function PitScoutTeamDetailsScreen() {
 
   return (
     <ScreenContainer>
-      <SmallScreenHeader title={headerTitle} showBackButton />
+      <Stack.Screen options={{ title: headerTitle }} />
       <TouchableWithoutFeedback onPress={handleCloseInputs} accessible={false}>
         <View style={styles.container}>
           <View
