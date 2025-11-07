@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -51,6 +51,8 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
 
 const renderTeamNumber = (value?: number) => (value === undefined ? 'TBD' : value);
 
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
 export interface MatchTeamSelectScreenProps {
   matchLevel?: string;
   matchNumber?: number;
@@ -78,6 +80,7 @@ export function MatchTeamSelectScreen({
 }: MatchTeamSelectScreenProps) {
   const [selectedTeam, setSelectedTeam] = useState<string>();
   const router = useRouter();
+  const { height } = useWindowDimensions();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const cardBackground = useThemeColor({ light: '#F8FAFC', dark: '#1F2937' }, 'background');
@@ -171,15 +174,29 @@ export function MatchTeamSelectScreen({
 
   const canBeginScouting = selectedOption?.teamNumber !== undefined;
 
+  const sizing = useMemo(() => {
+    const verticalPadding = clamp(height * 0.025, 10, 20);
+    const horizontalPadding = clamp(height * 0.018, 10, 20);
+    const itemGap = clamp(height * 0.015, 8, 20);
+    const teamNumberFontSize = clamp(height * 0.028, 18, 24);
+
+    return {
+      verticalPadding,
+      horizontalPadding,
+      itemGap,
+      teamNumberFontSize,
+    };
+  }, [height]);
+
   return (
     <ScreenContainer>
       <View style={styles.header}>
-        <ThemedText type="title" style={[styles.headerText, { color: headerText }]}>
+        <ThemedText type="title" style={[styles.headerText, { color: headerText }]}> 
           Select an Alliance Position
         </ThemedText>
         <ThemedText style={[styles.subHeaderText, { color: headerText }]}>{matchLabel}</ThemedText>
       </View>
-      <View style={styles.optionsGrid}>
+      <View style={[styles.optionsGrid, { gap: sizing.itemGap, paddingVertical: sizing.itemGap / 2 }]}> 
         {teamOptions.map((option) => {
           const backgroundColor = option.alliance === 'red' ? redCellBackground : blueCellBackground;
           const isSelected = selectedTeam === option.key;
@@ -193,6 +210,8 @@ export function MatchTeamSelectScreen({
                 {
                   backgroundColor,
                   borderColor: isSelected ? '#FACC15' : borderColor,
+                  paddingVertical: sizing.verticalPadding,
+                  paddingHorizontal: sizing.horizontalPadding,
                   opacity: pressed ? 0.9 : 1,
                 },
               ]}
@@ -200,7 +219,7 @@ export function MatchTeamSelectScreen({
               <ThemedText type="defaultSemiBold" style={styles.teamLabel}>
                 {option.label}
               </ThemedText>
-              <ThemedText type="default" style={styles.teamNumber}>
+              <ThemedText type="default" style={[styles.teamNumber, { fontSize: sizing.teamNumberFontSize }]}>
                 {renderTeamNumber(option.teamNumber)}
               </ThemedText>
             </Pressable>
@@ -288,15 +307,19 @@ const styles = StyleSheet.create({
   },
   optionsGrid: {
     flex: 1,
+    minHeight: 0,
     width: '100%',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
+    alignSelf: 'stretch',
+    alignItems: 'stretch',
+    justifyContent: 'center',
   },
   teamOption: {
-    width: '80%',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    width: '100%',
     maxWidth: 480,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    alignSelf: 'center',
     borderRadius: 16,
     borderWidth: 2,
     gap: 8,
