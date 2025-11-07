@@ -1,9 +1,18 @@
-import { createContext, ReactNode, useCallback, useContext, useMemo } from 'react';
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 
 import {
   AuthProvider as SupabaseAuthProvider,
   useAuth as useSupabaseAuth,
 } from '@/src/hooks/useAuth';
+import { runFullSync } from '@/app/services/full-sync';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -21,6 +30,7 @@ interface AuthProviderProps {
 
 function AuthContextBridge({ children }: AuthProviderProps) {
   const { user, isLoading, signInWithDiscord, signOut, displayName } = useSupabaseAuth();
+  const lastSyncedUserIdRef = useRef<string | null>(null);
 
   const login = useCallback(async () => {
     await signInWithDiscord();
@@ -29,6 +39,31 @@ function AuthContextBridge({ children }: AuthProviderProps) {
   const logout = useCallback(async () => {
     await signOut();
   }, [signOut]);
+
+  useEffect(() => {
+    const userId = user?.id ?? null;
+
+    if (!userId) {
+      lastSyncedUserIdRef.current = null;
+      return;
+    }
+
+    if (lastSyncedUserIdRef.current === userId) {
+      return;
+    }
+
+    lastSyncedUserIdRef.current = userId;
+
+    const syncData = async () => {
+      try {
+        await runFullSync();
+      } catch (error) {
+        console.error('Full data sync after sign-in failed', error);
+      }
+    };
+
+    void syncData();
+  }, [user]);
 
   const value = useMemo(
     () => ({

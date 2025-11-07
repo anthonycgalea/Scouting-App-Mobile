@@ -8,7 +8,7 @@ export default function LoginRoute() {
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
-    return <Redirect href={ROUTES.pitScout} />;
+    return <Redirect href={ROUTES.organizationSelect} />;
   }
 
   return <LoginScreen />;
