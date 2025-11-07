@@ -469,6 +469,33 @@ export const alreadyPrescouteds = sqliteTable(
 export type AlreadyPrescouted = InferSelectModel<typeof alreadyPrescouteds>;
 export type NewAlreadyPrescouted = InferInsertModel<typeof alreadyPrescouteds>;
 
+export const alreadyRobotPhotos = sqliteTable(
+  'already_robot_photos',
+  {
+    eventKey: text('event_key').notNull(),
+    teamNumber: integer('team_number').notNull(),
+    imageId: text('image_id').notNull(),
+    imageUrl: text('image_url'),
+    description: text('description'),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.eventKey, table.teamNumber, table.imageId] }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'already_robot_photos_event_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'already_robot_photos_team_fk',
+    }),
+  }),
+);
+
+export type AlreadyRobotPhoto = InferSelectModel<typeof alreadyRobotPhotos>;
+export type NewAlreadyRobotPhoto = InferInsertModel<typeof alreadyRobotPhotos>;
+
 export const prescoutMatchData2025 = sqliteTable(
   'prescoutmatchdata2025',
   {
