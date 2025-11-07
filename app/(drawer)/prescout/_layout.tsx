@@ -2,8 +2,8 @@ import { Stack } from 'expo-router';
 
 export default function PrescoutLayout() {
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ title: 'Prescout' }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
     </Stack>
   );
 }
