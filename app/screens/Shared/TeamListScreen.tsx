@@ -32,6 +32,7 @@ export interface TeamListScreenProps {
   onTeamPress?: (team: TeamListItem) => void;
   showPitScoutingStatus?: boolean;
   showPrescoutProgress?: boolean;
+  showRobotPhotoStatus?: boolean;
 }
 
 const normalizeText = (value: string) =>
@@ -45,6 +46,7 @@ export function TeamListScreen({
   onTeamPress,
   showPitScoutingStatus = false,
   showPrescoutProgress = false,
+  showRobotPhotoStatus = false,
 }: TeamListScreenProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [teams, setTeams] = useState<TeamListItem[]>([]);
@@ -54,6 +56,8 @@ export function TeamListScreen({
   const [isDownloading, setIsDownloading] = useState(false);
   const [scoutedTeamNumbers, setScoutedTeamNumbers] = useState<number[]>([]);
   const [prescoutMatchCounts, setPrescoutMatchCounts] = useState<Record<number, number>>({});
+  const [robotPhotoTeamNumbers, setRobotPhotoTeamNumbers] = useState<number[]>([]);
+  const [robotPhotoCounts, setRobotPhotoCounts] = useState<Record<number, number>>({});
 
   const backgroundCard = useThemeColor({ light: '#FFFFFF', dark: '#111827' }, 'background');
   const searchBackground = useThemeColor({ light: '#F1F5F9', dark: '#1F2937' }, 'background');
@@ -116,6 +120,8 @@ export function TeamListScreen({
 
     let alreadyScoutedTeams: number[] = [];
     const prescoutMatchCountsByTeam: Record<number, number> = {};
+    let robotPhotoTeams: number[] = [];
+    const robotPhotoCountsByTeam: Record<number, number> = {};
 
     if (showPitScoutingStatus && selectedOrganizationId !== null) {
       const scoutedRows = db
@@ -183,20 +189,104 @@ export function TeamListScreen({
       });
     }
 
-    return { eventKey, teams: mapped, alreadyScoutedTeams, prescoutMatchCountsByTeam };
-  }, [showPitScoutingStatus, selectedOrganizationId, showPrescoutProgress]);
+    if (showRobotPhotoStatus) {
+      const remotePhotoRows = db
+        .select({
+          teamNumber: schema.alreadyRobotPhotos.teamNumber,
+          imageUrl: schema.alreadyRobotPhotos.imageUrl,
+        })
+        .from(schema.alreadyRobotPhotos)
+        .where(eq(schema.alreadyRobotPhotos.eventKey, eventKey))
+        .all();
+
+      const remoteUrlMap = new Map<number, Set<string>>();
+
+      for (const row of remotePhotoRows) {
+        const teamNumber = row.teamNumber;
+
+        if (typeof teamNumber !== 'number') {
+          continue;
+        }
+
+        robotPhotoCountsByTeam[teamNumber] = (robotPhotoCountsByTeam[teamNumber] ?? 0) + 1;
+
+        const rawUrl = typeof row.imageUrl === 'string' ? row.imageUrl.trim() : '';
+
+        if (rawUrl.length > 0) {
+          const existing = remoteUrlMap.get(teamNumber);
+
+          if (existing) {
+            existing.add(rawUrl);
+          } else {
+            remoteUrlMap.set(teamNumber, new Set([rawUrl]));
+          }
+        }
+      }
+
+      const localPhotoRows = db
+        .select({
+          teamNumber: schema.robotPhotos.teamNumber,
+          remoteUrl: schema.robotPhotos.remoteUrl,
+        })
+        .from(schema.robotPhotos)
+        .where(eq(schema.robotPhotos.eventKey, eventKey))
+        .all();
+
+      for (const row of localPhotoRows) {
+        const teamNumber = row.teamNumber;
+
+        if (typeof teamNumber !== 'number') {
+          continue;
+        }
+
+        const remoteUrl = typeof row.remoteUrl === 'string' ? row.remoteUrl.trim() : '';
+
+        if (remoteUrl.length > 0) {
+          const existing = remoteUrlMap.get(teamNumber);
+
+          if (existing?.has(remoteUrl)) {
+            continue;
+          }
+        }
+
+        robotPhotoCountsByTeam[teamNumber] = (robotPhotoCountsByTeam[teamNumber] ?? 0) + 1;
+      }
+
+      robotPhotoTeams = Object.entries(robotPhotoCountsByTeam)
+        .filter(([, count]) => count > 0)
+        .map(([team]) => Number(team))
+        .sort((a, b) => a - b);
+    }
+
+    return {
+      eventKey,
+      teams: mapped,
+      alreadyScoutedTeams,
+      prescoutMatchCountsByTeam,
+      robotPhotoTeams,
+      robotPhotoCountsByTeam,
+    };
+  }, [showPitScoutingStatus, selectedOrganizationId, showPrescoutProgress, showRobotPhotoStatus]);
 
   useFocusEffect(
     useCallback(() => {
       setIsLoading(true);
 
       try {
-        const { eventKey, teams: data, alreadyScoutedTeams, prescoutMatchCountsByTeam } =
-          loadTeamsFromDb();
+        const {
+          eventKey,
+          teams: data,
+          alreadyScoutedTeams,
+          prescoutMatchCountsByTeam,
+          robotPhotoTeams,
+          robotPhotoCountsByTeam,
+        } = loadTeamsFromDb();
         setActiveEventKey(eventKey);
         setTeams(data);
         setScoutedTeamNumbers(alreadyScoutedTeams);
         setPrescoutMatchCounts(prescoutMatchCountsByTeam);
+        setRobotPhotoTeamNumbers(robotPhotoTeams);
+        setRobotPhotoCounts(robotPhotoCountsByTeam);
         setErrorMessage(null);
       } catch (error) {
         console.error('Failed to load team list', error);
@@ -209,6 +299,8 @@ export function TeamListScreen({
         setTeams([]);
         setScoutedTeamNumbers([]);
         setPrescoutMatchCounts({});
+        setRobotPhotoTeamNumbers([]);
+        setRobotPhotoCounts({});
       } finally {
         setIsLoading(false);
       }
@@ -240,25 +332,55 @@ export function TeamListScreen({
   }, [searchTerm, teams]);
 
   const scoutedTeamSet = useMemo(() => new Set(scoutedTeamNumbers), [scoutedTeamNumbers]);
+  const robotPhotoTeamSet = useMemo(
+    () => new Set(robotPhotoTeamNumbers),
+    [robotPhotoTeamNumbers],
+  );
 
   const organizedTeams = useMemo(() => {
-    if (!showPitScoutingStatus) {
-      return { available: filteredTeams, scouted: [] as TeamListItem[] };
-    }
-
-    const available: TeamListItem[] = [];
+    let availablePool = filteredTeams;
     const scouted: TeamListItem[] = [];
 
-    filteredTeams.forEach((team) => {
-      if (scoutedTeamSet.has(team.number)) {
-        scouted.push(team);
-      } else {
-        available.push(team);
-      }
-    });
+    if (showPitScoutingStatus) {
+      const availableAfterPit: TeamListItem[] = [];
 
-    return { available, scouted };
-  }, [filteredTeams, scoutedTeamSet, showPitScoutingStatus]);
+      availablePool.forEach((team) => {
+        if (scoutedTeamSet.has(team.number)) {
+          scouted.push(team);
+        } else {
+          availableAfterPit.push(team);
+        }
+      });
+
+      availablePool = availableAfterPit;
+    }
+
+    let photoed: TeamListItem[] = [];
+
+    if (showRobotPhotoStatus) {
+      const availableAfterPhotos: TeamListItem[] = [];
+      const photoedTeams: TeamListItem[] = [];
+
+      availablePool.forEach((team) => {
+        if (robotPhotoTeamSet.has(team.number)) {
+          photoedTeams.push(team);
+        } else {
+          availableAfterPhotos.push(team);
+        }
+      });
+
+      availablePool = availableAfterPhotos;
+      photoed = photoedTeams;
+    }
+
+    return { available: availablePool, scouted, photoed };
+  }, [
+    filteredTeams,
+    robotPhotoTeamSet,
+    scoutedTeamSet,
+    showPitScoutingStatus,
+    showRobotPhotoStatus,
+  ]);
 
   const handleDownloadPress = useCallback(async () => {
     if (isDownloading) {
@@ -268,12 +390,20 @@ export function TeamListScreen({
     try {
       setIsDownloading(true);
       await retrieveEventInfo();
-      const { eventKey, teams: data, alreadyScoutedTeams, prescoutMatchCountsByTeam } =
-        loadTeamsFromDb();
+      const {
+        eventKey,
+        teams: data,
+        alreadyScoutedTeams,
+        prescoutMatchCountsByTeam,
+        robotPhotoTeams,
+        robotPhotoCountsByTeam,
+      } = loadTeamsFromDb();
       setActiveEventKey(eventKey);
       setTeams(data);
       setScoutedTeamNumbers(alreadyScoutedTeams);
       setPrescoutMatchCounts(prescoutMatchCountsByTeam);
+      setRobotPhotoTeamNumbers(robotPhotoTeams);
+      setRobotPhotoCounts(robotPhotoCountsByTeam);
       setErrorMessage(null);
 
       if (data.length === 0) {
@@ -294,9 +424,11 @@ export function TeamListScreen({
   const hasTeams = teams.length > 0;
   const availableTeams = organizedTeams.available;
   const alreadyScoutedTeamsList = organizedTeams.scouted;
-  const hasFilteredTeams = showPitScoutingStatus
-    ? availableTeams.length + alreadyScoutedTeamsList.length > 0
-    : filteredTeams.length > 0;
+  const alreadyPhotoedTeams = organizedTeams.photoed ?? [];
+  const hasFilteredTeams =
+    showPitScoutingStatus || showRobotPhotoStatus
+      ? availableTeams.length + alreadyScoutedTeamsList.length + alreadyPhotoedTeams.length > 0
+      : filteredTeams.length > 0;
   const isInteractive = typeof onTeamPress === 'function';
 
   return (
@@ -353,7 +485,7 @@ export function TeamListScreen({
                           {team.name}
                         </ThemedText>
                         {team.location ? (
-                          <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}> 
+                          <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}>
                             {team.location}
                           </ThemedText>
                         ) : null}
@@ -400,13 +532,176 @@ export function TeamListScreen({
                               {team.name}
                             </ThemedText>
                             {team.location ? (
-                              <ThemedText style={[styles.teamLocation, { color: scoutedRowTextColor }]}> 
+                              <ThemedText style={[styles.teamLocation, { color: scoutedRowTextColor }]}>
                                 {team.location}
                               </ThemedText>
                             ) : null}
                           </View>
                         </Pressable>
                       ))}
+                    </>
+                  ) : null}
+                  {showRobotPhotoStatus && alreadyPhotoedTeams.length > 0 ? (
+                    <>
+                      <View style={styles.alreadyScoutedHeader}>
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={[styles.alreadyScoutedHeaderText, { color: mutedTextColor }]}
+                        >
+                          Already Photoed
+                        </ThemedText>
+                      </View>
+                      {alreadyPhotoedTeams.map((team) => {
+                        const photoCount = robotPhotoCounts[team.number] ?? 0;
+                        const photoLabel = photoCount === 1 ? '1 photo' : `${photoCount} photos`;
+
+                        return (
+                          <Pressable
+                            key={`photoed-${team.number}`}
+                            accessibilityRole={isInteractive ? 'button' : undefined}
+                            disabled={!isInteractive}
+                            onPress={isInteractive ? () => onTeamPress(team) : undefined}
+                            style={({ pressed }) => [
+                              styles.teamRow,
+                              {
+                                backgroundColor: backgroundCard,
+                                borderColor,
+                                opacity: pressed && isInteractive ? 0.95 : 1,
+                              },
+                            ]}
+                          >
+                            <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
+                              {team.number}
+                            </ThemedText>
+                            <View style={styles.teamDetails}>
+                              <ThemedText type="defaultSemiBold" style={styles.teamName}>
+                                {team.name}
+                              </ThemedText>
+                              {team.location ? (
+                                <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}>
+                                  {team.location}
+                                </ThemedText>
+                              ) : null}
+                            </View>
+                            {photoCount > 0 ? (
+                              <View style={styles.photoCountWrapper}>
+                                <ThemedText type="defaultSemiBold" style={[styles.photoCountText, { color: mutedTextColor }]}>
+                                  {photoLabel}
+                                </ThemedText>
+                              </View>
+                            ) : null}
+                          </Pressable>
+                        );
+                      })}
+                    </>
+                  ) : null}
+                </>
+              ) : showRobotPhotoStatus ? (
+                <>
+                  {availableTeams.map((team) => {
+                    const prescoutCount = showPrescoutProgress
+                      ? prescoutMatchCounts[team.number] ?? 0
+                      : 0;
+                    const hasCompletedPrescout = showPrescoutProgress && prescoutCount >= 10;
+
+                    return (
+                      <Pressable
+                        key={`available-${team.number}`}
+                        accessibilityRole={isInteractive ? 'button' : undefined}
+                        disabled={!isInteractive}
+                        onPress={isInteractive ? () => onTeamPress(team) : undefined}
+                        style={({ pressed }) => [
+                          styles.teamRow,
+                          {
+                            backgroundColor: hasCompletedPrescout
+                              ? prescoutHighlightColor
+                              : backgroundCard,
+                            borderColor: hasCompletedPrescout ? prescoutHighlightBorderColor : borderColor,
+                            opacity: pressed && isInteractive ? 0.95 : 1,
+                          },
+                        ]}
+                      >
+                        <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
+                          {team.number}
+                        </ThemedText>
+                        <View style={styles.teamDetails}>
+                          <ThemedText type="defaultSemiBold" style={styles.teamName}>
+                            {team.name}
+                          </ThemedText>
+                          {team.location ? (
+                            <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}>
+                              {team.location}
+                            </ThemedText>
+                          ) : null}
+                        </View>
+                        {showPrescoutProgress ? (
+                          <View style={styles.teamPrescoutProgress}>
+                            <ThemedText
+                              type="defaultSemiBold"
+                              style={[
+                                styles.teamPrescoutCount,
+                                { color: hasCompletedPrescout ? prescoutHighlightTextColor : mutedTextColor },
+                              ]}
+                            >
+                              ({prescoutCount}/10)
+                            </ThemedText>
+                          </View>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                  {alreadyPhotoedTeams.length > 0 ? (
+                    <>
+                      <View style={styles.alreadyScoutedHeader}>
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={[styles.alreadyScoutedHeaderText, { color: mutedTextColor }]}
+                        >
+                          Already Photoed
+                        </ThemedText>
+                      </View>
+                      {alreadyPhotoedTeams.map((team) => {
+                        const photoCount = robotPhotoCounts[team.number] ?? 0;
+                        const photoLabel = photoCount === 1 ? '1 photo' : `${photoCount} photos`;
+
+                        return (
+                          <Pressable
+                            key={`photoed-${team.number}`}
+                            accessibilityRole={isInteractive ? 'button' : undefined}
+                            disabled={!isInteractive}
+                            onPress={isInteractive ? () => onTeamPress(team) : undefined}
+                            style={({ pressed }) => [
+                              styles.teamRow,
+                              {
+                                backgroundColor: backgroundCard,
+                                borderColor,
+                                opacity: pressed && isInteractive ? 0.95 : 1,
+                              },
+                            ]}
+                          >
+                            <ThemedText type="defaultSemiBold" style={styles.teamNumber}>
+                              {team.number}
+                            </ThemedText>
+                            <View style={styles.teamDetails}>
+                              <ThemedText type="defaultSemiBold" style={styles.teamName}>
+                                {team.name}
+                              </ThemedText>
+                              {team.location ? (
+                                <ThemedText style={[styles.teamLocation, { color: mutedTextColor }]}>
+                                  {team.location}
+                                </ThemedText>
+                              ) : null}
+                            </View>
+                            {photoCount > 0 ? (
+                              <View style={styles.photoCountWrapper}>
+                                <ThemedText type="defaultSemiBold" style={[styles.photoCountText, { color: mutedTextColor }]}>
+                                  {photoLabel}
+                                </ThemedText>
+                              </View>
+                            ) : null}
+                          </Pressable>
+                        );
+                      })}
                     </>
                   ) : null}
                 </>
@@ -566,6 +861,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   teamPrescoutCount: {
+    fontSize: 16,
+  },
+  photoCountWrapper: {
+    marginLeft: 8,
+    alignItems: 'flex-end',
+  },
+  photoCountText: {
     fontSize: 16,
   },
   stateWrapper: {

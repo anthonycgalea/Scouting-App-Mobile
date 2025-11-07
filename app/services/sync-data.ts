@@ -22,6 +22,7 @@ export type SyncDataWithServerResult = {
   alreadyPrescoutedUpdated: number;
   alreadyPitScoutedUpdated: number;
   alreadySuperScoutedUpdated: number;
+  alreadyRobotPhotosUpdated: number;
   robotPhotosUploaded: number;
   superScoutFieldsSynced: number;
   pickLists: SyncPickListsResult;
@@ -283,6 +284,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
   const alreadyPrescoutedUpdated = await syncAlreadyPrescoutedEntries(remoteEventCode);
   const alreadyPitScoutedUpdated = await syncAlreadyPitScoutedEntries(organizationId);
   const alreadySuperScoutedUpdated = eventInfo.alreadySuperScouted.created;
+  const alreadyRobotPhotosUpdated = eventInfo.alreadyRobotPhotos.created;
   const robotPhotosUploaded = await syncPendingRobotPhotos();
 
   return {
@@ -297,6 +299,7 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
     alreadyPrescoutedUpdated,
     alreadyPitScoutedUpdated,
     alreadySuperScoutedUpdated,
+    alreadyRobotPhotosUpdated,
     robotPhotosUploaded,
     superScoutFieldsSynced,
     pickLists,

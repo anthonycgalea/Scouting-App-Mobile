@@ -1,4 +1,8 @@
 import { apiRequest } from './api/client';
+import {
+  upsertAlreadyRobotPhotos,
+  type EventImagesResponse,
+} from './already-robot-photos';
 import { normalizeAlreadySuperScouted, type AlreadySuperScoutedResponse } from './already-super-scouted';
 import type { AlreadyScoutedResponse } from './already-scouted';
 import type { AlreadyPitScoutedResponse } from './pit-scouting';
@@ -28,6 +32,10 @@ export type RetrieveEventInfoResult = {
     created: number;
   };
   alreadySuperScouted: {
+    received: number;
+    created: number;
+  };
+  alreadyRobotPhotos: {
     received: number;
     created: number;
   };
@@ -198,6 +206,7 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     rawAlreadyScouted,
     rawAlreadyPitScouted,
     rawAlreadySuperScouted,
+    rawEventImages,
   ] = await Promise.all([
     apiRequest<MatchScheduleResponse[]>(`/public/matchSchedule/${eventCode}`, {
       method: 'GET',
@@ -214,9 +223,22 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     apiRequest<AlreadySuperScoutedResponse[]>('/scout/superscouted', {
       method: 'GET',
     }),
+    apiRequest<EventImagesResponse[] | null | undefined>('/event/images', {
+      method: 'GET',
+    }),
   ]);
 
   const requiredTeamNumbers = new Set<number>();
+
+  if (Array.isArray(rawEventImages)) {
+    for (const item of rawEventImages) {
+      const teamNumber = normalizeNumber(item?.teamNumber ?? null);
+
+      if (teamNumber !== null) {
+        requiredTeamNumbers.add(teamNumber);
+      }
+    }
+  }
 
   const normalizedMatchMap = new Map<string, NormalizedMatchSchedule>();
   for (const item of rawMatchSchedules ?? []) {
@@ -329,6 +351,9 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     }
   }
 
+  const { inserted: alreadyRobotPhotosInserted, received: alreadyRobotPhotosReceived } =
+    upsertAlreadyRobotPhotos(eventCode, rawEventImages);
+
   const matchScheduleResult: RetrieveEventInfoResult['matchSchedule'] = {
     received: normalizedMatchMap.size,
     created: 0,
@@ -355,6 +380,11 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
   const alreadySuperScoutedResult: RetrieveEventInfoResult['alreadySuperScouted'] = {
     received: normalizedAlreadySuperScoutedMap.size,
     created: 0,
+  };
+
+  const alreadyRobotPhotosResult: RetrieveEventInfoResult['alreadyRobotPhotos'] = {
+    received: alreadyRobotPhotosReceived,
+    created: alreadyRobotPhotosInserted,
   };
 
   const requiredTeamNumberList = [...requiredTeamNumbers];
@@ -580,5 +610,6 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     alreadyScouted: alreadyScoutedResult,
     alreadyPitScouted: alreadyPitScoutedResult,
     alreadySuperScouted: alreadySuperScoutedResult,
+    alreadyRobotPhotos: alreadyRobotPhotosResult,
   };
 }

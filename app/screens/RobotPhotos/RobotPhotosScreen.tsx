@@ -15,5 +15,11 @@ export function RobotPhotosScreen() {
     });
   };
 
-  return <TeamListScreen title="Robot Photos" onTeamPress={handleTeamPress} />;
+  return (
+    <TeamListScreen
+      title="Robot Photos"
+      onTeamPress={handleTeamPress}
+      showRobotPhotoStatus
+    />
+  );
 }
