@@ -10,12 +10,13 @@ import {
 } from 'react-native';
 
 import { and, eq } from 'drizzle-orm';
-import { Stack, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 
 import { retrieveEventInfo } from '@/app/services/event-info';
 import { getActiveEvent } from '@/app/services/logged-in-event';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
+import { StacklessHeader } from '@/components/layout/StacklessHeader';
 import { getDbOrThrow, schema } from '@/db';
 import { useOrganization } from '@/hooks/use-organization';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -300,7 +301,7 @@ export function TeamListScreen({
 
   return (
     <ScreenContainer>
-      <Stack.Screen options={{ title }} />
+      <StacklessHeader title={title} />
       {isLoading ? (
         <View style={styles.stateWrapper}>
           <ActivityIndicator accessibilityLabel="Loading team list" color={accentColor} />
