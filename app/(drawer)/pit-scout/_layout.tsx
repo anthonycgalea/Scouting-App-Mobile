@@ -2,9 +2,14 @@ import { Stack } from 'expo-router';
 
 export default function PitScoutLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="team-details" />
+    <Stack>
+      <Stack.Screen name="index" options={{ title: 'Pit Scout' }} />
+      <Stack.Screen
+        name="team-details"
+        options={{
+          headerBackTitle: 'Back',
+        }}
+      />
     </Stack>
   );
 }
