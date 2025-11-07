@@ -17,8 +17,8 @@ import { getDbOrThrow, schema } from '@/db';
 import type { MatchSchedule } from '@/db/schema';
 import { syncAlreadyScoutedEntries } from '../../services/already-scouted';
 import { apiRequest } from '../../services/api';
-import { syncAlreadyPrescoutedEntries } from '../../services/prescouted';
 import { getActiveEvent } from '../../services/logged-in-event';
+import { syncAlreadyPrescoutedEntries } from '../../services/prescouted';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -146,13 +146,13 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
 
   switch (normalized) {
     case 'qm':
-      return 'Qualification';
+      return 'QM';
     case 'sf':
-      return 'Playoff';
+      return 'P';
     case 'qf':
       return 'Quarters';
     case 'f':
-      return 'Finals';
+      return 'F';
     default:
       return matchLevel?.toUpperCase() ?? '';
   }
@@ -208,9 +208,9 @@ const formatMatchHeader = (
 
   const levelLabel = getMatchLevelLabel(matchLevel);
   const matchPrefix = levelLabel || matchLevel;
-  const matchLabel = matchPrefix ? `${matchPrefix} Match ${matchNumber}` : `Match ${matchNumber}`;
+  const matchLabel = matchPrefix ? `${matchPrefix}${matchNumber}` : `Match ${matchNumber}`;
 
-  return `${eventKey} ${matchLabel}: Team ${teamNumber} (${driverStationLabel})`;
+  return `${matchLabel}: ${teamNumber} (${driverStationLabel})`;
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
