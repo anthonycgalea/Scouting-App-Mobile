@@ -217,10 +217,7 @@ export function MatchTeamSelectScreen({
               ]}
             >
               <ThemedText type="defaultSemiBold" style={styles.teamLabel}>
-                {option.label}
-              </ThemedText>
-              <ThemedText type="default" style={[styles.teamNumber, { fontSize: sizing.teamNumberFontSize }]}>
-                {renderTeamNumber(option.teamNumber)}
+                {option.label}: {renderTeamNumber(option.teamNumber)}
               </ThemedText>
             </Pressable>
           );
