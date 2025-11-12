@@ -1,9 +1,9 @@
 import { apiRequest } from './api/client';
 import { getUserEvent, getUserOrganization } from './api/user';
-import { setActiveEvent } from './logged-in-event';
+import { getActiveEvent, setActiveEvent } from './logged-in-event';
 import { setActiveOrganization } from './logged-in-organization';
 import { getDbOrThrow, schema } from '@/db';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 type TeamRecordResponse = {
   team_number: number;
@@ -111,6 +111,88 @@ const normalizeOrganization = (organization: OrganizationResponse) => ({
   name: organization.name,
   teamNumber: organization.team_number,
 });
+
+const isPlaceholderTeamName = (teamNumber: number, teamName: string | null | undefined): boolean => {
+  if (!Number.isFinite(teamNumber)) {
+    return true;
+  }
+
+  if (typeof teamName !== 'string') {
+    return true;
+  }
+
+  const normalized = teamName.trim();
+
+  if (normalized.length === 0) {
+    return true;
+  }
+
+  const fallbackName = `Team ${teamNumber}`;
+  return normalized.toLowerCase() === fallbackName.toLowerCase();
+};
+
+const hasUnrecognizedTeamsForCurrentEvent = (): boolean => {
+  const eventKey = getActiveEvent();
+
+  if (!eventKey) {
+    return false;
+  }
+
+  const db = getDbOrThrow();
+
+  const teamEventRows = db
+    .select({ teamNumber: schema.teamEvents.teamNumber })
+    .from(schema.teamEvents)
+    .where(eq(schema.teamEvents.eventKey, eventKey))
+    .all();
+
+  if (teamEventRows.length === 0) {
+    return false;
+  }
+
+  const teamNumbers = teamEventRows
+    .map((row) =>
+      typeof row.teamNumber === 'number' && Number.isFinite(row.teamNumber) ? row.teamNumber : null,
+    )
+    .filter((teamNumber): teamNumber is number => teamNumber !== null);
+
+  if (teamNumbers.length === 0) {
+    return true;
+  }
+
+  const uniqueTeamNumbers = [...new Set(teamNumbers)];
+
+  const teamRecordsRows = uniqueTeamNumbers.length
+    ? db
+        .select({
+          teamNumber: schema.teamRecords.teamNumber,
+          teamName: schema.teamRecords.teamName,
+        })
+        .from(schema.teamRecords)
+        .where(inArray(schema.teamRecords.teamNumber, uniqueTeamNumbers))
+        .all()
+    : [];
+
+  const remainingTeams = new Set(uniqueTeamNumbers);
+
+  for (const row of teamRecordsRows) {
+    const teamNumber = row.teamNumber;
+
+    if (typeof teamNumber !== 'number' || !Number.isFinite(teamNumber)) {
+      continue;
+    }
+
+    if (remainingTeams.has(teamNumber)) {
+      remainingTeams.delete(teamNumber);
+    }
+
+    if (isPlaceholderTeamName(teamNumber, row.teamName)) {
+      return true;
+    }
+  }
+
+  return remainingTeams.size > 0;
+};
 
 type NormalizedUserOrganization = {
   id: number;
@@ -263,6 +345,10 @@ function getNextPage<T>(
 }
 
 async function syncTeams(): Promise<UpsertResult> {
+  if (!hasUnrecognizedTeamsForCurrentEvent()) {
+    return { created: 0, updated: 0 };
+  }
+
   const db = getDbOrThrow();
   let page: number | undefined;
   let created = 0;
