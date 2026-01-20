@@ -45,6 +45,8 @@ const DEFAULT_DEFENSE_REQUIRED_KEYS = new Set(
   DEFAULT_SUPER_SCOUT_FIELDS.filter((field) => field.requiresDefenseRating).map((field) => field.key),
 );
 
+const MAX_STAR_RATING = 3;
+
 const createDefaultTeamState = (): TeamInputState => ({
   startingPosition: null,
   cannedComments: [],
@@ -389,7 +391,7 @@ export function SuperScoutMatchScreen({
     value: number,
   ) => (
     <View style={styles.ratingRow}>
-      {Array.from({ length: 5 }, (_, index) => {
+      {Array.from({ length: MAX_STAR_RATING }, (_, index) => {
         const ratingValue = index + 1;
         const isActive = ratingValue <= value;
 
