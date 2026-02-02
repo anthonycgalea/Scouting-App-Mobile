@@ -46,6 +46,7 @@ const DEFAULT_DEFENSE_REQUIRED_KEYS = new Set(
 );
 
 const MAX_STAR_RATING = 3;
+const clampStarRating = (value: number) => Math.max(0, Math.min(value, MAX_STAR_RATING));
 
 const createDefaultTeamState = (): TeamInputState => ({
   startingPosition: null,
@@ -366,11 +367,12 @@ export function SuperScoutMatchScreen({
     type: 'driverRating' | 'robotOverall' | 'defenseRating',
     value: number,
   ) => {
+    const normalizedValue = clampStarRating(value);
     setTeamInputs((current) => {
       const existing = current[teamKey] ?? createDefaultTeamState();
       return {
         ...current,
-        [teamKey]: { ...existing, [type]: existing[type] === value ? 0 : value },
+        [teamKey]: { ...existing, [type]: existing[type] === normalizedValue ? 0 : normalizedValue },
       };
     });
   };
@@ -465,9 +467,12 @@ export function SuperScoutMatchScreen({
       db.transaction((tx) => {
         for (const entry of entries) {
           const { teamNumber, state } = entry;
+          const driverRating = clampStarRating(state.driverRating);
+          const robotOverall = clampStarRating(state.robotOverall);
+          const defenseRating = clampStarRating(state.defenseRating);
           const trimmedNotes = state.notes.trim();
           const notesValue = trimmedNotes.length > 0 ? state.notes : null;
-          const defenseValue = state.defenseRating > 0 ? state.defenseRating : null;
+          const defenseValue = defenseRating > 0 ? defenseRating : null;
 
           tx
             .insert(schema.superScoutData)
@@ -479,8 +484,8 @@ export function SuperScoutMatchScreen({
               alliance,
               startPosition: state.startingPosition,
               notes: notesValue,
-              driverRating: state.driverRating,
-              robotOverall: state.robotOverall,
+              driverRating,
+              robotOverall,
               defenseRating: defenseValue,
               submissionPending: 1,
             })
@@ -495,8 +500,8 @@ export function SuperScoutMatchScreen({
                 alliance,
                 startPosition: state.startingPosition,
                 notes: notesValue,
-                driverRating: state.driverRating,
-                robotOverall: state.robotOverall,
+                driverRating,
+                robotOverall,
                 defenseRating: defenseValue,
                 submissionPending: 1,
               },
@@ -534,13 +539,16 @@ export function SuperScoutMatchScreen({
 
       for (const entry of entries) {
         const { teamNumber, state } = entry;
+        const driverRating = clampStarRating(state.driverRating);
+        const robotOverall = clampStarRating(state.robotOverall);
+        const defenseRating = clampStarRating(state.defenseRating);
         const payload: Record<string, unknown> = {
           team_number: teamNumber,
           match_number: resolvedMatchNumber,
           match_level: resolvedMatchLevel,
           notes: state.notes,
-          driver_rating: state.driverRating,
-          robot_overall: state.robotOverall,
+          driver_rating: driverRating,
+          robot_overall: robotOverall,
         };
 
         const startPositionValue =
@@ -552,8 +560,8 @@ export function SuperScoutMatchScreen({
           payload.startPosition = startPositionValue;
         }
 
-        if (state.defenseRating > 0) {
-          payload.defense_rating = state.defenseRating;
+        if (defenseRating > 0) {
+          payload.defense_rating = defenseRating;
         }
 
         availableFieldKeys.forEach((fieldKey) => {
