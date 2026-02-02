@@ -52,13 +52,13 @@ const normalizeRanks = (
     return first.dnp ? 1 : -1;
   });
 
-  const recalculated = recalculateRanks(sortedRanks);
+  const filtered = sortedRanks.filter((rank) => !selectedTeamNumbers.has(rank.teamNumber));
 
-  const filtered = recalculated.filter((rank) => !selectedTeamNumbers.has(rank.teamNumber));
+  const recalculated = recalculateRanks(filtered);
 
   return {
-    teams: filtered.filter((rank) => !rank.dnp),
-    dnp: filtered.filter((rank) => rank.dnp),
+    teams: recalculated.filter((rank) => !rank.dnp),
+    dnp: recalculated.filter((rank) => rank.dnp),
   };
 };
 
