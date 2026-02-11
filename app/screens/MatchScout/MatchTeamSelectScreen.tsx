@@ -1,18 +1,21 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useCallback, useMemo, useState } from "react";
+import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 
-import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { ThemedText } from '@/components/themed-text';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { useRouter } from 'expo-router';
+import { ScreenContainer } from "@/components/layout/ScreenContainer";
+import { ThemedText } from "@/components/themed-text";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { useRouter } from "expo-router";
 
-import type { MatchScheduleEntry } from '@/components/match-schedule';
+import type { MatchScheduleEntry } from "@/components/match-schedule";
 
-type TeamAlliance = 'red' | 'blue';
+type TeamAlliance = "red" | "blue";
 
 interface TeamOption {
-  key: keyof Pick<MatchScheduleEntry, 'red1_id' | 'red2_id' | 'red3_id' | 'blue1_id' | 'blue2_id' | 'blue3_id'>;
+  key: keyof Pick<
+    MatchScheduleEntry,
+    "red1_id" | "red2_id" | "red3_id" | "blue1_id" | "blue2_id" | "blue3_id"
+  >;
   label: string;
   alliance: TeamAlliance;
   teamNumber?: number;
@@ -36,22 +39,24 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
   const normalized = matchLevel?.toLowerCase();
 
   switch (normalized) {
-    case 'qm':
-      return 'Quals';
-    case 'sf':
-      return 'Playoff';
-    case 'qf':
-      return 'Quarters';
-    case 'f':
-      return 'Finals';
+    case "qm":
+      return "Quals";
+    case "sf":
+      return "Playoff";
+    case "qf":
+      return "Quarters";
+    case "f":
+      return "Finals";
     default:
-      return matchLevel?.toUpperCase() ?? '';
+      return matchLevel?.toUpperCase() ?? "";
   }
 };
 
-const renderTeamNumber = (value?: number) => (value === undefined ? 'TBD' : value);
+const renderTeamNumber = (value?: number) =>
+  value === undefined ? "TBD" : value;
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
 
 export interface MatchTeamSelectScreenProps {
   matchLevel?: string;
@@ -82,22 +87,36 @@ export function MatchTeamSelectScreen({
   const router = useRouter();
   const { height } = useWindowDimensions();
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const cardBackground = useThemeColor({ light: '#F8FAFC', dark: '#1F2937' }, 'background');
-  const borderColor = isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(30, 41, 59, 0.2)';
-  const redCellBackground = isDark ? 'rgba(127, 29, 29, 0.9)' : '#B91C1C';
-  const blueCellBackground = isDark ? 'rgba(30, 64, 175, 0.85)' : '#1D4ED8';
-  const neutralButtonBackground = useThemeColor({ light: '#E2E8F0', dark: '#27272A' }, 'background');
-  const neutralButtonText = useThemeColor({}, 'text');
-  const headerText = useThemeColor({}, 'text');
-  const primaryButtonBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
-  const redButtonBackground = useThemeColor({ light: '#DC2626', dark: '#7F1D1D' }, 'tint');
-  const primaryButtonText = '#F8FAFC';
+  const isDark = colorScheme === "dark";
+  const cardBackground = useThemeColor(
+    { light: "#F8FAFC", dark: "#1F2937" },
+    "background",
+  );
+  const borderColor = isDark
+    ? "rgba(148, 163, 184, 0.35)"
+    : "rgba(30, 41, 59, 0.2)";
+  const redCellBackground = isDark ? "rgba(127, 29, 29, 0.9)" : "#B91C1C";
+  const blueCellBackground = isDark ? "rgba(30, 64, 175, 0.85)" : "#1D4ED8";
+  const neutralButtonBackground = useThemeColor(
+    { light: "#E2E8F0", dark: "#27272A" },
+    "background",
+  );
+  const neutralButtonText = useThemeColor({}, "text");
+  const headerText = useThemeColor({}, "text");
+  const primaryButtonBackground = useThemeColor(
+    { light: "#2563EB", dark: "#1E3A8A" },
+    "tint",
+  );
+  const redButtonBackground = useThemeColor(
+    { light: "#DC2626", dark: "#7F1D1D" },
+    "tint",
+  );
+  const primaryButtonText = "#F8FAFC";
 
   const matchLabel = useMemo(() => {
     const levelLabel = getMatchLevelLabel(matchLevel);
     if (!levelLabel) {
-      return matchNumber ? `Match ${matchNumber}` : 'Match Details';
+      return matchNumber ? `Match ${matchNumber}` : "Match Details";
     }
 
     if (!matchNumber) {
@@ -109,19 +128,19 @@ export function MatchTeamSelectScreen({
 
   const teamOptions: TeamOption[] = useMemo(
     () => [
-      { key: 'blue1_id', label: 'Blue 1', alliance: 'blue', teamNumber: blue1 },
-      { key: 'red1_id', label: 'Red 1', alliance: 'red', teamNumber: red1 },
-      { key: 'blue2_id', label: 'Blue 2', alliance: 'blue', teamNumber: blue2 },
-      { key: 'red2_id', label: 'Red 2', alliance: 'red', teamNumber: red2 },
-      { key: 'blue3_id', label: 'Blue 3', alliance: 'blue', teamNumber: blue3 },
-      { key: 'red3_id', label: 'Red 3', alliance: 'red', teamNumber: red3 },
+      { key: "red1_id", label: "Red 1", alliance: "red", teamNumber: red1 },
+      { key: "blue1_id", label: "Blue 1", alliance: "blue", teamNumber: blue1 },
+      { key: "red2_id", label: "Red 2", alliance: "red", teamNumber: red2 },
+      { key: "blue2_id", label: "Blue 2", alliance: "blue", teamNumber: blue2 },
+      { key: "red3_id", label: "Red 3", alliance: "red", teamNumber: red3 },
+      { key: "blue3_id", label: "Blue 3", alliance: "blue", teamNumber: blue3 },
     ],
-    [red1, red2, red3, blue1, blue2, blue3]
+    [red1, red2, red3, blue1, blue2, blue3],
   );
 
   const selectedOption = useMemo(
     () => teamOptions.find((option) => option.key === selectedTeam),
-    [selectedTeam, teamOptions]
+    [selectedTeam, teamOptions],
   );
 
   const driverStationLabel = selectedOption?.label;
@@ -169,8 +188,15 @@ export function MatchTeamSelectScreen({
       params.match_level = matchLevel;
     }
 
-    router.push({ pathname: '/(drawer)/match-scout/begin-scouting', params });
-  }, [driverStationLabel, eventKey, matchLevel, matchNumber, router, selectedOption]);
+    router.push({ pathname: "/(drawer)/match-scout/begin-scouting", params });
+  }, [
+    driverStationLabel,
+    eventKey,
+    matchLevel,
+    matchNumber,
+    router,
+    selectedOption,
+  ]);
 
   const canBeginScouting = selectedOption?.teamNumber !== undefined;
 
@@ -191,14 +217,25 @@ export function MatchTeamSelectScreen({
   return (
     <ScreenContainer>
       <View style={styles.header}>
-        <ThemedText type="title" style={[styles.headerText, { color: headerText }]}> 
+        <ThemedText
+          type="title"
+          style={[styles.headerText, { color: headerText }]}
+        >
           Select an Alliance Position
         </ThemedText>
-        <ThemedText style={[styles.subHeaderText, { color: headerText }]}>{matchLabel}</ThemedText>
+        <ThemedText style={[styles.subHeaderText, { color: headerText }]}>
+          {matchLabel}
+        </ThemedText>
       </View>
-      <View style={[styles.optionsGrid, { gap: sizing.itemGap, paddingVertical: sizing.itemGap / 2 }]}> 
+      <View
+        style={[
+          styles.optionsGrid,
+          { gap: sizing.itemGap, paddingVertical: sizing.itemGap / 2 },
+        ]}
+      >
         {teamOptions.map((option) => {
-          const backgroundColor = option.alliance === 'red' ? redCellBackground : blueCellBackground;
+          const backgroundColor =
+            option.alliance === "red" ? redCellBackground : blueCellBackground;
           const isSelected = selectedTeam === option.key;
 
           return (
@@ -209,7 +246,7 @@ export function MatchTeamSelectScreen({
                 styles.teamOption,
                 {
                   backgroundColor,
-                  borderColor: isSelected ? '#FACC15' : borderColor,
+                  borderColor: isSelected ? "#FACC15" : borderColor,
                   paddingVertical: sizing.verticalPadding,
                   paddingHorizontal: sizing.horizontalPadding,
                   opacity: pressed ? 0.9 : 1,
@@ -218,7 +255,10 @@ export function MatchTeamSelectScreen({
             >
               <ThemedText
                 type="defaultSemiBold"
-                style={[styles.teamNumber, { fontSize: sizing.teamNumberFontSize }]}
+                style={[
+                  styles.teamNumber,
+                  { fontSize: sizing.teamNumberFontSize },
+                ]}
               >
                 {renderTeamNumber(option.teamNumber)}
               </ThemedText>
@@ -227,7 +267,12 @@ export function MatchTeamSelectScreen({
         })}
       </View>
       <View style={styles.footer}>
-        <View style={[styles.selectionPreview, { backgroundColor: cardBackground, borderColor }]}>
+        <View
+          style={[
+            styles.selectionPreview,
+            { backgroundColor: cardBackground, borderColor },
+          ]}
+        >
           {selectedOption ? (
             <Pressable
               accessibilityRole="button"
@@ -237,19 +282,23 @@ export function MatchTeamSelectScreen({
                 styles.beginButton,
                 {
                   backgroundColor:
-                    selectedOption?.alliance === 'red'
+                    selectedOption?.alliance === "red"
                       ? redButtonBackground
                       : primaryButtonBackground,
                   opacity: !canBeginScouting ? 0.5 : pressed ? 0.85 : 1,
                 },
               ]}
             >
-              <ThemedText style={[styles.beginButtonText, { color: primaryButtonText }]}>
-                {`Begin Scouting: ${renderTeamNumber(selectedOption.teamNumber)} (${driverStationLabel ?? ''})`}
+              <ThemedText
+                style={[styles.beginButtonText, { color: primaryButtonText }]}
+              >
+                {`Begin Scouting: ${renderTeamNumber(selectedOption.teamNumber)} (${driverStationLabel ?? ""})`}
               </ThemedText>
             </Pressable>
           ) : (
-            <ThemedText style={[styles.selectionText, { color: headerText }]}>Select a team to continue</ThemedText>
+            <ThemedText style={[styles.selectionText, { color: headerText }]}>
+              Select a team to continue
+            </ThemedText>
           )}
         </View>
         <Pressable
@@ -263,7 +312,11 @@ export function MatchTeamSelectScreen({
             },
           ]}
         >
-          <ThemedText style={[styles.cancelButtonText, { color: neutralButtonText }]}>Cancel</ThemedText>
+          <ThemedText
+            style={[styles.cancelButtonText, { color: neutralButtonText }]}
+          >
+            Cancel
+          </ThemedText>
         </Pressable>
       </View>
     </ScreenContainer>
@@ -299,35 +352,35 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerText: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   subHeaderText: {
-    textAlign: 'center',
+    textAlign: "center",
     opacity: 0.8,
   },
   optionsGrid: {
     flex: 1,
     minHeight: 0,
-    width: '100%',
-    alignSelf: 'stretch',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    alignSelf: "stretch",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
   },
   teamOption: {
-    width: '48%',
+    width: "48%",
     minWidth: 132,
     aspectRatio: 1.35,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 16,
     borderWidth: 2,
   },
   teamNumber: {
-    color: '#F8FAFC',
-    fontWeight: '600',
-    textAlign: 'center',
+    color: "#F8FAFC",
+    fontWeight: "600",
+    textAlign: "center",
   },
   footer: {
     gap: 12,
@@ -339,26 +392,26 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectionText: {
-    textAlign: 'center',
-    fontWeight: '500',
+    textAlign: "center",
+    fontWeight: "500",
   },
   beginButton: {
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   beginButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cancelButton: {
     borderRadius: 12,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
