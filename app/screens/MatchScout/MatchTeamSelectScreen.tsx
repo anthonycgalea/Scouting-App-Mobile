@@ -109,12 +109,12 @@ export function MatchTeamSelectScreen({
 
   const teamOptions: TeamOption[] = useMemo(
     () => [
-      { key: 'red1_id', label: 'Red 1', alliance: 'red', teamNumber: red1 },
-      { key: 'red2_id', label: 'Red 2', alliance: 'red', teamNumber: red2 },
-      { key: 'red3_id', label: 'Red 3', alliance: 'red', teamNumber: red3 },
       { key: 'blue1_id', label: 'Blue 1', alliance: 'blue', teamNumber: blue1 },
+      { key: 'red1_id', label: 'Red 1', alliance: 'red', teamNumber: red1 },
       { key: 'blue2_id', label: 'Blue 2', alliance: 'blue', teamNumber: blue2 },
+      { key: 'red2_id', label: 'Red 2', alliance: 'red', teamNumber: red2 },
       { key: 'blue3_id', label: 'Blue 3', alliance: 'blue', teamNumber: blue3 },
+      { key: 'red3_id', label: 'Red 3', alliance: 'red', teamNumber: red3 },
     ],
     [red1, red2, red3, blue1, blue2, blue3]
   );
@@ -216,8 +216,11 @@ export function MatchTeamSelectScreen({
                 },
               ]}
             >
-              <ThemedText type="defaultSemiBold" style={styles.teamLabel}>
-                {option.label}: {renderTeamNumber(option.teamNumber)}
+              <ThemedText
+                type="defaultSemiBold"
+                style={[styles.teamNumber, { fontSize: sizing.teamNumberFontSize }]}
+              >
+                {renderTeamNumber(option.teamNumber)}
               </ThemedText>
             </Pressable>
           );
@@ -307,27 +310,24 @@ const styles = StyleSheet.create({
     minHeight: 0,
     width: '100%',
     alignSelf: 'stretch',
-    alignItems: 'stretch',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     justifyContent: 'center',
   },
   teamOption: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    width: '100%',
-    maxWidth: 480,
-    alignSelf: 'center',
+    width: '48%',
+    minWidth: 132,
+    aspectRatio: 1.35,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 16,
     borderWidth: 2,
-    gap: 8,
-  },
-  teamLabel: {
-    color: '#F8FAFC',
   },
   teamNumber: {
     color: '#F8FAFC',
-    fontSize: 20,
     fontWeight: '600',
+    textAlign: 'center',
   },
   footer: {
     gap: 12,
