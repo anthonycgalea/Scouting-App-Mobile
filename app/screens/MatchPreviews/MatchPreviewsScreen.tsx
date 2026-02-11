@@ -129,11 +129,11 @@ export function MatchPreviewsScreen() {
 
     const playedRows = db
       .select({
-        matchLevel: schema.matchData2025.matchLevel,
-        matchNumber: schema.matchData2025.matchNumber,
+        matchLevel: schema.matchData2026.matchLevel,
+        matchNumber: schema.matchData2026.matchNumber,
       })
-      .from(schema.matchData2025)
-      .where(eq(schema.matchData2025.eventKey, eventKey))
+      .from(schema.matchData2026)
+      .where(eq(schema.matchData2026.eventKey, eventKey))
       .all();
 
     const playedKeys = new Set<string>();
