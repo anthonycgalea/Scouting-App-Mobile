@@ -284,6 +284,38 @@ function initializeExpoSqliteDb() {
       FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
       FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
     );`,
+    `CREATE TABLE IF NOT EXISTS matchdata2026 (
+      event_key TEXT NOT NULL,
+      team_number INTEGER NOT NULL,
+      match_number INTEGER NOT NULL,
+      match_level TEXT NOT NULL,
+      notes TEXT,
+      auto_fuel INTEGER NOT NULL DEFAULT 0,
+      auto_pass INTEGER NOT NULL DEFAULT 0,
+      auto_climb INTEGER NOT NULL DEFAULT 0,
+      teleop_fuel INTEGER NOT NULL DEFAULT 0,
+      teleop_pass INTEGER NOT NULL DEFAULT 0,
+      endgame TEXT NOT NULL DEFAULT 'NONE' CHECK (endgame IN ('NONE', 'L1', 'L2', 'L3')),
+      PRIMARY KEY (event_key, team_number, match_number, match_level),
+      FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
+      FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
+    );`,
+    `CREATE TABLE IF NOT EXISTS prescout2026 (
+      event_key TEXT NOT NULL,
+      team_number INTEGER NOT NULL,
+      match_number INTEGER NOT NULL,
+      match_level TEXT NOT NULL,
+      notes TEXT,
+      auto_fuel INTEGER NOT NULL DEFAULT 0,
+      auto_pass INTEGER NOT NULL DEFAULT 0,
+      auto_climb INTEGER NOT NULL DEFAULT 0,
+      teleop_fuel INTEGER NOT NULL DEFAULT 0,
+      teleop_pass INTEGER NOT NULL DEFAULT 0,
+      endgame TEXT NOT NULL DEFAULT 'NONE' CHECK (endgame IN ('NONE', 'L1', 'L2', 'L3')),
+      PRIMARY KEY (event_key, team_number, match_number, match_level),
+      FOREIGN KEY (event_key) REFERENCES frcevent(event_key),
+      FOREIGN KEY (team_number) REFERENCES teamrecord(team_number)
+    );`,
     `CREATE TABLE IF NOT EXISTS superscout_field (
       key TEXT PRIMARY KEY NOT NULL,
       label TEXT NOT NULL
@@ -352,4 +384,3 @@ export function getDbOrThrow(): Database {
 }
 
 export { schema };
-
