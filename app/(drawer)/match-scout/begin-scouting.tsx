@@ -408,6 +408,52 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
   );
 }
 
+
+
+interface CounterQuickAdjustmentsProps {
+  onIncrementByFive: () => void;
+  onIncrementByTwenty: () => void;
+}
+
+function CounterQuickAdjustments({
+  onIncrementByFive,
+  onIncrementByTwenty,
+}: CounterQuickAdjustmentsProps) {
+  const background = useThemeColor({ light: '#CBD5E1', dark: '#1E293B' }, 'background');
+  const textColor = useThemeColor({ light: '#0F172A', dark: '#E2E8F0' }, 'text');
+
+  return (
+    <View style={styles.quickAdjustments}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onIncrementByFive}
+        style={({ pressed }) => [
+          styles.quickAdjustmentButton,
+          { backgroundColor: background },
+          pressed && styles.buttonPressed,
+        ]}
+      >
+        <ThemedText type="defaultSemiBold" style={[styles.quickAdjustmentText, { color: textColor }]}>
+          +5
+        </ThemedText>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onIncrementByTwenty}
+        style={({ pressed }) => [
+          styles.quickAdjustmentButton,
+          { backgroundColor: background },
+          pressed && styles.buttonPressed,
+        ]}
+      >
+        <ThemedText type="defaultSemiBold" style={[styles.quickAdjustmentText, { color: textColor }]}>
+          +20
+        </ThemedText>
+      </Pressable>
+    </View>
+  );
+}
+
 interface TabTransitionControlProps {
   incrementLabel: string;
   decrementLabel: string;
@@ -608,7 +654,7 @@ export default function BeginScoutingRoute() {
     };
   }, [navigation, matchDetailsTitle]);
 
-  const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {
+  const handleAdjust = (key: PhaseKey, delta: number) => {
     const limit = isAutoTab ? limitConfig[key].auto : limitConfig[key].teleop;
     const setCounts = isAutoTab ? setAutoCounts : setTeleCounts;
 
@@ -1134,6 +1180,10 @@ export default function BeginScoutingRoute() {
                     onIncrement={() => handleAdjust('fuelScored', 1)}
                     onDecrement={() => handleAdjust('fuelScored', -1)}
                   />
+                  <CounterQuickAdjustments
+                    onIncrementByFive={() => handleAdjust('fuelScored', 5)}
+                    onIncrementByTwenty={() => handleAdjust('fuelScored', 20)}
+                  />
                 </View>
                 <View style={styles.counterColumn}>
                   <CounterControl
@@ -1141,6 +1191,10 @@ export default function BeginScoutingRoute() {
                     value={currentCounts.fuelPassed}
                     onIncrement={() => handleAdjust('fuelPassed', 1)}
                     onDecrement={() => handleAdjust('fuelPassed', -1)}
+                  />
+                  <CounterQuickAdjustments
+                    onIncrementByFive={() => handleAdjust('fuelPassed', 5)}
+                    onIncrementByTwenty={() => handleAdjust('fuelPassed', 20)}
                   />
                 </View>
               </View>
@@ -1312,6 +1366,21 @@ const styles = StyleSheet.create({
   },
   counterColumn: {
     flex: 1,
+    gap: 12,
+  },
+  quickAdjustments: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  quickAdjustmentButton: {
+    flex: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  quickAdjustmentText: {
+    fontSize: 16,
   },
   transitionContainer: {
     alignSelf: 'center',
