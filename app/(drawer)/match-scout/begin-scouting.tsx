@@ -514,7 +514,7 @@ export default function BeginScoutingRoute() {
   const [selectedTab, setSelectedTab] = useState<'info' | 'auto' | 'teleop' | 'endgame'>('info');
   const [autoCounts, setAutoCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
   const [teleCounts, setTeleCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
-  const [endgameSelection, setEndgameSelection] = useState<'none' | 'park' | 'shallow' | 'deep'>('none');
+  const [endgameSelection, setEndgameSelection] = useState<'none' | 'l1' | 'l2' | 'l3'>('none');
   const [generalNotes, setGeneralNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedOrganization } = useOrganization();
@@ -653,10 +653,10 @@ export default function BeginScoutingRoute() {
     { key: 'endgame', label: 'Endgame' },
   ] as const;
   const endgameOptions = [
+    { key: 'l3', label: 'L3' },
+    { key: 'l2', label: 'L2' },
+    { key: 'l1', label: 'L1' },
     { key: 'none', label: 'None' },
-    { key: 'park', label: 'Park' },
-    { key: 'shallow', label: 'Shallow Climb' },
-    { key: 'deep', label: 'Deep Climb' },
   ] as const;
 
   useEffect(() => {
@@ -851,68 +851,10 @@ export default function BeginScoutingRoute() {
         throw new Error('Match number is required to submit match data.');
       }
 
-      const record: typeof schema.matchData2025.$inferInsert = {
+      const row: typeof schema.matchData2025.$inferInsert = {
         ...sharedRecordFields,
         matchNumber: parsedMatchNumber,
       };
-
-      await db
-        .insert(schema.matchData2025)
-        .values(record)
-        .onConflictDoUpdate({
-          target: [
-            schema.matchData2025.eventKey,
-            schema.matchData2025.teamNumber,
-            schema.matchData2025.matchNumber,
-            schema.matchData2025.matchLevel,
-          ],
-          set: {
-            notes: record.notes,
-            al4c: record.al4c,
-            al3c: record.al3c,
-            al2c: record.al2c,
-            al1c: record.al1c,
-            tl4c: record.tl4c,
-            tl3c: record.tl3c,
-            tl2c: record.tl2c,
-            tl1c: record.tl1c,
-            aProcessor: record.aProcessor,
-            tProcessor: record.tProcessor,
-            aNet: record.aNet,
-            tNet: record.tNet,
-            endgame: record.endgame,
-          },
-        })
-        .run();
-
-      await db
-        .insert(schema.alreadyScouteds)
-        .values({
-          eventCode: normalizedEventKey,
-          teamNumber: parsedTeamNumber,
-          matchNumber: parsedMatchNumber,
-          matchLevel: resolvedMatchLevel,
-          organizationId: selectedOrganization!.id,
-        })
-        .onConflictDoNothing()
-        .run();
-
-      const [row] = await db
-        .select()
-        .from(schema.matchData2025)
-        .where(
-          and(
-            eq(schema.matchData2025.eventKey, normalizedEventKey),
-            eq(schema.matchData2025.teamNumber, parsedTeamNumber),
-            eq(schema.matchData2025.matchNumber, parsedMatchNumber),
-            eq(schema.matchData2025.matchLevel, resolvedMatchLevel)
-          )
-        )
-        .limit(1);
-
-      if (!row) {
-        throw new Error('Failed to retrieve submitted match data.');
-      }
 
       const driverStationSlot = parseDriverStationSlot({
         driverStationLabel,
@@ -981,12 +923,12 @@ export default function BeginScoutingRoute() {
           console.error('Failed to refresh already scouted entries from API', syncError);
         }
 
-        showNextMatchAlert('Match submitted', 'Match data was saved and sent successfully.');
+        showNextMatchAlert('Match submitted', 'Match data was submitted successfully.');
       } catch (error) {
         console.error('Failed to submit match data to API', error);
         showNextMatchAlert(
-          'Match saved locally',
-          'The match data was saved on this device but could not be sent to the server.',
+          'Unable to submit match',
+          'The match data could not be sent to the server.',
         );
       }
     } catch (error) {
@@ -1056,9 +998,9 @@ export default function BeginScoutingRoute() {
 
     const endgameMap = {
       none: 'NONE',
-      park: 'PARK',
-      shallow: 'SHALLOW',
-      deep: 'DEEP',
+      l1: 'PARK',
+      l2: 'SHALLOW',
+      l3: 'DEEP',
     } as const;
 
     const endgameValue = endgameMap[endgameSelection];
@@ -1496,19 +1438,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   endgameGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: 12,
-    justifyContent: 'space-between',
   },
   endgameButton: {
     borderRadius: 12,
     borderWidth: 1,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    width: '48%',
+    width: '100%',
     alignItems: 'center',
-    flexGrow: 1,
   },
   endgameButtonText: {
     fontSize: 16,
