@@ -151,12 +151,12 @@ export function TeamListScreen({
 
       const localPrescoutMatches = db
         .select({
-          teamNumber: schema.prescoutMatchData2025.teamNumber,
-          matchNumber: schema.prescoutMatchData2025.matchNumber,
-          matchLevel: schema.prescoutMatchData2025.matchLevel,
+          teamNumber: schema.prescout2026.teamNumber,
+          matchNumber: schema.prescout2026.matchNumber,
+          matchLevel: schema.prescout2026.matchLevel,
         })
-        .from(schema.prescoutMatchData2025)
-        .where(eq(schema.prescoutMatchData2025.eventKey, eventKey))
+        .from(schema.prescout2026)
+        .where(eq(schema.prescout2026.eventKey, eventKey))
         .all();
 
       const matchSets = new Map<number, Set<string>>();
