@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { retrieveEventInfo } from '@/app/services/event-info';
+import { subscribeToSyncCompleted } from '@/app/services/sync-events';
 import { getActiveEvent } from '@/app/services/logged-in-event';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import {
@@ -88,33 +89,45 @@ export function MatchScoutScreen() {
     return { eventKey, matches: rows.map(matchRowToEntry), scoutedRows };
   }, [selectedOrganization]);
 
+  const refreshSchedule = useCallback(() => {
+    setIsLoading(true);
+
+    try {
+      const { eventKey, matches: data, scoutedRows } = loadMatchesFromDb();
+      setActiveEventKey(eventKey);
+      setMatches(data);
+      setScoutedEntries(scoutedRows);
+      setErrorMessage(null);
+    } catch (error) {
+      console.error('Failed to load match schedule', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred while loading the match schedule.';
+      setErrorMessage(message);
+      setActiveEventKey(null);
+      setMatches([]);
+      setScoutedEntries([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadMatchesFromDb]);
+
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
-
-      try {
-        const { eventKey, matches: data, scoutedRows } = loadMatchesFromDb();
-        setActiveEventKey(eventKey);
-        setMatches(data);
-        setScoutedEntries(scoutedRows);
-        setErrorMessage(null);
-      } catch (error) {
-        console.error('Failed to load match schedule', error);
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'An unexpected error occurred while loading the match schedule.';
-        setErrorMessage(message);
-        setActiveEventKey(null);
-        setMatches([]);
-        setScoutedEntries([]);
-      } finally {
-        setIsLoading(false);
-      }
+      refreshSchedule();
 
       return () => {};
-    }, [loadMatchesFromDb])
+    }, [refreshSchedule])
   );
+
+  useEffect(() => {
+    const unsubscribe = subscribeToSyncCompleted(() => {
+      refreshSchedule();
+    });
+
+    return unsubscribe;
+  }, [refreshSchedule]);
 
   useEffect(() => {
     if (matches.length === 0) {
@@ -153,11 +166,8 @@ export function MatchScoutScreen() {
     try {
       setIsDownloading(true);
       await retrieveEventInfo();
-      const { eventKey, matches: data, scoutedRows } = loadMatchesFromDb();
-      setActiveEventKey(eventKey);
-      setMatches(data);
-      setScoutedEntries(scoutedRows);
-      setErrorMessage(null);
+      const { matches: data } = loadMatchesFromDb();
+      refreshSchedule();
 
       if (data.length === 0) {
         Alert.alert('No match schedule available', 'The event has not published a match schedule yet.');
@@ -172,7 +182,7 @@ export function MatchScoutScreen() {
     } finally {
       setIsDownloading(false);
     }
-  }, [isDownloading, loadMatchesFromDb]);
+  }, [isDownloading, loadMatchesFromDb, refreshSchedule]);
 
   const handleMatchPress = useCallback(
     (match: MatchScheduleEntry) => {

@@ -7,6 +7,7 @@ import { syncAlreadyScoutedEntries } from './already-scouted';
 import { syncAlreadyPrescoutedEntries } from './prescouted';
 import { syncAlreadyPitScoutedEntries } from './pit-scouting';
 import { syncPendingRobotPhotos } from './robot-photos';
+import { emitSyncCompleted } from './sync-events';
 import { getDbOrThrow, schema } from '@/db';
 import { and, eq, inArray } from 'drizzle-orm';
 
@@ -286,6 +287,12 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
   const alreadySuperScoutedUpdated = eventInfo.alreadySuperScouted.created;
   const alreadyRobotPhotosUpdated = eventInfo.alreadyRobotPhotos.created;
   const robotPhotosUploaded = await syncPendingRobotPhotos();
+
+  emitSyncCompleted({
+    syncedAt: Date.now(),
+    organizationId,
+    eventCode: remoteEventCode,
+  });
 
   return {
     eventCode: remoteEventCode,
