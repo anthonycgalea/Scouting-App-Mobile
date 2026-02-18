@@ -483,78 +483,6 @@ function CounterControl({
   );
 }
 
-interface TabTransitionControlProps {
-  incrementLabel: string;
-  decrementLabel: string;
-  onIncrement: () => void;
-  onDecrement: () => void;
-}
-
-function TabTransitionControl({
-  incrementLabel,
-  decrementLabel,
-  onIncrement,
-  onDecrement,
-}: TabTransitionControlProps) {
-  const positiveBackground = useThemeColor(
-    { light: "#475569", dark: "#1F2937" },
-    "background",
-  );
-  const negativeBackground = useThemeColor(
-    { light: "#CBD5F5", dark: "#0F172A" },
-    "background",
-  );
-  const negativeText = useThemeColor(
-    { light: "#1F2937", dark: "#CBD5F5" },
-    "text",
-  );
-
-  return (
-    <View style={[styles.counterControl, styles.tabTransitionControl]}>
-      <View style={styles.counterButtons}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onIncrement}
-          style={({ pressed }) => [
-            styles.counterButton,
-            styles.counterButtonPositive,
-            { backgroundColor: positiveBackground },
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <ThemedText
-            type="defaultSemiBold"
-            style={styles.tabTransitionHeading}
-          >
-            Next
-          </ThemedText>
-          <ThemedText type="title" style={styles.tabTransitionLabel}>
-            {incrementLabel}
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onDecrement}
-          style={({ pressed }) => [
-            styles.counterButton,
-            styles.counterButtonNegative,
-            styles.tabTransitionBackButton,
-            { backgroundColor: negativeBackground, borderColor: negativeText },
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <ThemedText
-            type="defaultSemiBold"
-            style={[styles.tabTransitionBackLabel, { color: negativeText }]}
-          >
-            {decrementLabel}
-          </ThemedText>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
 export default function BeginScoutingRoute() {
   const params = useLocalSearchParams<BeginScoutingParams>();
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
@@ -654,6 +582,10 @@ export default function BeginScoutingRoute() {
   const isAutoTab = selectedTab === "auto";
   const isTeleopTab = selectedTab === "teleop";
   const currentCounts = isAutoTab ? autoCounts : teleCounts;
+  const nextTabLabel = isAutoTab ? "Teleop" : "Endgame";
+  const previousTabLabel = isAutoTab ? "Info" : "Auto";
+  const goToNextTab = () => setSelectedTab(isAutoTab ? "teleop" : "endgame");
+  const goToPreviousTab = () => setSelectedTab(isAutoTab ? "info" : "auto");
   const hasPrefilledDetails = useMemo(() => {
     if (isPrescoutMode) {
       return Boolean(
@@ -1321,39 +1253,59 @@ export default function BeginScoutingRoute() {
                     onIncrementByTwenty={() => handleAdjust("fuelScored", 20)}
                     onDecrement={() => handleAdjust("fuelScored", -5)}
                     footer={
-                      isAutoTab ? (
+                      <>
+                        {isAutoTab ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => setAutoClimbSelection("noClimb")}
+                            style={({ pressed }) => [
+                              styles.counterButton,
+                              styles.counterButtonNegative,
+                              styles.autoClimbButton,
+                              autoClimbSelection === "noClimb"
+                                ? { backgroundColor: toggleActiveBackground }
+                                : {
+                                    backgroundColor: "transparent",
+                                    borderColor: inputBorder,
+                                  },
+                              pressed && styles.buttonPressed,
+                            ]}
+                          >
+                            <ThemedText
+                              type="defaultSemiBold"
+                              style={[
+                                styles.autoClimbButtonText,
+                                {
+                                  color:
+                                    autoClimbSelection === "noClimb"
+                                      ? toggleActiveTextColor
+                                      : tabInactiveTextColor,
+                                },
+                              ]}
+                            >
+                              No Climb
+                            </ThemedText>
+                          </Pressable>
+                        ) : null}
                         <Pressable
                           accessibilityRole="button"
-                          onPress={() => setAutoClimbSelection("noClimb")}
+                          onPress={goToPreviousTab}
                           style={({ pressed }) => [
                             styles.counterButton,
                             styles.counterButtonNegative,
-                            styles.autoClimbButton,
-                            autoClimbSelection === "noClimb"
-                              ? { backgroundColor: toggleActiveBackground }
-                              : {
-                                  backgroundColor: "transparent",
-                                  borderColor: inputBorder,
-                                },
+                            styles.pageTransitionButton,
+                            { borderColor: inputBorder },
                             pressed && styles.buttonPressed,
                           ]}
                         >
                           <ThemedText
                             type="defaultSemiBold"
-                            style={[
-                              styles.autoClimbButtonText,
-                              {
-                                color:
-                                  autoClimbSelection === "noClimb"
-                                    ? toggleActiveTextColor
-                                    : tabInactiveTextColor,
-                              },
-                            ]}
+                            style={styles.pageTransitionButtonText}
                           >
-                            No Climb
+                            {previousTabLabel}
                           </ThemedText>
                         </Pressable>
-                      ) : null
+                      </>
                     }
                   />
                 </View>
@@ -1366,57 +1318,62 @@ export default function BeginScoutingRoute() {
                     onIncrementByTwenty={() => handleAdjust("fuelPassed", 20)}
                     onDecrement={() => handleAdjust("fuelPassed", -5)}
                     footer={
-                      isAutoTab ? (
+                      <>
+                        {isAutoTab ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => setAutoClimbSelection("climb")}
+                            style={({ pressed }) => [
+                              styles.counterButton,
+                              styles.counterButtonNegative,
+                              styles.autoClimbButton,
+                              autoClimbSelection === "climb"
+                                ? { backgroundColor: toggleActiveBackground }
+                                : {
+                                    backgroundColor: "transparent",
+                                    borderColor: inputBorder,
+                                  },
+                              pressed && styles.buttonPressed,
+                            ]}
+                          >
+                            <ThemedText
+                              type="defaultSemiBold"
+                              style={[
+                                styles.autoClimbButtonText,
+                                {
+                                  color:
+                                    autoClimbSelection === "climb"
+                                      ? toggleActiveTextColor
+                                      : tabInactiveTextColor,
+                                },
+                              ]}
+                            >
+                              Climb
+                            </ThemedText>
+                          </Pressable>
+                        ) : null}
                         <Pressable
                           accessibilityRole="button"
-                          onPress={() => setAutoClimbSelection("climb")}
+                          onPress={goToNextTab}
                           style={({ pressed }) => [
                             styles.counterButton,
-                            styles.counterButtonNegative,
-                            styles.autoClimbButton,
-                            autoClimbSelection === "climb"
-                              ? { backgroundColor: toggleActiveBackground }
-                              : {
-                                  backgroundColor: "transparent",
-                                  borderColor: inputBorder,
-                                },
+                            styles.counterButtonPositive,
+                            styles.pageTransitionButton,
                             pressed && styles.buttonPressed,
                           ]}
                         >
                           <ThemedText
                             type="defaultSemiBold"
-                            style={[
-                              styles.autoClimbButtonText,
-                              {
-                                color:
-                                  autoClimbSelection === "climb"
-                                    ? toggleActiveTextColor
-                                    : tabInactiveTextColor,
-                              },
-                            ]}
+                            style={styles.pageTransitionButtonText}
                           >
-                            Climb
+                            {nextTabLabel}
                           </ThemedText>
                         </Pressable>
-                      ) : null
+                      </>
                     }
                   />
                 </View>
               </View>
-              {(isAutoTab || isTeleopTab) && (
-                <View style={styles.transitionContainer}>
-                  <TabTransitionControl
-                    incrementLabel={isAutoTab ? "Teleop" : "Endgame"}
-                    decrementLabel={isAutoTab ? "Info" : "Auto"}
-                    onIncrement={() =>
-                      setSelectedTab(isAutoTab ? "teleop" : "endgame")
-                    }
-                    onDecrement={() =>
-                      setSelectedTab(isAutoTab ? "info" : "auto")
-                    }
-                  />
-                </View>
-              )}
             </View>
           </View>
         ) : null}
@@ -1594,20 +1551,11 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 12,
   },
-  transitionContainer: {
-    alignSelf: "center",
-    width: "100%",
-    maxWidth: 360,
-  },
   counterControl: {
     gap: 12,
     alignItems: "stretch",
     minWidth: 150,
     flex: 1,
-  },
-  tabTransitionControl: {
-    flex: 2,
-    minHeight: 160,
   },
   counterLabel: {
     fontSize: 14,
@@ -1638,12 +1586,6 @@ const styles = StyleSheet.create({
   counterButtonNegative: {
     flex: 1,
   },
-  tabTransitionBackButton: {
-    borderWidth: 1,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   counterButtonText: {
     color: "#F8FAFC",
     fontSize: 20,
@@ -1654,6 +1596,16 @@ const styles = StyleSheet.create({
   },
   autoClimbButtonText: {
     fontSize: 18,
+  },
+  pageTransitionButton: {
+    minHeight: 72,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  pageTransitionButtonText: {
+    color: "#F8FAFC",
+    fontSize: 18,
+    textAlign: "center",
   },
   counterButtonAuxText: {
     color: "#E2E8F0",
@@ -1735,18 +1687,5 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: "#F8FAFC",
     fontSize: 18,
-  },
-  tabTransitionHeading: {
-    color: "#E2E8F0",
-    fontSize: 14,
-  },
-  tabTransitionLabel: {
-    color: "#F8FAFC",
-    fontSize: 24,
-    textAlign: "center",
-  },
-  tabTransitionBackLabel: {
-    fontSize: 16,
-    textAlign: "center",
   },
 });
