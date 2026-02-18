@@ -140,8 +140,8 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
 
   const matchRows = db
     .select()
-    .from(schema.matchData2025)
-    .where(eq(schema.matchData2025.eventKey, remoteEventCode))
+    .from(schema.matchData2026)
+    .where(eq(schema.matchData2026.eventKey, remoteEventCode))
     .all();
 
   if (matchRows.length > 0) {
@@ -166,8 +166,8 @@ export async function syncDataWithServer(organizationId: number): Promise<SyncDa
 
   const prescoutRows = db
     .select()
-    .from(schema.prescoutMatchData2025)
-    .where(eq(schema.prescoutMatchData2025.eventKey, remoteEventCode))
+    .from(schema.prescout2026)
+    .where(eq(schema.prescout2026.eventKey, remoteEventCode))
     .all();
 
   if (prescoutRows.length > 0) {

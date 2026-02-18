@@ -90,12 +90,12 @@ const getNextPrescoutMatchNumber = (
   teamNumber: number,
 ) => {
   const localMatches = db
-    .select({ matchNumber: schema.prescoutMatchData2025.matchNumber })
-    .from(schema.prescoutMatchData2025)
+    .select({ matchNumber: schema.prescout2026.matchNumber })
+    .from(schema.prescout2026)
     .where(
       and(
-        eq(schema.prescoutMatchData2025.eventKey, eventKey),
-        eq(schema.prescoutMatchData2025.teamNumber, teamNumber),
+        eq(schema.prescout2026.eventKey, eventKey),
+        eq(schema.prescout2026.teamNumber, teamNumber),
       ),
     )
     .all();
@@ -771,7 +771,7 @@ export default function BeginScoutingRoute() {
     parsedTeamNumber: number;
     parsedMatchNumber: number | null;
     normalizedNotes: string;
-    endgameValue: "NONE" | "PARK" | "SHALLOW" | "DEEP";
+    endgameValue: "NONE" | "L1" | "L2" | "L3";
   }) => {
     setIsSubmitting(true);
 
@@ -782,18 +782,11 @@ export default function BeginScoutingRoute() {
         teamNumber: parsedTeamNumber,
         matchLevel: resolvedMatchLevel,
         notes: normalizedNotes,
-        al4c: autoCounts.fuelScored,
-        al3c: 0,
-        al2c: 0,
-        al1c: 0,
-        tl4c: teleCounts.fuelScored,
-        tl3c: 0,
-        tl2c: 0,
-        tl1c: 0,
-        aProcessor: autoCounts.fuelPassed,
-        tProcessor: teleCounts.fuelPassed,
-        aNet: 0,
-        tNet: 0,
+        autoFuel: autoCounts.fuelScored,
+        autoPass: autoCounts.fuelPassed,
+        autoClimb: 0,
+        teleopFuel: teleCounts.fuelScored,
+        teleopPass: teleCounts.fuelPassed,
         endgame: endgameValue,
       };
 
@@ -804,36 +797,29 @@ export default function BeginScoutingRoute() {
           parsedTeamNumber,
         );
 
-        const prescoutRecord: typeof schema.prescoutMatchData2025.$inferInsert =
+        const prescoutRecord: typeof schema.prescout2026.$inferInsert =
           {
             ...sharedRecordFields,
             matchNumber: nextMatchNumber,
           };
 
         await db
-          .insert(schema.prescoutMatchData2025)
+          .insert(schema.prescout2026)
           .values(prescoutRecord)
           .onConflictDoUpdate({
             target: [
-              schema.prescoutMatchData2025.eventKey,
-              schema.prescoutMatchData2025.teamNumber,
-              schema.prescoutMatchData2025.matchNumber,
-              schema.prescoutMatchData2025.matchLevel,
+              schema.prescout2026.eventKey,
+              schema.prescout2026.teamNumber,
+              schema.prescout2026.matchNumber,
+              schema.prescout2026.matchLevel,
             ],
             set: {
               notes: prescoutRecord.notes,
-              al4c: prescoutRecord.al4c,
-              al3c: prescoutRecord.al3c,
-              al2c: prescoutRecord.al2c,
-              al1c: prescoutRecord.al1c,
-              tl4c: prescoutRecord.tl4c,
-              tl3c: prescoutRecord.tl3c,
-              tl2c: prescoutRecord.tl2c,
-              tl1c: prescoutRecord.tl1c,
-              aProcessor: prescoutRecord.aProcessor,
-              tProcessor: prescoutRecord.tProcessor,
-              aNet: prescoutRecord.aNet,
-              tNet: prescoutRecord.tNet,
+              autoFuel: prescoutRecord.autoFuel,
+              autoPass: prescoutRecord.autoPass,
+              autoClimb: prescoutRecord.autoClimb,
+              teleopFuel: prescoutRecord.teleopFuel,
+              teleopPass: prescoutRecord.teleopPass,
               endgame: prescoutRecord.endgame,
             },
           })
@@ -852,13 +838,13 @@ export default function BeginScoutingRoute() {
 
         const [row] = await db
           .select()
-          .from(schema.prescoutMatchData2025)
+          .from(schema.prescout2026)
           .where(
             and(
-              eq(schema.prescoutMatchData2025.eventKey, normalizedEventKey),
-              eq(schema.prescoutMatchData2025.teamNumber, parsedTeamNumber),
-              eq(schema.prescoutMatchData2025.matchNumber, nextMatchNumber),
-              eq(schema.prescoutMatchData2025.matchLevel, resolvedMatchLevel),
+              eq(schema.prescout2026.eventKey, normalizedEventKey),
+              eq(schema.prescout2026.teamNumber, parsedTeamNumber),
+              eq(schema.prescout2026.matchNumber, nextMatchNumber),
+              eq(schema.prescout2026.matchLevel, resolvedMatchLevel),
             ),
           )
           .limit(1);
@@ -921,10 +907,32 @@ export default function BeginScoutingRoute() {
         throw new Error("Match number is required to submit match data.");
       }
 
-      const row: typeof schema.matchData2025.$inferInsert = {
+      const row: typeof schema.matchData2026.$inferInsert = {
         ...sharedRecordFields,
         matchNumber: parsedMatchNumber,
       };
+
+      await db
+        .insert(schema.matchData2026)
+        .values(row)
+        .onConflictDoUpdate({
+          target: [
+            schema.matchData2026.eventKey,
+            schema.matchData2026.teamNumber,
+            schema.matchData2026.matchNumber,
+            schema.matchData2026.matchLevel,
+          ],
+          set: {
+            notes: row.notes,
+            autoFuel: row.autoFuel,
+            autoPass: row.autoPass,
+            autoClimb: row.autoClimb,
+            teleopFuel: row.teleopFuel,
+            teleopPass: row.teleopPass,
+            endgame: row.endgame,
+          },
+        })
+        .run();
 
       const driverStationSlot = parseDriverStationSlot({
         driverStationLabel,
@@ -1082,9 +1090,9 @@ export default function BeginScoutingRoute() {
 
     const endgameMap = {
       none: "NONE",
-      l1: "PARK",
-      l2: "SHALLOW",
-      l3: "DEEP",
+      l1: "L1",
+      l2: "L2",
+      l3: "L3",
     } as const;
 
     const endgameValue = endgameMap[endgameSelection];
