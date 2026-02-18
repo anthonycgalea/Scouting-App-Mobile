@@ -359,10 +359,19 @@ interface CounterControlProps {
   label: string;
   value: number;
   onIncrement: () => void;
+  onIncrementByFive: () => void;
+  onIncrementByTwenty: () => void;
   onDecrement: () => void;
 }
 
-function CounterControl({ label, value, onIncrement, onDecrement }: CounterControlProps) {
+function CounterControl({
+  label,
+  value,
+  onIncrement,
+  onIncrementByFive,
+  onIncrementByTwenty,
+  onDecrement,
+}: CounterControlProps) {
   const positiveBackground = useThemeColor({ light: '#475569', dark: '#1F2937' }, 'background');
   const negativeBackground = useThemeColor({ light: '#334155', dark: '#111827' }, 'background');
 
@@ -391,6 +400,34 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
         </Pressable>
         <Pressable
           accessibilityRole="button"
+          onPress={onIncrementByFive}
+          style={({ pressed }) => [
+            styles.counterButton,
+            styles.counterButtonPositive,
+            { backgroundColor: positiveBackground },
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+            +5
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onIncrementByTwenty}
+          style={({ pressed }) => [
+            styles.counterButton,
+            styles.counterButtonPositive,
+            { backgroundColor: positiveBackground },
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+            +20
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
           onPress={onDecrement}
           style={({ pressed }) => [
             styles.counterButton,
@@ -409,50 +446,6 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
 }
 
 
-
-interface CounterQuickAdjustmentsProps {
-  onIncrementByFive: () => void;
-  onIncrementByTwenty: () => void;
-}
-
-function CounterQuickAdjustments({
-  onIncrementByFive,
-  onIncrementByTwenty,
-}: CounterQuickAdjustmentsProps) {
-  const background = useThemeColor({ light: '#CBD5E1', dark: '#1E293B' }, 'background');
-  const textColor = useThemeColor({ light: '#0F172A', dark: '#E2E8F0' }, 'text');
-
-  return (
-    <View style={styles.quickAdjustments}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onIncrementByFive}
-        style={({ pressed }) => [
-          styles.quickAdjustmentButton,
-          { backgroundColor: background },
-          pressed && styles.buttonPressed,
-        ]}
-      >
-        <ThemedText type="defaultSemiBold" style={[styles.quickAdjustmentText, { color: textColor }]}>
-          +5
-        </ThemedText>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onIncrementByTwenty}
-        style={({ pressed }) => [
-          styles.quickAdjustmentButton,
-          { backgroundColor: background },
-          pressed && styles.buttonPressed,
-        ]}
-      >
-        <ThemedText type="defaultSemiBold" style={[styles.quickAdjustmentText, { color: textColor }]}>
-          +20
-        </ThemedText>
-      </Pressable>
-    </View>
-  );
-}
 
 interface TabTransitionControlProps {
   incrementLabel: string;
@@ -1178,11 +1171,9 @@ export default function BeginScoutingRoute() {
                     label={`Fuel Scored`}
                     value={currentCounts.fuelScored}
                     onIncrement={() => handleAdjust('fuelScored', 1)}
-                    onDecrement={() => handleAdjust('fuelScored', -5)}
-                  />
-                  <CounterQuickAdjustments
                     onIncrementByFive={() => handleAdjust('fuelScored', 5)}
                     onIncrementByTwenty={() => handleAdjust('fuelScored', 20)}
+                    onDecrement={() => handleAdjust('fuelScored', -5)}
                   />
                 </View>
                 <View style={styles.counterColumn}>
@@ -1190,11 +1181,9 @@ export default function BeginScoutingRoute() {
                     label={`Fuel Passed`}
                     value={currentCounts.fuelPassed}
                     onIncrement={() => handleAdjust('fuelPassed', 1)}
-                    onDecrement={() => handleAdjust('fuelPassed', -5)}
-                  />
-                  <CounterQuickAdjustments
                     onIncrementByFive={() => handleAdjust('fuelPassed', 5)}
                     onIncrementByTwenty={() => handleAdjust('fuelPassed', 20)}
+                    onDecrement={() => handleAdjust('fuelPassed', -5)}
                   />
                 </View>
               </View>
@@ -1367,20 +1356,6 @@ const styles = StyleSheet.create({
   counterColumn: {
     flex: 1,
     gap: 12,
-  },
-  quickAdjustments: {
-    flexDirection: 'column',
-    gap: 12,
-  },
-  quickAdjustmentButton: {
-    flex: 1,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-  },
-  quickAdjustmentText: {
-    fontSize: 16,
   },
   transitionContainer: {
     alignSelf: 'center',
