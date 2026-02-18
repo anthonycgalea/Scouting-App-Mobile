@@ -1369,7 +1369,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   quickAdjustments: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 12,
   },
   quickAdjustmentButton: {
