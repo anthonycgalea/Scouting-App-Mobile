@@ -578,6 +578,18 @@ export default function BeginScoutingRoute() {
     { light: "#334155", dark: "#CBD5F5" },
     "text",
   );
+  const pageTransitionNextBackground = useThemeColor(
+    { light: "#475569", dark: "#1F2937" },
+    "background",
+  );
+  const pageTransitionPreviousBackground = useThemeColor(
+    { light: "#E2E8F0", dark: "#0F172A" },
+    "background",
+  );
+  const pageTransitionPreviousText = useThemeColor(
+    { light: "#1F2937", dark: "#CBD5F5" },
+    "text",
+  );
 
   const isAutoTab = selectedTab === "auto";
   const isTeleopTab = selectedTab === "teleop";
@@ -1294,13 +1306,19 @@ export default function BeginScoutingRoute() {
                             styles.counterButton,
                             styles.counterButtonNegative,
                             styles.pageTransitionButton,
-                            { borderColor: inputBorder },
+                            {
+                              backgroundColor: pageTransitionPreviousBackground,
+                              borderColor: pageTransitionPreviousText,
+                            },
                             pressed && styles.buttonPressed,
                           ]}
                         >
                           <ThemedText
                             type="defaultSemiBold"
-                            style={styles.pageTransitionButtonText}
+                            style={[
+                              styles.pageTransitionButtonText,
+                              { color: pageTransitionPreviousText },
+                            ]}
                           >
                             {previousTabLabel}
                           </ThemedText>
@@ -1357,8 +1375,9 @@ export default function BeginScoutingRoute() {
                           onPress={goToNextTab}
                           style={({ pressed }) => [
                             styles.counterButton,
-                            styles.counterButtonPositive,
+                            styles.counterButtonNegative,
                             styles.pageTransitionButton,
+                            { backgroundColor: pageTransitionNextBackground },
                             pressed && styles.buttonPressed,
                           ]}
                         >
@@ -1598,7 +1617,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   pageTransitionButton: {
-    minHeight: 72,
     borderWidth: 1,
     borderRadius: 12,
   },
