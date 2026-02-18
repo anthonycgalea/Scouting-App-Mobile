@@ -1617,6 +1617,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   pageTransitionButton: {
+    flex: 3,
     borderWidth: 1,
     borderRadius: 12,
   },
