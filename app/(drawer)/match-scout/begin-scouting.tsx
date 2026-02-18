@@ -1,8 +1,8 @@
-import type { ParamListBase } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { and, eq } from 'drizzle-orm';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import type { ParamListBase } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { and, eq } from "drizzle-orm";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -11,19 +11,19 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { getDbOrThrow, schema } from '@/db';
-import type { MatchSchedule } from '@/db/schema';
-import { syncAlreadyScoutedEntries } from '../../services/already-scouted';
-import { apiRequest } from '../../services/api';
-import { getActiveEvent } from '../../services/logged-in-event';
-import { syncAlreadyPrescoutedEntries } from '../../services/prescouted';
+import { getDbOrThrow, schema } from "@/db";
+import type { MatchSchedule } from "@/db/schema";
+import { syncAlreadyScoutedEntries } from "../../services/already-scouted";
+import { apiRequest } from "../../services/api";
+import { getActiveEvent } from "../../services/logged-in-event";
+import { syncAlreadyPrescoutedEntries } from "../../services/prescouted";
 
-import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { ThemedText } from '@/components/themed-text';
-import { useOrganization } from '@/hooks/use-organization';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { ScreenContainer } from "@/components/layout/ScreenContainer";
+import { ThemedText } from "@/components/themed-text";
+import { useOrganization } from "@/hooks/use-organization";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 const toSingleValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -74,8 +74,8 @@ type PhaseKey = keyof PhaseCounts;
 type LimitConfig = Record<PhaseKey, { auto: number; teleop: number }>;
 
 const limitConfig: LimitConfig = {
-  fuelScored: { auto: 99, teleop: 99 },
-  fuelPassed: { auto: 99, teleop: 99 },
+  fuelScored: { auto: 500, teleop: 1500 },
+  fuelPassed: { auto: 500, teleop: 1500 },
 };
 
 const createInitialPhaseCounts = (): PhaseCounts => ({
@@ -102,7 +102,7 @@ const getNextPrescoutMatchNumber = (
   let highestMatchNumber = 0;
 
   localMatches.forEach((row) => {
-    const candidate = typeof row.matchNumber === 'number' ? row.matchNumber : 0;
+    const candidate = typeof row.matchNumber === "number" ? row.matchNumber : 0;
     if (candidate > highestMatchNumber) {
       highestMatchNumber = candidate;
     }
@@ -120,7 +120,7 @@ const getNextPrescoutMatchNumber = (
     .all();
 
   recordedMatches.forEach((row) => {
-    const candidate = typeof row.matchNumber === 'number' ? row.matchNumber : 0;
+    const candidate = typeof row.matchNumber === "number" ? row.matchNumber : 0;
     if (candidate > highestMatchNumber) {
       highestMatchNumber = candidate;
     }
@@ -133,16 +133,16 @@ const getMatchLevelLabel = (matchLevel: string | undefined) => {
   const normalized = matchLevel?.toLowerCase();
 
   switch (normalized) {
-    case 'qm':
-      return 'QM';
-    case 'sf':
-      return 'P';
-    case 'qf':
-      return 'Quarters';
-    case 'f':
-      return 'F';
+    case "qm":
+      return "QM";
+    case "sf":
+      return "P";
+    case "qf":
+      return "Quarters";
+    case "f":
+      return "F";
     default:
-      return matchLevel?.toUpperCase() ?? '';
+      return matchLevel?.toUpperCase() ?? "";
   }
 };
 
@@ -163,7 +163,7 @@ const toTitleCase = (value: string | undefined) => {
 const buildDriverStationLabel = (
   driverStation: string | undefined,
   allianceColor: string | undefined,
-  stationPosition: string | undefined
+  stationPosition: string | undefined,
 ) => {
   if (driverStation) {
     return driverStation;
@@ -188,7 +188,7 @@ const formatMatchHeader = (
   matchLevel: string | undefined,
   matchNumber: string | undefined,
   teamNumber: string | undefined,
-  driverStationLabel: string | undefined
+  driverStationLabel: string | undefined,
 ) => {
   if (!eventKey || !matchNumber || !teamNumber || !driverStationLabel) {
     return undefined;
@@ -196,34 +196,47 @@ const formatMatchHeader = (
 
   const levelLabel = getMatchLevelLabel(matchLevel);
   const matchPrefix = levelLabel || matchLevel;
-  const matchLabel = matchPrefix ? `${matchPrefix}${matchNumber}` : `Match ${matchNumber}`;
+  const matchLabel = matchPrefix
+    ? `${matchPrefix}${matchNumber}`
+    : `Match ${matchNumber}`;
 
   return `${matchLabel}: ${teamNumber} (${driverStationLabel})`;
 };
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
 
-const DRIVER_STATION_SLOTS = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'] as const;
+const DRIVER_STATION_SLOTS = [
+  "red1",
+  "red2",
+  "red3",
+  "blue1",
+  "blue2",
+  "blue3",
+] as const;
 type DriverStationSlot = (typeof DRIVER_STATION_SLOTS)[number];
 type DriverStationColumn = keyof Pick<
   MatchSchedule,
-  'red1Id' | 'red2Id' | 'red3Id' | 'blue1Id' | 'blue2Id' | 'blue3Id'
+  "red1Id" | "red2Id" | "red3Id" | "blue1Id" | "blue2Id" | "blue3Id"
 >;
 
-const DRIVER_STATION_COLUMN_MAP: Record<DriverStationSlot, DriverStationColumn> = {
-  red1: 'red1Id',
-  red2: 'red2Id',
-  red3: 'red3Id',
-  blue1: 'blue1Id',
-  blue2: 'blue2Id',
-  blue3: 'blue3Id',
+const DRIVER_STATION_COLUMN_MAP: Record<
+  DriverStationSlot,
+  DriverStationColumn
+> = {
+  red1: "red1Id",
+  red2: "red2Id",
+  red3: "red3Id",
+  blue1: "blue1Id",
+  blue2: "blue2Id",
+  blue3: "blue3Id",
 };
 
 const isDriverStationSlot = (value: string): value is DriverStationSlot =>
   DRIVER_STATION_SLOTS.includes(value as DriverStationSlot);
 
 const formatDriverStationLabelFromSlot = (slot: DriverStationSlot) => {
-  const color = slot.startsWith('red') ? 'Red' : 'Blue';
+  const color = slot.startsWith("red") ? "Red" : "Blue";
   const position = slot.slice(-1);
 
   return `${color} ${position}`;
@@ -266,11 +279,13 @@ const parseDriverStationSlot = ({
   return undefined;
 };
 
-const MATCH_LEVEL_SORT_ORDER = ['qm', 'ef', 'of', 'qf', 'sf', 'f'] as const;
+const MATCH_LEVEL_SORT_ORDER = ["qm", "ef", "of", "qf", "sf", "f"] as const;
 
 const getMatchLevelPriority = (matchLevel: string) => {
-  const normalized = (matchLevel ?? '').trim().toLowerCase();
-  const index = MATCH_LEVEL_SORT_ORDER.indexOf(normalized as (typeof MATCH_LEVEL_SORT_ORDER)[number]);
+  const normalized = (matchLevel ?? "").trim().toLowerCase();
+  const index = MATCH_LEVEL_SORT_ORDER.indexOf(
+    normalized as (typeof MATCH_LEVEL_SORT_ORDER)[number],
+  );
 
   return index === -1 ? MATCH_LEVEL_SORT_ORDER.length : index;
 };
@@ -294,7 +309,9 @@ const buildNextMatchParams = (
   const relevantMatches = schedule
     .filter((match) => match.eventKey === eventKey)
     .sort((a, b) => {
-      const levelDelta = getMatchLevelPriority(a.matchLevel) - getMatchLevelPriority(b.matchLevel);
+      const levelDelta =
+        getMatchLevelPriority(a.matchLevel) -
+        getMatchLevelPriority(b.matchLevel);
 
       if (levelDelta !== 0) {
         return levelDelta;
@@ -303,11 +320,11 @@ const buildNextMatchParams = (
       return a.matchNumber - b.matchNumber;
     });
 
-  const normalizedCurrentLevel = (currentMatchLevel ?? '').trim().toLowerCase();
+  const normalizedCurrentLevel = (currentMatchLevel ?? "").trim().toLowerCase();
   const currentIndex = relevantMatches.findIndex(
     (match) =>
       match.matchNumber === currentMatchNumber &&
-      (match.matchLevel ?? '').trim().toLowerCase() === normalizedCurrentLevel,
+      (match.matchLevel ?? "").trim().toLowerCase() === normalizedCurrentLevel,
   );
 
   if (currentIndex === -1) {
@@ -316,9 +333,13 @@ const buildNextMatchParams = (
 
   const columnKey = DRIVER_STATION_COLUMN_MAP[driverStationSlot];
 
-  for (let index = currentIndex + 1; index < relevantMatches.length; index += 1) {
+  for (
+    let index = currentIndex + 1;
+    index < relevantMatches.length;
+    index += 1
+  ) {
     const candidate = relevantMatches[index];
-    const candidateLevel = (candidate.matchLevel ?? '').trim().toLowerCase();
+    const candidateLevel = (candidate.matchLevel ?? "").trim().toLowerCase();
 
     if (candidateLevel !== normalizedCurrentLevel) {
       break;
@@ -326,10 +347,14 @@ const buildNextMatchParams = (
 
     const teamNumber = candidate[columnKey];
 
-    if (typeof teamNumber === 'number' && Number.isFinite(teamNumber)) {
-      const allianceColor = driverStationSlot.startsWith('red') ? 'red' : 'blue';
+    if (typeof teamNumber === "number" && Number.isFinite(teamNumber)) {
+      const allianceColor = driverStationSlot.startsWith("red")
+        ? "red"
+        : "blue";
       const stationPosition = driverStationSlot.slice(-1);
-      const label = driverStationLabel ?? formatDriverStationLabelFromSlot(driverStationSlot);
+      const label =
+        driverStationLabel ??
+        formatDriverStationLabelFromSlot(driverStationSlot);
 
       return {
         eventKey: candidate.eventKey,
@@ -372,8 +397,14 @@ function CounterControl({
   onIncrementByTwenty,
   onDecrement,
 }: CounterControlProps) {
-  const positiveBackground = useThemeColor({ light: '#475569', dark: '#1F2937' }, 'background');
-  const negativeBackground = useThemeColor({ light: '#334155', dark: '#111827' }, 'background');
+  const positiveBackground = useThemeColor(
+    { light: "#475569", dark: "#1F2937" },
+    "background",
+  );
+  const negativeBackground = useThemeColor(
+    { light: "#334155", dark: "#111827" },
+    "background",
+  );
 
   return (
     <View style={styles.counterControl}>
@@ -394,7 +425,10 @@ function CounterControl({
           <ThemedText type="title" style={styles.counterValue}>
             {value}
           </ThemedText>
-          <ThemedText type="defaultSemiBold" style={styles.counterButtonAuxText}>
+          <ThemedText
+            type="defaultSemiBold"
+            style={styles.counterButtonAuxText}
+          >
             +
           </ThemedText>
         </Pressable>
@@ -445,8 +479,6 @@ function CounterControl({
   );
 }
 
-
-
 interface TabTransitionControlProps {
   incrementLabel: string;
   decrementLabel: string;
@@ -460,9 +492,18 @@ function TabTransitionControl({
   onIncrement,
   onDecrement,
 }: TabTransitionControlProps) {
-  const positiveBackground = useThemeColor({ light: '#475569', dark: '#1F2937' }, 'background');
-  const negativeBackground = useThemeColor({ light: '#CBD5F5', dark: '#0F172A' }, 'background');
-  const negativeText = useThemeColor({ light: '#1F2937', dark: '#CBD5F5' }, 'text');
+  const positiveBackground = useThemeColor(
+    { light: "#475569", dark: "#1F2937" },
+    "background",
+  );
+  const negativeBackground = useThemeColor(
+    { light: "#CBD5F5", dark: "#0F172A" },
+    "background",
+  );
+  const negativeText = useThemeColor(
+    { light: "#1F2937", dark: "#CBD5F5" },
+    "text",
+  );
 
   return (
     <View style={[styles.counterControl, styles.tabTransitionControl]}>
@@ -477,7 +518,10 @@ function TabTransitionControl({
             pressed && styles.buttonPressed,
           ]}
         >
-          <ThemedText type="defaultSemiBold" style={styles.tabTransitionHeading}>
+          <ThemedText
+            type="defaultSemiBold"
+            style={styles.tabTransitionHeading}
+          >
             Next
           </ThemedText>
           <ThemedText type="title" style={styles.tabTransitionLabel}>
@@ -513,16 +557,19 @@ export default function BeginScoutingRoute() {
   const router = useRouter();
 
   const mode = toSingleValue(params.mode);
-  const isPrescoutMode = mode === 'prescout';
+  const isPrescoutMode = mode === "prescout";
   const eventKey =
-    toSingleValue(params.eventKey) ?? toSingleValue(params.event_key) ?? '';
+    toSingleValue(params.eventKey) ?? toSingleValue(params.event_key) ?? "";
   const matchLevel =
     toSingleValue(params.matchLevel) ?? toSingleValue(params.match_level);
   const initialMatchNumber =
-    toSingleValue(params.matchNumber) ?? toSingleValue(params.match_number) ?? '';
+    toSingleValue(params.matchNumber) ??
+    toSingleValue(params.match_number) ??
+    "";
   const initialTeamNumber =
-    toSingleValue(params.teamNumber) ?? toSingleValue(params.team_number) ?? '';
-  const driverStation = toSingleValue(params.driverStation) ?? toSingleValue(params.driver_station);
+    toSingleValue(params.teamNumber) ?? toSingleValue(params.team_number) ?? "";
+  const driverStation =
+    toSingleValue(params.driverStation) ?? toSingleValue(params.driver_station);
   const allianceColor =
     toSingleValue(params.allianceColor) ?? toSingleValue(params.alliance_color);
   const stationPosition =
@@ -530,28 +577,40 @@ export default function BeginScoutingRoute() {
     toSingleValue(params.station_position) ??
     toSingleValue(params.driverStationPosition) ??
     toSingleValue(params.driver_station_position);
-  const driverStationLabel = buildDriverStationLabel(driverStation, allianceColor, stationPosition);
+  const driverStationLabel = buildDriverStationLabel(
+    driverStation,
+    allianceColor,
+    stationPosition,
+  );
 
-  const [activeEventFallback] = useState(() => getActiveEvent() ?? '');
+  const [activeEventFallback] = useState(() => getActiveEvent() ?? "");
   const resolvedEventKey = eventKey || activeEventFallback;
-  const resolvedMatchLevelForDisplay = isPrescoutMode ? 'qm' : matchLevel;
+  const resolvedMatchLevelForDisplay = isPrescoutMode ? "qm" : matchLevel;
 
   const [teamNumber, setTeamNumber] = useState(initialTeamNumber);
   const [matchNumber, setMatchNumber] = useState(initialMatchNumber);
-  const [selectedTab, setSelectedTab] = useState<'info' | 'auto' | 'teleop' | 'endgame'>('info');
-  const [autoCounts, setAutoCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
-  const [teleCounts, setTeleCounts] = useState<PhaseCounts>(() => createInitialPhaseCounts());
-  const [endgameSelection, setEndgameSelection] = useState<'none' | 'l1' | 'l2' | 'l3'>('none');
-  const [generalNotes, setGeneralNotes] = useState('');
+  const [selectedTab, setSelectedTab] = useState<
+    "info" | "auto" | "teleop" | "endgame"
+  >("info");
+  const [autoCounts, setAutoCounts] = useState<PhaseCounts>(() =>
+    createInitialPhaseCounts(),
+  );
+  const [teleCounts, setTeleCounts] = useState<PhaseCounts>(() =>
+    createInitialPhaseCounts(),
+  );
+  const [endgameSelection, setEndgameSelection] = useState<
+    "none" | "l1" | "l2" | "l3"
+  >("none");
+  const [generalNotes, setGeneralNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedOrganization } = useOrganization();
 
   const resetPrescoutForm = (nextMatchNumberValue: number) => {
-    setSelectedTab('info');
+    setSelectedTab("info");
     setAutoCounts(createInitialPhaseCounts());
     setTeleCounts(createInitialPhaseCounts());
-    setEndgameSelection('none');
-    setGeneralNotes('');
+    setEndgameSelection("none");
+    setGeneralNotes("");
     setMatchNumber(String(nextMatchNumberValue));
   };
 
@@ -561,28 +620,46 @@ export default function BeginScoutingRoute() {
     }
   }, [initialTeamNumber, isPrescoutMode]);
 
-  const inputBackground = useThemeColor({ light: '#FFFFFF', dark: '#0F172A' }, 'background');
-  const inputBorder = useThemeColor({ light: '#CBD5F5', dark: '#334155' }, 'background');
-  const textColor = useThemeColor({}, 'text');
-  const toggleContainerBackground = useThemeColor({ light: '#E2E8F0', dark: '#1F2937' }, 'background');
-  const toggleActiveBackground = useThemeColor({ light: '#2563EB', dark: '#1E3A8A' }, 'tint');
-  const toggleActiveTextColor = '#F8FAFC';
-  const tabInactiveTextColor = useThemeColor({ light: '#334155', dark: '#CBD5F5' }, 'text');
+  const inputBackground = useThemeColor(
+    { light: "#FFFFFF", dark: "#0F172A" },
+    "background",
+  );
+  const inputBorder = useThemeColor(
+    { light: "#CBD5F5", dark: "#334155" },
+    "background",
+  );
+  const textColor = useThemeColor({}, "text");
+  const toggleContainerBackground = useThemeColor(
+    { light: "#E2E8F0", dark: "#1F2937" },
+    "background",
+  );
+  const toggleActiveBackground = useThemeColor(
+    { light: "#2563EB", dark: "#1E3A8A" },
+    "tint",
+  );
+  const toggleActiveTextColor = "#F8FAFC";
+  const tabInactiveTextColor = useThemeColor(
+    { light: "#334155", dark: "#CBD5F5" },
+    "text",
+  );
 
-  const isAutoTab = selectedTab === 'auto';
-  const isTeleopTab = selectedTab === 'teleop';
+  const isAutoTab = selectedTab === "auto";
+  const isTeleopTab = selectedTab === "teleop";
   const currentCounts = isAutoTab ? autoCounts : teleCounts;
   const hasPrefilledDetails = useMemo(() => {
     if (isPrescoutMode) {
       return Boolean(
         resolvedEventKey &&
-          (matchNumber || initialMatchNumber) &&
-          (teamNumber || initialTeamNumber),
+        (matchNumber || initialMatchNumber) &&
+        (teamNumber || initialTeamNumber),
       );
     }
 
     return Boolean(
-      resolvedEventKey && initialMatchNumber && initialTeamNumber && driverStationLabel,
+      resolvedEventKey &&
+      initialMatchNumber &&
+      initialTeamNumber &&
+      driverStationLabel,
     );
   }, [
     driverStationLabel,
@@ -619,7 +696,7 @@ export default function BeginScoutingRoute() {
   ]);
 
   useLayoutEffect(() => {
-    const headerTitle = matchDetailsTitle ?? 'match-scout';
+    const headerTitle = matchDetailsTitle ?? "match-scout";
     const parentNavigation = navigation.getParent?.();
     const drawerNavigation = parentNavigation?.getParent?.();
 
@@ -639,11 +716,17 @@ export default function BeginScoutingRoute() {
     });
 
     return () => {
-      const resetTitle = 'match-scout';
+      const resetTitle = "match-scout";
 
       navigation.setOptions({ headerTitle: resetTitle, title: resetTitle });
-      parentNavigation?.setOptions?.({ headerTitle: resetTitle, title: resetTitle });
-      drawerNavigation?.setOptions?.({ headerTitle: resetTitle, title: resetTitle });
+      parentNavigation?.setOptions?.({
+        headerTitle: resetTitle,
+        title: resetTitle,
+      });
+      drawerNavigation?.setOptions?.({
+        headerTitle: resetTitle,
+        title: resetTitle,
+      });
     };
   }, [navigation, matchDetailsTitle]);
 
@@ -665,25 +748,25 @@ export default function BeginScoutingRoute() {
     });
   };
 
-  const infoTeamNumber = teamNumber || initialTeamNumber || '---';
-  const infoMatchNumber = matchNumber || initialMatchNumber || '---';
+  const infoTeamNumber = teamNumber || initialTeamNumber || "---";
+  const infoMatchNumber = matchNumber || initialMatchNumber || "---";
   const infoDetails = [
-    { label: 'Team Number', value: infoTeamNumber },
-    { label: 'Match Number', value: infoMatchNumber },
-    { label: 'Event', value: resolvedEventKey || 'Not specified' },
-    { label: 'Driver Station', value: driverStationLabel ?? 'Not specified' },
+    { label: "Team Number", value: infoTeamNumber },
+    { label: "Match Number", value: infoMatchNumber },
+    { label: "Event", value: resolvedEventKey || "Not specified" },
+    { label: "Driver Station", value: driverStationLabel ?? "Not specified" },
   ];
   const tabOptions = [
-    { key: 'info', label: 'Info' },
-    { key: 'auto', label: 'Auto' },
-    { key: 'teleop', label: 'Teleop' },
-    { key: 'endgame', label: 'Endgame' },
+    { key: "info", label: "Info" },
+    { key: "auto", label: "Auto" },
+    { key: "teleop", label: "Teleop" },
+    { key: "endgame", label: "Endgame" },
   ] as const;
   const endgameOptions = [
-    { key: 'l3', label: 'L3' },
-    { key: 'l2', label: 'L2' },
-    { key: 'l1', label: 'L1' },
-    { key: 'none', label: 'None' },
+    { key: "l3", label: "L3" },
+    { key: "l2", label: "L2" },
+    { key: "l1", label: "L1" },
+    { key: "none", label: "None" },
   ] as const;
 
   useEffect(() => {
@@ -736,7 +819,7 @@ export default function BeginScoutingRoute() {
     parsedTeamNumber: number;
     parsedMatchNumber: number | null;
     normalizedNotes: string;
-    endgameValue: 'NONE' | 'PARK' | 'SHALLOW' | 'DEEP';
+    endgameValue: "NONE" | "PARK" | "SHALLOW" | "DEEP";
   }) => {
     setIsSubmitting(true);
 
@@ -769,10 +852,11 @@ export default function BeginScoutingRoute() {
           parsedTeamNumber,
         );
 
-        const prescoutRecord: typeof schema.prescoutMatchData2025.$inferInsert = {
-          ...sharedRecordFields,
-          matchNumber: nextMatchNumber,
-        };
+        const prescoutRecord: typeof schema.prescoutMatchData2025.$inferInsert =
+          {
+            ...sharedRecordFields,
+            matchNumber: nextMatchNumber,
+          };
 
         await db
           .insert(schema.prescoutMatchData2025)
@@ -828,7 +912,7 @@ export default function BeginScoutingRoute() {
           .limit(1);
 
         if (!row) {
-          throw new Error('Failed to retrieve submitted prescout data.');
+          throw new Error("Failed to retrieve submitted prescout data.");
         }
 
         resetPrescoutForm(nextMatchNumber + 1);
@@ -838,8 +922,8 @@ export default function BeginScoutingRoute() {
           const timeoutId = setTimeout(() => abortController.abort(), 5000);
 
           try {
-            await apiRequest('/scout/prescout', {
-              method: 'POST',
+            await apiRequest("/scout/prescout", {
+              method: "POST",
               body: JSON.stringify(row),
               signal: abortController.signal,
             });
@@ -850,22 +934,29 @@ export default function BeginScoutingRoute() {
           try {
             await syncAlreadyPrescoutedEntries(normalizedEventKey);
           } catch (syncError) {
-            console.error('Failed to refresh already prescouted entries from API', syncError);
+            console.error(
+              "Failed to refresh already prescouted entries from API",
+              syncError,
+            );
           }
 
-          Alert.alert('Prescout submitted', 'Prescout data was saved and sent successfully.', [
-            {
-              text: 'OK',
-            },
-          ]);
-        } catch (error) {
-          console.error('Failed to submit prescout data to API', error);
           Alert.alert(
-            'Prescout saved locally',
-            'The prescout data was saved on this device but could not be sent to the server.',
+            "Prescout submitted",
+            "Prescout data was saved and sent successfully.",
             [
               {
-                text: 'OK',
+                text: "OK",
+              },
+            ],
+          );
+        } catch (error) {
+          console.error("Failed to submit prescout data to API", error);
+          Alert.alert(
+            "Prescout saved locally",
+            "The prescout data was saved on this device but could not be sent to the server.",
+            [
+              {
+                text: "OK",
               },
             ],
           );
@@ -875,7 +966,7 @@ export default function BeginScoutingRoute() {
       }
 
       if (parsedMatchNumber == null) {
-        throw new Error('Match number is required to submit match data.');
+        throw new Error("Match number is required to submit match data.");
       }
 
       const row: typeof schema.matchData2025.$inferInsert = {
@@ -908,14 +999,17 @@ export default function BeginScoutingRoute() {
 
       const navigateToNextMatch = () => {
         if (nextMatchParams) {
-          router.replace({ pathname: '/(drawer)/match-scout/begin-scouting', params: nextMatchParams });
+          router.replace({
+            pathname: "/(drawer)/match-scout/begin-scouting",
+            params: nextMatchParams,
+          });
         } else {
-          router.replace('/(drawer)/match-scout');
+          router.replace("/(drawer)/match-scout");
         }
       };
 
       const showNextMatchAlert = (title: string, message: string) => {
-        const buttonLabel = nextMatchParams ? 'Next Match' : 'OK';
+        const buttonLabel = nextMatchParams ? "Next Match" : "OK";
 
         Alert.alert(
           title,
@@ -935,8 +1029,8 @@ export default function BeginScoutingRoute() {
         const timeoutId = setTimeout(() => abortController.abort(), 5000);
 
         try {
-          await apiRequest('/scout/submit', {
-            method: 'POST',
+          await apiRequest("/scout/submit", {
+            method: "POST",
             body: JSON.stringify(row),
             signal: abortController.signal,
           });
@@ -947,20 +1041,29 @@ export default function BeginScoutingRoute() {
         try {
           await syncAlreadyScoutedEntries(selectedOrganization!.id);
         } catch (syncError) {
-          console.error('Failed to refresh already scouted entries from API', syncError);
+          console.error(
+            "Failed to refresh already scouted entries from API",
+            syncError,
+          );
         }
 
-        showNextMatchAlert('Match submitted', 'Match data was submitted successfully.');
-      } catch (error) {
-        console.error('Failed to submit match data to API', error);
         showNextMatchAlert(
-          'Unable to submit match',
-          'The match data could not be sent to the server.',
+          "Match submitted",
+          "Match data was submitted successfully.",
+        );
+      } catch (error) {
+        console.error("Failed to submit match data to API", error);
+        showNextMatchAlert(
+          "Unable to submit match",
+          "The match data could not be sent to the server.",
         );
       }
     } catch (error) {
-      console.error('Failed to save match data', error);
-      Alert.alert('Unable to save match', 'An error occurred while saving match data.');
+      console.error("Failed to save match data", error);
+      Alert.alert(
+        "Unable to save match",
+        "An error occurred while saving match data.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -973,49 +1076,51 @@ export default function BeginScoutingRoute() {
 
     if (!selectedOrganization && !isPrescoutMode) {
       Alert.alert(
-        'Select an organization',
-        'Choose the organization you are scouting for before submitting match data.'
+        "Select an organization",
+        "Choose the organization you are scouting for before submitting match data.",
       );
       return;
     }
 
     const normalizedEventKey = resolvedEventKey.trim();
-    const resolvedMatchLevel = isPrescoutMode ? 'qm' : matchLevel?.trim();
+    const resolvedMatchLevel = isPrescoutMode ? "qm" : matchLevel?.trim();
     const resolvedTeamNumber = teamNumber || initialTeamNumber;
 
     const parsedTeamNumber = parseInteger(resolvedTeamNumber);
-    const parsedMatchNumberCandidate = parseInteger(matchNumber || initialMatchNumber);
+    const parsedMatchNumberCandidate = parseInteger(
+      matchNumber || initialMatchNumber,
+    );
 
     if (!normalizedEventKey) {
       Alert.alert(
-        isPrescoutMode ? 'No event selected' : 'Missing match details',
+        isPrescoutMode ? "No event selected" : "Missing match details",
         isPrescoutMode
-          ? 'Select an event before submitting prescout data.'
-          : 'An event key and match level are required before submitting match data.',
+          ? "Select an event before submitting prescout data."
+          : "An event key and match level are required before submitting match data.",
       );
       return;
     }
 
     if (!resolvedMatchLevel) {
       Alert.alert(
-        'Missing match details',
-        'A match level is required before submitting match data.'
+        "Missing match details",
+        "A match level is required before submitting match data.",
       );
       return;
     }
 
     if (Number.isNaN(parsedTeamNumber)) {
       Alert.alert(
-        'Invalid match details',
-        'Team number must be a valid number before submitting match data.'
+        "Invalid match details",
+        "Team number must be a valid number before submitting match data.",
       );
       return;
     }
 
     if (!isPrescoutMode && Number.isNaN(parsedMatchNumberCandidate)) {
       Alert.alert(
-        'Invalid match details',
-        'Team number and match number must be valid numbers before submitting match data.'
+        "Invalid match details",
+        "Team number and match number must be valid numbers before submitting match data.",
       );
       return;
     }
@@ -1024,10 +1129,10 @@ export default function BeginScoutingRoute() {
     const normalizedNotes = noteValue.length > 0 ? noteValue : "";
 
     const endgameMap = {
-      none: 'NONE',
-      l1: 'PARK',
-      l2: 'SHALLOW',
-      l3: 'DEEP',
+      none: "NONE",
+      l1: "PARK",
+      l2: "SHALLOW",
+      l3: "DEEP",
     } as const;
 
     const endgameValue = endgameMap[endgameSelection];
@@ -1041,18 +1146,22 @@ export default function BeginScoutingRoute() {
       endgameValue,
     };
 
-    Alert.alert('Submit match?', 'Are you sure you would like to submit this match?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Submit',
-        onPress: () => {
-          void submitMatchData(submissionDetails);
+    Alert.alert(
+      "Submit match?",
+      "Are you sure you would like to submit this match?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
         },
-      },
-    ]);
+        {
+          text: "Submit",
+          onPress: () => {
+            void submitMatchData(submissionDetails);
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -1061,7 +1170,10 @@ export default function BeginScoutingRoute() {
         <View
           style={[
             styles.tabBar,
-            { backgroundColor: toggleContainerBackground, borderColor: inputBorder },
+            {
+              backgroundColor: toggleContainerBackground,
+              borderColor: inputBorder,
+            },
           ]}
         >
           {tabOptions.map((tab) => {
@@ -1074,7 +1186,11 @@ export default function BeginScoutingRoute() {
                 onPress={() => setSelectedTab(tab.key)}
                 style={({ pressed }) => [
                   styles.tabButton,
-                  { backgroundColor: isSelected ? toggleActiveBackground : 'transparent' },
+                  {
+                    backgroundColor: isSelected
+                      ? toggleActiveBackground
+                      : "transparent",
+                  },
                   pressed && styles.buttonPressed,
                 ]}
               >
@@ -1082,7 +1198,11 @@ export default function BeginScoutingRoute() {
                   type="defaultSemiBold"
                   style={[
                     styles.tabButtonText,
-                    { color: isSelected ? toggleActiveTextColor : tabInactiveTextColor },
+                    {
+                      color: isSelected
+                        ? toggleActiveTextColor
+                        : tabInactiveTextColor,
+                    },
                   ]}
                 >
                   {tab.label}
@@ -1092,9 +1212,14 @@ export default function BeginScoutingRoute() {
           })}
         </View>
 
-        {selectedTab === 'info' ? (
+        {selectedTab === "info" ? (
           <View style={styles.infoSection}>
-            <View style={[styles.infoCard, { borderColor: inputBorder, backgroundColor: inputBackground }]}>
+            <View
+              style={[
+                styles.infoCard,
+                { borderColor: inputBorder, backgroundColor: inputBackground },
+              ]}
+            >
               {infoDetails.map((detail) => (
                 <View key={detail.label} style={styles.infoRow}>
                   <ThemedText type="defaultSemiBold">{detail.label}</ThemedText>
@@ -1104,7 +1229,7 @@ export default function BeginScoutingRoute() {
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setSelectedTab('auto')}
+              onPress={() => setSelectedTab("auto")}
               style={({ pressed }) => [
                 styles.beginScoutingButton,
                 { backgroundColor: toggleActiveBackground },
@@ -1113,7 +1238,10 @@ export default function BeginScoutingRoute() {
             >
               <ThemedText
                 type="defaultSemiBold"
-                style={[styles.beginScoutingButtonText, { color: toggleActiveTextColor }]}
+                style={[
+                  styles.beginScoutingButtonText,
+                  { color: toggleActiveTextColor },
+                ]}
               >
                 Begin Scouting
               </ThemedText>
@@ -1126,7 +1254,9 @@ export default function BeginScoutingRoute() {
             <View style={styles.detailsSection}>
               {!matchDetailsTitle && resolvedEventKey ? (
                 <View style={styles.header}>
-                  <ThemedText type="defaultSemiBold">Event: {resolvedEventKey}</ThemedText>
+                  <ThemedText type="defaultSemiBold">
+                    Event: {resolvedEventKey}
+                  </ThemedText>
                 </View>
               ) : null}
 
@@ -1142,7 +1272,11 @@ export default function BeginScoutingRoute() {
                       placeholderTextColor="#94A3B8"
                       style={[
                         styles.input,
-                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        {
+                          backgroundColor: inputBackground,
+                          borderColor: inputBorder,
+                          color: textColor,
+                        },
                       ]}
                     />
                   </View>
@@ -1156,7 +1290,11 @@ export default function BeginScoutingRoute() {
                       placeholderTextColor="#94A3B8"
                       style={[
                         styles.input,
-                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        {
+                          backgroundColor: inputBackground,
+                          borderColor: inputBorder,
+                          color: textColor,
+                        },
                       ]}
                     />
                   </View>
@@ -1170,30 +1308,34 @@ export default function BeginScoutingRoute() {
                   <CounterControl
                     label={`Fuel Scored`}
                     value={currentCounts.fuelScored}
-                    onIncrement={() => handleAdjust('fuelScored', 1)}
-                    onIncrementByFive={() => handleAdjust('fuelScored', 5)}
-                    onIncrementByTwenty={() => handleAdjust('fuelScored', 20)}
-                    onDecrement={() => handleAdjust('fuelScored', -5)}
+                    onIncrement={() => handleAdjust("fuelScored", 1)}
+                    onIncrementByFive={() => handleAdjust("fuelScored", 5)}
+                    onIncrementByTwenty={() => handleAdjust("fuelScored", 20)}
+                    onDecrement={() => handleAdjust("fuelScored", -5)}
                   />
                 </View>
                 <View style={styles.counterColumn}>
                   <CounterControl
                     label={`Fuel Passed`}
                     value={currentCounts.fuelPassed}
-                    onIncrement={() => handleAdjust('fuelPassed', 1)}
-                    onIncrementByFive={() => handleAdjust('fuelPassed', 5)}
-                    onIncrementByTwenty={() => handleAdjust('fuelPassed', 20)}
-                    onDecrement={() => handleAdjust('fuelPassed', -5)}
+                    onIncrement={() => handleAdjust("fuelPassed", 1)}
+                    onIncrementByFive={() => handleAdjust("fuelPassed", 5)}
+                    onIncrementByTwenty={() => handleAdjust("fuelPassed", 20)}
+                    onDecrement={() => handleAdjust("fuelPassed", -5)}
                   />
                 </View>
               </View>
               {(isAutoTab || isTeleopTab) && (
                 <View style={styles.transitionContainer}>
                   <TabTransitionControl
-                    incrementLabel={isAutoTab ? 'Teleop' : 'Endgame'}
-                    decrementLabel={isAutoTab ? 'Info' : 'Auto'}
-                    onIncrement={() => setSelectedTab(isAutoTab ? 'teleop' : 'endgame')}
-                    onDecrement={() => setSelectedTab(isAutoTab ? 'info' : 'auto')}
+                    incrementLabel={isAutoTab ? "Teleop" : "Endgame"}
+                    decrementLabel={isAutoTab ? "Info" : "Auto"}
+                    onIncrement={() =>
+                      setSelectedTab(isAutoTab ? "teleop" : "endgame")
+                    }
+                    onDecrement={() =>
+                      setSelectedTab(isAutoTab ? "info" : "auto")
+                    }
                   />
                 </View>
               )}
@@ -1201,8 +1343,11 @@ export default function BeginScoutingRoute() {
           </View>
         ) : null}
 
-        {selectedTab === 'endgame' ? (
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        {selectedTab === "endgame" ? (
+          <TouchableWithoutFeedback
+            onPress={Keyboard.dismiss}
+            accessible={false}
+          >
             <View style={styles.endgameSection}>
               <View style={styles.endgameContent}>
                 <ThemedText type="title" style={styles.sectionTitle}>
@@ -1220,8 +1365,12 @@ export default function BeginScoutingRoute() {
                         style={({ pressed }) => [
                           styles.endgameButton,
                           {
-                            backgroundColor: isSelected ? toggleActiveBackground : 'transparent',
-                            borderColor: isSelected ? toggleActiveBackground : inputBorder,
+                            backgroundColor: isSelected
+                              ? toggleActiveBackground
+                              : "transparent",
+                            borderColor: isSelected
+                              ? toggleActiveBackground
+                              : inputBorder,
                           },
                           pressed && styles.buttonPressed,
                         ]}
@@ -1230,7 +1379,11 @@ export default function BeginScoutingRoute() {
                           type="defaultSemiBold"
                           style={[
                             styles.endgameButtonText,
-                            { color: isSelected ? toggleActiveTextColor : tabInactiveTextColor },
+                            {
+                              color: isSelected
+                                ? toggleActiveTextColor
+                                : tabInactiveTextColor,
+                            },
                           ]}
                         >
                           {option.label}
@@ -1240,7 +1393,10 @@ export default function BeginScoutingRoute() {
                   })}
                 </View>
                 <View style={styles.generalNotesSection}>
-                  <ThemedText type="defaultSemiBold" style={styles.generalNotesLabel}>
+                  <ThemedText
+                    type="defaultSemiBold"
+                    style={styles.generalNotesLabel}
+                  >
                     General Notes
                   </ThemedText>
                   <TextInput
@@ -1273,8 +1429,11 @@ export default function BeginScoutingRoute() {
                   isSubmitting && styles.submitButtonDisabled,
                 ]}
               >
-                <ThemedText type="defaultSemiBold" style={styles.submitButtonText}>
-                  {isSubmitting ? 'Submitting…' : 'Submit Match'}
+                <ThemedText
+                  type="defaultSemiBold"
+                  style={styles.submitButtonText}
+                >
+                  {isSubmitting ? "Submitting…" : "Submit Match"}
                 </ThemedText>
               </Pressable>
             </View>
@@ -1295,11 +1454,11 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   tabBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: 999,
     borderWidth: 1,
-    overflow: 'hidden',
-    alignSelf: 'center',
+    overflow: "hidden",
+    alignSelf: "center",
   },
   tabButton: {
     paddingVertical: 10,
@@ -1313,15 +1472,15 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 4,
-    alignItems: 'center',
+    alignItems: "center",
   },
   formGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 16,
   },
   inputGroup: {
-    flexBasis: '48%',
+    flexBasis: "48%",
     gap: 8,
   },
   input: {
@@ -1332,7 +1491,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   phaseLabelContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   phaseLabel: {
@@ -1344,27 +1503,27 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    textAlign: 'center',
+    textAlign: "center",
   },
   counterGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
-    justifyContent: 'center',
+    justifyContent: "center",
     flex: 1,
-    alignItems: 'stretch',
+    alignItems: "stretch",
   },
   counterColumn: {
     flex: 1,
     gap: 12,
   },
   transitionContainer: {
-    alignSelf: 'center',
-    width: '100%',
+    alignSelf: "center",
+    width: "100%",
     maxWidth: 360,
   },
   counterControl: {
     gap: 12,
-    alignItems: 'stretch',
+    alignItems: "stretch",
     minWidth: 150,
     flex: 1,
   },
@@ -1374,24 +1533,24 @@ const styles = StyleSheet.create({
   },
   counterLabel: {
     fontSize: 14,
-    textAlign: 'center',
-    color: '#E2E8F0',
+    textAlign: "center",
+    color: "#E2E8F0",
   },
   counterValue: {
     fontSize: 28,
-    color: '#F8FAFC',
+    color: "#F8FAFC",
   },
   counterButtons: {
-    flexDirection: 'column',
+    flexDirection: "column",
     gap: 0,
-    width: '100%',
+    width: "100%",
     flexGrow: 1,
     flex: 1,
   },
   counterButton: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 12,
   },
   counterButtonPositive: {
@@ -1404,15 +1563,15 @@ const styles = StyleSheet.create({
   tabTransitionBackButton: {
     borderWidth: 1,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   counterButtonText: {
-    color: '#F8FAFC',
+    color: "#F8FAFC",
     fontSize: 20,
   },
   counterButtonAuxText: {
-    color: '#E2E8F0',
+    color: "#E2E8F0",
     fontSize: 18,
   },
   buttonPressed: {
@@ -1425,8 +1584,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    alignItems: 'center',
-    alignSelf: 'center',
+    alignItems: "center",
+    alignSelf: "center",
   },
   beginScoutingButtonText: {
     fontSize: 16,
@@ -1441,7 +1600,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   infoDescription: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   endgameSection: {
     gap: 16,
@@ -1452,7 +1611,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   endgameGrid: {
-    flexDirection: 'column',
+    flexDirection: "column",
     gap: 12,
   },
   endgameButton: {
@@ -1460,8 +1619,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
   endgameButtonText: {
     fontSize: 16,
@@ -1482,27 +1641,27 @@ const styles = StyleSheet.create({
   submitButton: {
     borderRadius: 12,
     paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: '#2563EB',
+    alignItems: "center",
+    backgroundColor: "#2563EB",
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
-    color: '#F8FAFC',
+    color: "#F8FAFC",
     fontSize: 18,
   },
   tabTransitionHeading: {
-    color: '#E2E8F0',
+    color: "#E2E8F0",
     fontSize: 14,
   },
   tabTransitionLabel: {
-    color: '#F8FAFC',
+    color: "#F8FAFC",
     fontSize: 24,
-    textAlign: 'center',
+    textAlign: "center",
   },
   tabTransitionBackLabel: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
