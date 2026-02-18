@@ -3,6 +3,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { and, eq } from "drizzle-orm";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   Alert,
   Keyboard,
@@ -387,6 +388,7 @@ interface CounterControlProps {
   onIncrementByFive: () => void;
   onIncrementByTwenty: () => void;
   onDecrement: () => void;
+  footer?: ReactNode;
 }
 
 function CounterControl({
@@ -396,6 +398,7 @@ function CounterControl({
   onIncrementByFive,
   onIncrementByTwenty,
   onDecrement,
+  footer,
 }: CounterControlProps) {
   const positiveBackground = useThemeColor(
     { light: "#475569", dark: "#1F2937" },
@@ -474,6 +477,7 @@ function CounterControl({
             -5
           </ThemedText>
         </Pressable>
+        {footer}
       </View>
     </View>
   );
@@ -595,6 +599,9 @@ export default function BeginScoutingRoute() {
   const [autoCounts, setAutoCounts] = useState<PhaseCounts>(() =>
     createInitialPhaseCounts(),
   );
+  const [autoClimbSelection, setAutoClimbSelection] = useState<
+    "noClimb" | "climb"
+  >("noClimb");
   const [teleCounts, setTeleCounts] = useState<PhaseCounts>(() =>
     createInitialPhaseCounts(),
   );
@@ -608,6 +615,7 @@ export default function BeginScoutingRoute() {
   const resetPrescoutForm = (nextMatchNumberValue: number) => {
     setSelectedTab("info");
     setAutoCounts(createInitialPhaseCounts());
+    setAutoClimbSelection("noClimb");
     setTeleCounts(createInitialPhaseCounts());
     setEndgameSelection("none");
     setGeneralNotes("");
@@ -1312,6 +1320,41 @@ export default function BeginScoutingRoute() {
                     onIncrementByFive={() => handleAdjust("fuelScored", 5)}
                     onIncrementByTwenty={() => handleAdjust("fuelScored", 20)}
                     onDecrement={() => handleAdjust("fuelScored", -5)}
+                    footer={
+                      isAutoTab ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => setAutoClimbSelection("noClimb")}
+                          style={({ pressed }) => [
+                            styles.counterButton,
+                            styles.counterButtonNegative,
+                            styles.autoClimbButton,
+                            autoClimbSelection === "noClimb"
+                              ? { backgroundColor: toggleActiveBackground }
+                              : {
+                                  backgroundColor: "transparent",
+                                  borderColor: inputBorder,
+                                },
+                            pressed && styles.buttonPressed,
+                          ]}
+                        >
+                          <ThemedText
+                            type="defaultSemiBold"
+                            style={[
+                              styles.autoClimbButtonText,
+                              {
+                                color:
+                                  autoClimbSelection === "noClimb"
+                                    ? toggleActiveTextColor
+                                    : tabInactiveTextColor,
+                              },
+                            ]}
+                          >
+                            No Climb
+                          </ThemedText>
+                        </Pressable>
+                      ) : null
+                    }
                   />
                 </View>
                 <View style={styles.counterColumn}>
@@ -1322,6 +1365,41 @@ export default function BeginScoutingRoute() {
                     onIncrementByFive={() => handleAdjust("fuelPassed", 5)}
                     onIncrementByTwenty={() => handleAdjust("fuelPassed", 20)}
                     onDecrement={() => handleAdjust("fuelPassed", -5)}
+                    footer={
+                      isAutoTab ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => setAutoClimbSelection("climb")}
+                          style={({ pressed }) => [
+                            styles.counterButton,
+                            styles.counterButtonNegative,
+                            styles.autoClimbButton,
+                            autoClimbSelection === "climb"
+                              ? { backgroundColor: toggleActiveBackground }
+                              : {
+                                  backgroundColor: "transparent",
+                                  borderColor: inputBorder,
+                                },
+                            pressed && styles.buttonPressed,
+                          ]}
+                        >
+                          <ThemedText
+                            type="defaultSemiBold"
+                            style={[
+                              styles.autoClimbButtonText,
+                              {
+                                color:
+                                  autoClimbSelection === "climb"
+                                    ? toggleActiveTextColor
+                                    : tabInactiveTextColor,
+                              },
+                            ]}
+                          >
+                            Climb
+                          </ThemedText>
+                        </Pressable>
+                      ) : null
+                    }
                   />
                 </View>
               </View>
@@ -1569,6 +1647,13 @@ const styles = StyleSheet.create({
   counterButtonText: {
     color: "#F8FAFC",
     fontSize: 20,
+  },
+  autoClimbButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  autoClimbButtonText: {
+    fontSize: 18,
   },
   counterButtonAuxText: {
     color: "#E2E8F0",
