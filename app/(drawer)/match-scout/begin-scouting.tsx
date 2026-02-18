@@ -400,7 +400,7 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
           ]}
         >
           <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-            -
+            -5
           </ThemedText>
         </Pressable>
       </View>
@@ -1178,7 +1178,7 @@ export default function BeginScoutingRoute() {
                     label={`Fuel Scored`}
                     value={currentCounts.fuelScored}
                     onIncrement={() => handleAdjust('fuelScored', 1)}
-                    onDecrement={() => handleAdjust('fuelScored', -1)}
+                    onDecrement={() => handleAdjust('fuelScored', -5)}
                   />
                   <CounterQuickAdjustments
                     onIncrementByFive={() => handleAdjust('fuelScored', 5)}
@@ -1190,7 +1190,7 @@ export default function BeginScoutingRoute() {
                     label={`Fuel Passed`}
                     value={currentCounts.fuelPassed}
                     onIncrement={() => handleAdjust('fuelPassed', 1)}
-                    onDecrement={() => handleAdjust('fuelPassed', -1)}
+                    onDecrement={() => handleAdjust('fuelPassed', -5)}
                   />
                   <CounterQuickAdjustments
                     onIncrementByFive={() => handleAdjust('fuelPassed', 5)}
