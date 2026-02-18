@@ -65,12 +65,8 @@ type BeginScoutingParams = {
 };
 
 type PhaseCounts = {
-  coralL4: number;
-  coralL3: number;
-  coralL2: number;
-  coralL1: number;
-  net: number;
-  processor: number;
+  fuelScored: number;
+  fuelPassed: number;
 };
 
 type PhaseKey = keyof PhaseCounts;
@@ -78,21 +74,13 @@ type PhaseKey = keyof PhaseCounts;
 type LimitConfig = Record<PhaseKey, { auto: number; teleop: number }>;
 
 const limitConfig: LimitConfig = {
-  coralL4: { auto: 12, teleop: 12 },
-  coralL3: { auto: 12, teleop: 12 },
-  coralL2: { auto: 12, teleop: 12 },
-  coralL1: { auto: 10, teleop: 50 },
-  net: { auto: 9, teleop: 18 },
-  processor: { auto: 9, teleop: 18 },
+  fuelScored: { auto: 99, teleop: 99 },
+  fuelPassed: { auto: 99, teleop: 99 },
 };
 
 const createInitialPhaseCounts = (): PhaseCounts => ({
-  coralL4: 0,
-  coralL3: 0,
-  coralL2: 0,
-  coralL1: 0,
-  net: 0,
-  processor: 0,
+  fuelScored: 0,
+  fuelPassed: 0,
 });
 
 const getNextPrescoutMatchNumber = (
@@ -371,10 +359,19 @@ interface CounterControlProps {
   label: string;
   value: number;
   onIncrement: () => void;
+  onIncrementByFive: () => void;
+  onIncrementByTwenty: () => void;
   onDecrement: () => void;
 }
 
-function CounterControl({ label, value, onIncrement, onDecrement }: CounterControlProps) {
+function CounterControl({
+  label,
+  value,
+  onIncrement,
+  onIncrementByFive,
+  onIncrementByTwenty,
+  onDecrement,
+}: CounterControlProps) {
   const positiveBackground = useThemeColor({ light: '#475569', dark: '#1F2937' }, 'background');
   const negativeBackground = useThemeColor({ light: '#334155', dark: '#111827' }, 'background');
 
@@ -403,6 +400,34 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
         </Pressable>
         <Pressable
           accessibilityRole="button"
+          onPress={onIncrementByFive}
+          style={({ pressed }) => [
+            styles.counterButton,
+            styles.counterButtonPositive,
+            { backgroundColor: positiveBackground },
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+            +5
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onIncrementByTwenty}
+          style={({ pressed }) => [
+            styles.counterButton,
+            styles.counterButtonPositive,
+            { backgroundColor: positiveBackground },
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+            +20
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
           onPress={onDecrement}
           style={({ pressed }) => [
             styles.counterButton,
@@ -412,13 +437,15 @@ function CounterControl({ label, value, onIncrement, onDecrement }: CounterContr
           ]}
         >
           <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-            -
+            -5
           </ThemedText>
         </Pressable>
       </View>
     </View>
   );
 }
+
+
 
 interface TabTransitionControlProps {
   incrementLabel: string;
@@ -620,7 +647,7 @@ export default function BeginScoutingRoute() {
     };
   }, [navigation, matchDetailsTitle]);
 
-  const handleAdjust = (key: PhaseKey, delta: 1 | -1) => {
+  const handleAdjust = (key: PhaseKey, delta: number) => {
     const limit = isAutoTab ? limitConfig[key].auto : limitConfig[key].teleop;
     const setCounts = isAutoTab ? setAutoCounts : setTeleCounts;
 
@@ -720,18 +747,18 @@ export default function BeginScoutingRoute() {
         teamNumber: parsedTeamNumber,
         matchLevel: resolvedMatchLevel,
         notes: normalizedNotes,
-        al4c: autoCounts.coralL4,
-        al3c: autoCounts.coralL3,
-        al2c: autoCounts.coralL2,
-        al1c: autoCounts.coralL1,
-        tl4c: teleCounts.coralL4,
-        tl3c: teleCounts.coralL3,
-        tl2c: teleCounts.coralL2,
-        tl1c: teleCounts.coralL1,
-        aProcessor: autoCounts.processor,
-        tProcessor: teleCounts.processor,
-        aNet: autoCounts.net,
-        tNet: teleCounts.net,
+        al4c: autoCounts.fuelScored,
+        al3c: 0,
+        al2c: 0,
+        al1c: 0,
+        tl4c: teleCounts.fuelScored,
+        tl3c: 0,
+        tl2c: 0,
+        tl1c: 0,
+        aProcessor: autoCounts.fuelPassed,
+        tProcessor: teleCounts.fuelPassed,
+        aNet: 0,
+        tNet: 0,
         endgame: endgameValue,
       };
 
@@ -1141,53 +1168,35 @@ export default function BeginScoutingRoute() {
               <View style={styles.counterGrid}>
                 <View style={styles.counterColumn}>
                   <CounterControl
-                    label={`Coral L4`}
-                    value={currentCounts.coralL4}
-                    onIncrement={() => handleAdjust('coralL4', 1)}
-                    onDecrement={() => handleAdjust('coralL4', -1)}
-                  />
-                  <CounterControl
-                    label={`Coral L3`}
-                    value={currentCounts.coralL3}
-                    onIncrement={() => handleAdjust('coralL3', 1)}
-                    onDecrement={() => handleAdjust('coralL3', -1)}
-                  />
-                  <CounterControl
-                    label={`Coral L2`}
-                    value={currentCounts.coralL2}
-                    onIncrement={() => handleAdjust('coralL2', 1)}
-                    onDecrement={() => handleAdjust('coralL2', -1)}
-                  />
-                  <CounterControl
-                    label={`Coral L1`}
-                    value={currentCounts.coralL1}
-                    onIncrement={() => handleAdjust('coralL1', 1)}
-                    onDecrement={() => handleAdjust('coralL1', -1)}
+                    label={`Fuel Scored`}
+                    value={currentCounts.fuelScored}
+                    onIncrement={() => handleAdjust('fuelScored', 1)}
+                    onIncrementByFive={() => handleAdjust('fuelScored', 5)}
+                    onIncrementByTwenty={() => handleAdjust('fuelScored', 20)}
+                    onDecrement={() => handleAdjust('fuelScored', -5)}
                   />
                 </View>
                 <View style={styles.counterColumn}>
                   <CounterControl
-                    label={`Processor`}
-                    value={currentCounts.processor}
-                    onIncrement={() => handleAdjust('processor', 1)}
-                    onDecrement={() => handleAdjust('processor', -1)}
+                    label={`Fuel Passed`}
+                    value={currentCounts.fuelPassed}
+                    onIncrement={() => handleAdjust('fuelPassed', 1)}
+                    onIncrementByFive={() => handleAdjust('fuelPassed', 5)}
+                    onIncrementByTwenty={() => handleAdjust('fuelPassed', 20)}
+                    onDecrement={() => handleAdjust('fuelPassed', -5)}
                   />
-                  <CounterControl
-                    label={`Net`}
-                    value={currentCounts.net}
-                    onIncrement={() => handleAdjust('net', 1)}
-                    onDecrement={() => handleAdjust('net', -1)}
-                  />
-                  {(isAutoTab || isTeleopTab) && (
-                    <TabTransitionControl
-                      incrementLabel={isAutoTab ? 'Teleop' : 'Endgame'}
-                      decrementLabel={isAutoTab ? 'Info' : 'Auto'}
-                      onIncrement={() => setSelectedTab(isAutoTab ? 'teleop' : 'endgame')}
-                      onDecrement={() => setSelectedTab(isAutoTab ? 'info' : 'auto')}
-                    />
-                  )}
                 </View>
               </View>
+              {(isAutoTab || isTeleopTab) && (
+                <View style={styles.transitionContainer}>
+                  <TabTransitionControl
+                    incrementLabel={isAutoTab ? 'Teleop' : 'Endgame'}
+                    decrementLabel={isAutoTab ? 'Info' : 'Auto'}
+                    onIncrement={() => setSelectedTab(isAutoTab ? 'teleop' : 'endgame')}
+                    onDecrement={() => setSelectedTab(isAutoTab ? 'info' : 'auto')}
+                  />
+                </View>
+              )}
             </View>
           </View>
         ) : null}
@@ -1346,7 +1355,12 @@ const styles = StyleSheet.create({
   },
   counterColumn: {
     flex: 1,
-    gap: 16,
+    gap: 12,
+  },
+  transitionContainer: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 360,
   },
   counterControl: {
     gap: 12,
