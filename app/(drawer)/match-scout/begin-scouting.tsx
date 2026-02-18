@@ -1578,6 +1578,7 @@ const styles = StyleSheet.create({
   section: {
     flex: 1,
     gap: 16,
+    justifyContent: "space-between",
   },
   sectionTitle: {
     fontSize: 18,
@@ -1587,7 +1588,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 16,
     justifyContent: "center",
-    flex: 1,
     alignItems: "stretch",
   },
   counterColumn: {
@@ -1598,6 +1598,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     width: "100%",
     maxWidth: 360,
+    marginTop: 12,
   },
   counterControl: {
     gap: 12,
