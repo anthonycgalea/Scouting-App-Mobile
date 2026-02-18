@@ -2,8 +2,8 @@ import type { ParamListBase } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { and, eq } from "drizzle-orm";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -1610,6 +1610,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   autoClimbButton: {
+    flex: 2,
     borderWidth: 1,
     borderRadius: 12,
   },
@@ -1617,7 +1618,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   pageTransitionButton: {
-    flex: 3,
+    flex: 2,
     borderWidth: 1,
     borderRadius: 12,
   },
