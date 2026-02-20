@@ -1266,12 +1266,12 @@ export default function BeginScoutingRoute() {
               <View style={styles.counterGrid}>
                 <View style={styles.counterColumn}>
                   <CounterControl
-                    label={`Fuel Scored`}
-                    value={currentCounts.fuelScored}
-                    onIncrement={() => handleAdjust("fuelScored", 1)}
-                    onIncrementByFive={() => handleAdjust("fuelScored", 5)}
-                    onIncrementByTwenty={() => handleAdjust("fuelScored", 20)}
-                    onDecrement={() => handleAdjust("fuelScored", -5)}
+                    label={`Fuel Passed`}
+                    value={currentCounts.fuelPassed}
+                    onIncrement={() => handleAdjust("fuelPassed", 1)}
+                    onIncrementByFive={() => handleAdjust("fuelPassed", 5)}
+                    onIncrementByTwenty={() => handleAdjust("fuelPassed", 20)}
+                    onDecrement={() => handleAdjust("fuelPassed", -5)}
                     footer={
                       <>
                         {isAutoTab ? (
@@ -1337,12 +1337,12 @@ export default function BeginScoutingRoute() {
                 </View>
                 <View style={styles.counterColumn}>
                   <CounterControl
-                    label={`Fuel Passed`}
-                    value={currentCounts.fuelPassed}
-                    onIncrement={() => handleAdjust("fuelPassed", 1)}
-                    onIncrementByFive={() => handleAdjust("fuelPassed", 5)}
-                    onIncrementByTwenty={() => handleAdjust("fuelPassed", 20)}
-                    onDecrement={() => handleAdjust("fuelPassed", -5)}
+                    label={`Fuel Scored`}
+                    value={currentCounts.fuelScored}
+                    onIncrement={() => handleAdjust("fuelScored", 1)}
+                    onIncrementByFive={() => handleAdjust("fuelScored", 5)}
+                    onIncrementByTwenty={() => handleAdjust("fuelScored", 20)}
+                    onDecrement={() => handleAdjust("fuelScored", -5)}
                     footer={
                       <>
                         {isAutoTab ? (
