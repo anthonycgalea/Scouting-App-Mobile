@@ -17,7 +17,13 @@ import { apiRequest } from '@/app/services/api';
 import { getActiveEvent } from '@/app/services/logged-in-event';
 
 type AllianceColor = 'red' | 'blue';
-type StartingPosition = 'LEFT' | 'CENTER' | 'RIGHT' | 'NO_SHOW';
+type StartingPosition =
+  | 'LEFT_TRENCH'
+  | 'LEFT_BUMP'
+  | 'HUB'
+  | 'RIGHT_BUMP'
+  | 'RIGHT_TRENCH'
+  | 'NO_SHOW';
 type ViewKey = 'starting' | 'comments' | 'ratings';
 
 type TeamInputState = {
@@ -30,9 +36,11 @@ type TeamInputState = {
 };
 
 const STARTING_POSITIONS: { key: StartingPosition; label: string }[] = [
-  { key: 'LEFT', label: 'Left' },
-  { key: 'CENTER', label: 'Center' },
-  { key: 'RIGHT', label: 'Right' },
+  { key: 'LEFT_TRENCH', label: 'Left Trench' },
+  { key: 'LEFT_BUMP', label: 'Left Bump' },
+  { key: 'HUB', label: 'Hub' },
+  { key: 'RIGHT_BUMP', label: 'Right Bump' },
+  { key: 'RIGHT_TRENCH', label: 'Right Trench' },
   { key: 'NO_SHOW', label: 'No Show' },
 ];
 
