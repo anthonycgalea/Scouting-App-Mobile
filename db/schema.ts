@@ -302,6 +302,65 @@ export const pitData2025 = sqliteTable(
 export type PitData2025 = InferSelectModel<typeof pitData2025>;
 export type NewPitData2025 = InferInsertModel<typeof pitData2025>;
 
+export const pitData2026 = sqliteTable(
+  'pitdata2026',
+  {
+    season: integer('season').notNull().default(2),
+    teamNumber: integer('team_number').notNull(),
+    eventKey: text('event_key').notNull(),
+    userId: text('user_id').notNull().default(''),
+    organizationId: integer('organization_id').notNull(),
+    timestamp: text('timestamp').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+    robotWeight: integer('robot_weight').default(0),
+    drivetrain: text('drivetrain', { enum: ['TANK', 'SWERVE', 'MECANUM', 'H-DRIVE', 'OTHER'] }).notNull().default('TANK'),
+    driveteam: text('driveteam').default(''),
+    hopperCapacity: integer('hopper_capacity').notNull().default(0),
+    pickupGround: integer('pickup_ground').notNull().default(0),
+    pickupFeeder: integer('pickup_feeder').notNull().default(0),
+    trenchBot: integer('trench_bot').notNull().default(0),
+    bumpBot: integer('bump_bot').notNull().default(0),
+    startPositionTrenchLeft: integer('start_position_trench_left').notNull().default(0),
+    startPositionBumpLeft: integer('start_position_bump_left').notNull().default(0),
+    startPositionCenter: integer('start_position_center').notNull().default(0),
+    startPositionBumpRight: integer('start_position_bump_right').notNull().default(0),
+    startPositionTrenchRight: integer('start_position_trench_right').notNull().default(0),
+    autoPickupCorral: integer('auto_pickup_corral').notNull().default(0),
+    autoPickupOutpost: integer('auto_pickup_outpost').notNull().default(0),
+    autoFuel: integer('auto_fuel').notNull().default(0),
+    autoFuelCount: integer('auto_fuel_count').notNull().default(0),
+    autoPass: integer('auto_pass').notNull().default(0),
+    autoPassCount: integer('auto_pass_count').notNull().default(0),
+    autoClimb: integer('auto_climb').notNull().default(0),
+    autoNotes: text('auto_notes').notNull().default(''),
+    teleFuel: integer('tele_fuel').notNull().default(0),
+    telePass: integer('tele_pass').notNull().default(0),
+    teleNotes: text('tele_notes').notNull().default(''),
+    endgame: text('endgame', { enum: ['NONE', 'L1', 'L2', 'L3'] }).notNull().default('NONE'),
+    overallNotes: text('overall_notes').notNull().default(''),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.eventKey, table.teamNumber] }),
+    eventRef: foreignKey({
+      columns: [table.eventKey],
+      foreignColumns: [frcEvents.eventKey],
+      name: 'pitdata2026_event_fk',
+    }),
+    teamRef: foreignKey({
+      columns: [table.teamNumber],
+      foreignColumns: [teamRecords.teamNumber],
+      name: 'pitdata2026_team_fk',
+    }),
+    organizationRef: foreignKey({
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+      name: 'pitdata2026_organization_fk',
+    }),
+  }),
+);
+
+export type PitData2026 = InferSelectModel<typeof pitData2026>;
+export type NewPitData2026 = InferInsertModel<typeof pitData2026>;
+
 export const matchData2025 = sqliteTable(
   'matchdata2025',
   {

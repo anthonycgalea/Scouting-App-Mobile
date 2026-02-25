@@ -7,7 +7,7 @@ export type AlreadyPitScoutedResponse = {
   organization_id?: number | string | null;
 };
 
-type PitScoutSubmission = typeof schema.pitData2025.$inferSelect;
+type PitScoutSubmission = typeof schema.pitData2025.$inferSelect | typeof schema.pitData2026.$inferSelect;
 
 const normalizeNumber = (value: number | string | null | undefined): number | null => {
   if (typeof value === 'number') {
