@@ -19,12 +19,7 @@ export interface MetricStatistics {
 }
 
 export interface PhaseMetrics {
-  level4: MetricStatistics;
-  level3: MetricStatistics;
-  level2: MetricStatistics;
-  level1: MetricStatistics;
-  net: MetricStatistics;
-  processor: MetricStatistics;
+  [metricName: string]: MetricStatistics;
   total_points: MetricStatistics;
 }
 
@@ -64,7 +59,19 @@ export interface MatchSimulation2025 extends MatchSimulationBase {
   blue_endgame_rp: number | null;
 }
 
-export type MatchSimulationResponse = MatchSimulation2025 | MatchSimulationBase;
+export interface MatchSimulation2026 extends MatchSimulationBase {
+  season: 2;
+  red_alliance_win_pct: number | null;
+  blue_alliance_win_pct: number | null;
+  red_energized_rp: number | null;
+  red_supercharged_rp: number | null;
+  red_traversal_rp: number | null;
+  blue_energized_rp: number | null;
+  blue_supercharged_rp: number | null;
+  blue_traversal_rp: number | null;
+}
+
+export type MatchSimulationResponse = MatchSimulation2025 | MatchSimulation2026 | MatchSimulationBase;
 
 export interface FetchMatchScheduleParams {
   eventKey?: string;
@@ -111,7 +118,7 @@ export const fetchMatchSimulation = ({
   const normalizedLevel = matchLevel.toLowerCase();
   const requestParams: ApiRequestParams | undefined = eventKey ? { eventKey } : undefined;
 
-  return apiRequest<MatchSimulationResponse>(
+  return apiRequest<MatchSimulationResponse | MatchSimulationResponse[]>(
     `/event/match/${encodeURIComponent(normalizedLevel)}/${matchNumber}/simulation`,
     { method: 'GET', params: requestParams }
   );
