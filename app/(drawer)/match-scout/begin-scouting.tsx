@@ -67,7 +67,6 @@ type BeginScoutingParams = {
 
 type PhaseCounts = {
   fuelScored: number;
-  fuelPassed: number;
 };
 
 type PhaseKey = keyof PhaseCounts;
@@ -76,12 +75,10 @@ type LimitConfig = Record<PhaseKey, { auto: number; teleop: number }>;
 
 const limitConfig: LimitConfig = {
   fuelScored: { auto: 500, teleop: 1500 },
-  fuelPassed: { auto: 500, teleop: 1500 },
 };
 
 const createInitialPhaseCounts = (): PhaseCounts => ({
   fuelScored: 0,
-  fuelPassed: 0,
 });
 
 const getNextPrescoutMatchNumber = (
@@ -783,10 +780,10 @@ export default function BeginScoutingRoute() {
         matchLevel: resolvedMatchLevel,
         notes: normalizedNotes,
         autoFuel: autoCounts.fuelScored,
-        autoPass: autoCounts.fuelPassed,
+        autoPass: 0,
         autoClimb: 0,
         teleopFuel: teleCounts.fuelScored,
-        teleopPass: teleCounts.fuelPassed,
+        teleopPass: 0,
         endgame: endgameValue,
       };
 
@@ -1266,46 +1263,79 @@ export default function BeginScoutingRoute() {
               <View style={styles.counterGrid}>
                 <View style={styles.counterColumn}>
                   <CounterControl
-                    label={`Fuel Passed`}
-                    value={currentCounts.fuelPassed}
-                    onIncrement={() => handleAdjust("fuelPassed", 1)}
-                    onIncrementByFive={() => handleAdjust("fuelPassed", 5)}
-                    onIncrementByTwenty={() => handleAdjust("fuelPassed", 20)}
-                    onDecrement={() => handleAdjust("fuelPassed", -5)}
+                    label={`Fuel Scored`}
+                    value={currentCounts.fuelScored}
+                    onIncrement={() => handleAdjust("fuelScored", 1)}
+                    onIncrementByFive={() => handleAdjust("fuelScored", 5)}
+                    onIncrementByTwenty={() => handleAdjust("fuelScored", 20)}
+                    onDecrement={() => handleAdjust("fuelScored", -5)}
                     footer={
                       <>
                         {isAutoTab ? (
-                          <Pressable
-                            accessibilityRole="button"
-                            onPress={() => setAutoClimbSelection("noClimb")}
-                            style={({ pressed }) => [
-                              styles.counterButton,
-                              styles.counterButtonNegative,
-                              styles.autoClimbButton,
-                              autoClimbSelection === "noClimb"
-                                ? { backgroundColor: toggleActiveBackground }
-                                : {
-                                    backgroundColor: "transparent",
-                                    borderColor: inputBorder,
-                                  },
-                              pressed && styles.buttonPressed,
-                            ]}
-                          >
-                            <ThemedText
-                              type="defaultSemiBold"
-                              style={[
-                                styles.autoClimbButtonText,
-                                {
-                                  color:
-                                    autoClimbSelection === "noClimb"
-                                      ? toggleActiveTextColor
-                                      : tabInactiveTextColor,
-                                },
+                          <>
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => setAutoClimbSelection("noClimb")}
+                              style={({ pressed }) => [
+                                styles.counterButton,
+                                styles.counterButtonNegative,
+                                styles.autoClimbButton,
+                                autoClimbSelection === "noClimb"
+                                  ? { backgroundColor: toggleActiveBackground }
+                                  : {
+                                      backgroundColor: "transparent",
+                                      borderColor: inputBorder,
+                                    },
+                                pressed && styles.buttonPressed,
                               ]}
                             >
-                              No Climb
-                            </ThemedText>
-                          </Pressable>
+                              <ThemedText
+                                type="defaultSemiBold"
+                                style={[
+                                  styles.autoClimbButtonText,
+                                  {
+                                    color:
+                                      autoClimbSelection === "noClimb"
+                                        ? toggleActiveTextColor
+                                        : tabInactiveTextColor,
+                                  },
+                                ]}
+                              >
+                                No Climb
+                              </ThemedText>
+                            </Pressable>
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => setAutoClimbSelection("climb")}
+                              style={({ pressed }) => [
+                                styles.counterButton,
+                                styles.counterButtonNegative,
+                                styles.autoClimbButton,
+                                autoClimbSelection === "climb"
+                                  ? { backgroundColor: toggleActiveBackground }
+                                  : {
+                                      backgroundColor: "transparent",
+                                      borderColor: inputBorder,
+                                    },
+                                pressed && styles.buttonPressed,
+                              ]}
+                            >
+                              <ThemedText
+                                type="defaultSemiBold"
+                                style={[
+                                  styles.autoClimbButtonText,
+                                  {
+                                    color:
+                                      autoClimbSelection === "climb"
+                                        ? toggleActiveTextColor
+                                        : tabInactiveTextColor,
+                                  },
+                                ]}
+                              >
+                                Climb
+                              </ThemedText>
+                            </Pressable>
+                          </>
                         ) : null}
                         <Pressable
                           accessibilityRole="button"
@@ -1331,53 +1361,6 @@ export default function BeginScoutingRoute() {
                             {previousTabLabel}
                           </ThemedText>
                         </Pressable>
-                      </>
-                    }
-                  />
-                </View>
-                <View style={styles.counterColumn}>
-                  <CounterControl
-                    label={`Fuel Scored`}
-                    value={currentCounts.fuelScored}
-                    onIncrement={() => handleAdjust("fuelScored", 1)}
-                    onIncrementByFive={() => handleAdjust("fuelScored", 5)}
-                    onIncrementByTwenty={() => handleAdjust("fuelScored", 20)}
-                    onDecrement={() => handleAdjust("fuelScored", -5)}
-                    footer={
-                      <>
-                        {isAutoTab ? (
-                          <Pressable
-                            accessibilityRole="button"
-                            onPress={() => setAutoClimbSelection("climb")}
-                            style={({ pressed }) => [
-                              styles.counterButton,
-                              styles.counterButtonNegative,
-                              styles.autoClimbButton,
-                              autoClimbSelection === "climb"
-                                ? { backgroundColor: toggleActiveBackground }
-                                : {
-                                    backgroundColor: "transparent",
-                                    borderColor: inputBorder,
-                                  },
-                              pressed && styles.buttonPressed,
-                            ]}
-                          >
-                            <ThemedText
-                              type="defaultSemiBold"
-                              style={[
-                                styles.autoClimbButtonText,
-                                {
-                                  color:
-                                    autoClimbSelection === "climb"
-                                      ? toggleActiveTextColor
-                                      : tabInactiveTextColor,
-                                },
-                              ]}
-                            >
-                              Climb
-                            </ThemedText>
-                          </Pressable>
-                        ) : null}
                         <Pressable
                           accessibilityRole="button"
                           onPress={goToNextTab}
