@@ -384,7 +384,9 @@ interface CounterControlProps {
   onIncrement: () => void;
   onIncrementByFive: () => void;
   onIncrementByTwenty: () => void;
-  onDecrement: () => void;
+  onDecrementByOne: () => void;
+  onDecrementByFive: () => void;
+  onDecrementByTwenty: () => void;
   footer?: ReactNode;
 }
 
@@ -394,7 +396,9 @@ function CounterControl({
   onIncrement,
   onIncrementByFive,
   onIncrementByTwenty,
-  onDecrement,
+  onDecrementByOne,
+  onDecrementByFive,
+  onDecrementByTwenty,
   footer,
 }: CounterControlProps) {
   const positiveBackground = useThemeColor(
@@ -432,20 +436,70 @@ function CounterControl({
             +
           </ThemedText>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onIncrementByFive}
-          style={({ pressed }) => [
-            styles.counterButton,
-            styles.counterButtonPositive,
-            { backgroundColor: positiveBackground },
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-            +5
-          </ThemedText>
-        </Pressable>
+        <View style={styles.counterAdjustmentRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onIncrementByFive}
+            style={({ pressed }) => [
+              styles.counterButton,
+              styles.counterButtonPositive,
+              styles.counterAdjustmentMainButton,
+              { backgroundColor: positiveBackground },
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+              +5
+            </ThemedText>
+          </Pressable>
+          <View style={styles.decrementColumn}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onDecrementByOne}
+              style={({ pressed }) => [
+                styles.counterButton,
+                styles.counterButtonNegative,
+                styles.counterButtonNegativeCompact,
+                { backgroundColor: negativeBackground },
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                -1
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onDecrementByFive}
+              style={({ pressed }) => [
+                styles.counterButton,
+                styles.counterButtonNegative,
+                styles.counterButtonNegativeCompact,
+                { backgroundColor: negativeBackground },
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                -5
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onDecrementByTwenty}
+              style={({ pressed }) => [
+                styles.counterButton,
+                styles.counterButtonNegative,
+                styles.counterButtonNegativeCompact,
+                { backgroundColor: negativeBackground },
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                -20
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
         <Pressable
           accessibilityRole="button"
           onPress={onIncrementByTwenty}
@@ -458,20 +512,6 @@ function CounterControl({
         >
           <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
             +20
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onDecrement}
-          style={({ pressed }) => [
-            styles.counterButton,
-            styles.counterButtonNegative,
-            { backgroundColor: negativeBackground },
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-            -5
           </ThemedText>
         </Pressable>
         {footer}
@@ -1268,75 +1308,11 @@ export default function BeginScoutingRoute() {
                     onIncrement={() => handleAdjust("fuelScored", 1)}
                     onIncrementByFive={() => handleAdjust("fuelScored", 5)}
                     onIncrementByTwenty={() => handleAdjust("fuelScored", 20)}
-                    onDecrement={() => handleAdjust("fuelScored", -5)}
+                    onDecrementByOne={() => handleAdjust("fuelScored", -1)}
+                    onDecrementByFive={() => handleAdjust("fuelScored", -5)}
+                    onDecrementByTwenty={() => handleAdjust("fuelScored", -20)}
                     footer={
                       <>
-                        {isAutoTab ? (
-                          <>
-                            <Pressable
-                              accessibilityRole="button"
-                              onPress={() => setAutoClimbSelection("noClimb")}
-                              style={({ pressed }) => [
-                                styles.counterButton,
-                                styles.counterButtonNegative,
-                                styles.autoClimbButton,
-                                autoClimbSelection === "noClimb"
-                                  ? { backgroundColor: toggleActiveBackground }
-                                  : {
-                                      backgroundColor: "transparent",
-                                      borderColor: inputBorder,
-                                    },
-                                pressed && styles.buttonPressed,
-                              ]}
-                            >
-                              <ThemedText
-                                type="defaultSemiBold"
-                                style={[
-                                  styles.autoClimbButtonText,
-                                  {
-                                    color:
-                                      autoClimbSelection === "noClimb"
-                                        ? toggleActiveTextColor
-                                        : tabInactiveTextColor,
-                                  },
-                                ]}
-                              >
-                                No Climb
-                              </ThemedText>
-                            </Pressable>
-                            <Pressable
-                              accessibilityRole="button"
-                              onPress={() => setAutoClimbSelection("climb")}
-                              style={({ pressed }) => [
-                                styles.counterButton,
-                                styles.counterButtonNegative,
-                                styles.autoClimbButton,
-                                autoClimbSelection === "climb"
-                                  ? { backgroundColor: toggleActiveBackground }
-                                  : {
-                                      backgroundColor: "transparent",
-                                      borderColor: inputBorder,
-                                    },
-                                pressed && styles.buttonPressed,
-                              ]}
-                            >
-                              <ThemedText
-                                type="defaultSemiBold"
-                                style={[
-                                  styles.autoClimbButtonText,
-                                  {
-                                    color:
-                                      autoClimbSelection === "climb"
-                                        ? toggleActiveTextColor
-                                        : tabInactiveTextColor,
-                                  },
-                                ]}
-                              >
-                                Climb
-                              </ThemedText>
-                            </Pressable>
-                          </>
-                        ) : null}
                         <Pressable
                           accessibilityRole="button"
                           onPress={goToPreviousTab}
@@ -1383,6 +1359,74 @@ export default function BeginScoutingRoute() {
                     }
                   />
                 </View>
+                {isAutoTab ? (
+                  <View style={styles.counterColumn}>
+                    <View style={styles.autoClimbColumn}>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => setAutoClimbSelection("noClimb")}
+                        style={({ pressed }) => [
+                          styles.counterButton,
+                          styles.counterButtonNegative,
+                          styles.autoClimbButton,
+                          autoClimbSelection === "noClimb"
+                            ? { backgroundColor: toggleActiveBackground }
+                            : {
+                                backgroundColor: "transparent",
+                                borderColor: inputBorder,
+                              },
+                          pressed && styles.buttonPressed,
+                        ]}
+                      >
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={[
+                            styles.autoClimbButtonText,
+                            {
+                              color:
+                                autoClimbSelection === "noClimb"
+                                  ? toggleActiveTextColor
+                                  : tabInactiveTextColor,
+                            },
+                          ]}
+                        >
+                          No Climb
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => setAutoClimbSelection("climb")}
+                        style={({ pressed }) => [
+                          styles.counterButton,
+                          styles.counterButtonNegative,
+                          styles.autoClimbButton,
+                          autoClimbSelection === "climb"
+                            ? { backgroundColor: toggleActiveBackground }
+                            : {
+                                backgroundColor: "transparent",
+                                borderColor: inputBorder,
+                              },
+                          pressed && styles.buttonPressed,
+                        ]}
+                      >
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={[
+                            styles.autoClimbButtonText,
+                            {
+                              color:
+                                autoClimbSelection === "climb"
+                                  ? toggleActiveTextColor
+                                  : tabInactiveTextColor,
+                            },
+                          ]}
+                        >
+                          Climb
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
               </View>
             </View>
           </View>
@@ -1589,12 +1633,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 12,
   },
+  counterAdjustmentRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "stretch",
+    justifyContent: "space-between",
+    flex: 1,
+  },
+  decrementColumn: {
+    width: "44%",
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  counterAdjustmentMainButton: {
+    width: "54%",
+    flex: 1,
+  },
   counterButtonPositive: {
     flex: 3,
     gap: 8,
   },
   counterButtonNegative: {
     flex: 1,
+  },
+  counterButtonNegativeCompact: {
+    flex: 1,
+    width: "100%",
   },
   counterButtonText: {
     color: "#F8FAFC",
@@ -1604,6 +1668,10 @@ const styles = StyleSheet.create({
     flex: 2,
     borderWidth: 1,
     borderRadius: 12,
+  },
+  autoClimbColumn: {
+    flex: 1,
+    gap: 12,
   },
   autoClimbButtonText: {
     fontSize: 18,
