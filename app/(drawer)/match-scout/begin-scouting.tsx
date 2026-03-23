@@ -836,11 +836,10 @@ export default function BeginScoutingRoute() {
           parsedTeamNumber,
         );
 
-        const prescoutRecord: typeof schema.prescout2026.$inferInsert =
-          {
-            ...sharedRecordFields,
-            matchNumber: nextMatchNumber,
-          };
+        const prescoutRecord: typeof schema.prescout2026.$inferInsert = {
+          ...sharedRecordFields,
+          matchNumber: nextMatchNumber,
+        };
 
         await db
           .insert(schema.prescout2026)
@@ -1660,7 +1659,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   autoClimbButton: {
-    flex: 2,
+    flex: 1,
     borderWidth: 1,
     borderRadius: 12,
   },
@@ -1668,7 +1667,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   pageTransitionButton: {
-    flex: 2,
+    flex: 1,
     borderWidth: 1,
     borderRadius: 12,
   },
