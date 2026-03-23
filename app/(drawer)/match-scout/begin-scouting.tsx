@@ -1430,6 +1430,74 @@ export default function BeginScoutingRoute() {
                     }
                   />
                 </View>
+                {isAutoTab ? (
+                  <View style={styles.counterColumn}>
+                    <View style={styles.autoClimbColumn}>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => setAutoClimbSelection("noClimb")}
+                        style={({ pressed }) => [
+                          styles.counterButton,
+                          styles.counterButtonNegative,
+                          styles.autoClimbButton,
+                          autoClimbSelection === "noClimb"
+                            ? { backgroundColor: toggleActiveBackground }
+                            : {
+                                backgroundColor: "transparent",
+                                borderColor: inputBorder,
+                              },
+                          pressed && styles.buttonPressed,
+                        ]}
+                      >
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={[
+                            styles.autoClimbButtonText,
+                            {
+                              color:
+                                autoClimbSelection === "noClimb"
+                                  ? toggleActiveTextColor
+                                  : tabInactiveTextColor,
+                            },
+                          ]}
+                        >
+                          No Climb
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => setAutoClimbSelection("climb")}
+                        style={({ pressed }) => [
+                          styles.counterButton,
+                          styles.counterButtonNegative,
+                          styles.autoClimbButton,
+                          autoClimbSelection === "climb"
+                            ? { backgroundColor: toggleActiveBackground }
+                            : {
+                                backgroundColor: "transparent",
+                                borderColor: inputBorder,
+                              },
+                          pressed && styles.buttonPressed,
+                        ]}
+                      >
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={[
+                            styles.autoClimbButtonText,
+                            {
+                              color:
+                                autoClimbSelection === "climb"
+                                  ? toggleActiveTextColor
+                                  : tabInactiveTextColor,
+                            },
+                          ]}
+                        >
+                          Climb
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
               </View>
             </View>
           </View>
@@ -1650,6 +1718,10 @@ const styles = StyleSheet.create({
   counterButtonNegative: {
     flex: 1,
   },
+  counterButtonNegativeCompact: {
+    flex: 1,
+    width: "100%",
+  },
   counterButtonText: {
     color: "#F8FAFC",
     fontSize: 20,
@@ -1658,6 +1730,10 @@ const styles = StyleSheet.create({
     flex: 2,
     borderWidth: 1,
     borderRadius: 12,
+  },
+  autoClimbColumn: {
+    flex: 1,
+    gap: 12,
   },
   autoClimbButtonText: {
     fontSize: 18,
