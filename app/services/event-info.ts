@@ -351,8 +351,8 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
     }
   }
 
-  const { inserted: alreadyRobotPhotosInserted, received: alreadyRobotPhotosReceived } =
-    upsertAlreadyRobotPhotos(eventCode, rawEventImages);
+  let alreadyRobotPhotosInserted = 0;
+  let alreadyRobotPhotosReceived = 0;
 
   const matchScheduleResult: RetrieveEventInfoResult['matchSchedule'] = {
     received: normalizedMatchMap.size,
@@ -602,6 +602,12 @@ export async function retrieveEventInfo(): Promise<RetrieveEventInfoResult> {
       }
     }
   });
+
+  const robotPhotosResult = upsertAlreadyRobotPhotos(eventCode, rawEventImages);
+  alreadyRobotPhotosInserted = robotPhotosResult.inserted;
+  alreadyRobotPhotosReceived = robotPhotosResult.received;
+  alreadyRobotPhotosResult.received = alreadyRobotPhotosReceived;
+  alreadyRobotPhotosResult.created = alreadyRobotPhotosInserted;
 
   return {
     eventCode,
