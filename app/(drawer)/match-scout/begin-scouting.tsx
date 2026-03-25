@@ -25,6 +25,7 @@ import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { ThemedText } from "@/components/themed-text";
 import { useOrganization } from "@/hooks/use-organization";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { useLeftHandedMode } from "@/hooks/use-app-settings";
 
 const toSingleValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -389,6 +390,7 @@ interface CounterControlProps {
   onDecrementByTwenty: () => void;
   leftFooter?: ReactNode;
   rightFooter?: ReactNode;
+  incrementsOnRight?: boolean;
 }
 
 function CounterControl({
@@ -402,6 +404,7 @@ function CounterControl({
   onDecrementByTwenty,
   leftFooter,
   rightFooter,
+  incrementsOnRight = true,
 }: CounterControlProps) {
   const positiveBackground = useThemeColor(
     { light: "#475569", dark: "#1F2937" },
@@ -415,108 +418,217 @@ function CounterControl({
   return (
     <View style={styles.counterControl}>
       <View style={styles.counterButtonsSplit}>
-        <View style={styles.counterButtonsColumn}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onIncrement}
-            style={({ pressed }) => [
-              styles.counterButton,
-              styles.counterButtonPositive,
-              styles.counterButtonCompact,
-              { backgroundColor: positiveBackground },
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.counterLabel}>
-              {label}
-            </ThemedText>
-            <ThemedText type="title" style={styles.counterValue}>
-              {value}
-            </ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-              +1
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onIncrementByFive}
-            style={({ pressed }) => [
-              styles.counterButton,
-              styles.counterButtonPositive,
-              styles.counterButtonCompact,
-              { backgroundColor: positiveBackground },
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-              +5
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onIncrementByTwenty}
-            style={({ pressed }) => [
-              styles.counterButton,
-              styles.counterButtonPositive,
-              styles.counterButtonCompact,
-              { backgroundColor: positiveBackground },
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-              +20
-            </ThemedText>
-          </Pressable>
-          {leftFooter}
-        </View>
-        <View style={styles.counterButtonsColumn}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onDecrementByOne}
-            style={({ pressed }) => [
-              styles.counterButton,
-              styles.counterButtonNegative,
-              styles.counterButtonCompact,
-              { backgroundColor: negativeBackground },
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-              -1
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onDecrementByFive}
-            style={({ pressed }) => [
-              styles.counterButton,
-              styles.counterButtonNegative,
-              styles.counterButtonCompact,
-              { backgroundColor: negativeBackground },
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-              -5
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onDecrementByTwenty}
-            style={({ pressed }) => [
-              styles.counterButton,
-              styles.counterButtonNegative,
-              styles.counterButtonCompact,
-              { backgroundColor: negativeBackground },
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
-              -20
-            </ThemedText>
-          </Pressable>
-          {rightFooter}
-        </View>
+        {incrementsOnRight ? (
+          <>
+            <View style={styles.counterButtonsColumn}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDecrementByOne}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonNegative,
+                  styles.counterButtonCompact,
+                  { backgroundColor: negativeBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  -1
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDecrementByFive}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonNegative,
+                  styles.counterButtonCompact,
+                  { backgroundColor: negativeBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  -5
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDecrementByTwenty}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonNegative,
+                  styles.counterButtonCompact,
+                  { backgroundColor: negativeBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  -20
+                </ThemedText>
+              </Pressable>
+              {leftFooter}
+            </View>
+            <View style={styles.counterButtonsColumn}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onIncrement}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonPositive,
+                  styles.counterButtonCompact,
+                  { backgroundColor: positiveBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterLabel}>
+                  {label}
+                </ThemedText>
+                <ThemedText type="title" style={styles.counterValue}>
+                  {value}
+                </ThemedText>
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  +1
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onIncrementByFive}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonPositive,
+                  styles.counterButtonCompact,
+                  { backgroundColor: positiveBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  +5
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onIncrementByTwenty}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonPositive,
+                  styles.counterButtonCompact,
+                  { backgroundColor: positiveBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  +20
+                </ThemedText>
+              </Pressable>
+              {rightFooter}
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.counterButtonsColumn}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onIncrement}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonPositive,
+                  styles.counterButtonCompact,
+                  { backgroundColor: positiveBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterLabel}>
+                  {label}
+                </ThemedText>
+                <ThemedText type="title" style={styles.counterValue}>
+                  {value}
+                </ThemedText>
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  +1
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onIncrementByFive}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonPositive,
+                  styles.counterButtonCompact,
+                  { backgroundColor: positiveBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  +5
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onIncrementByTwenty}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonPositive,
+                  styles.counterButtonCompact,
+                  { backgroundColor: positiveBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  +20
+                </ThemedText>
+              </Pressable>
+              {leftFooter}
+            </View>
+            <View style={styles.counterButtonsColumn}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDecrementByOne}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonNegative,
+                  styles.counterButtonCompact,
+                  { backgroundColor: negativeBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  -1
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDecrementByFive}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonNegative,
+                  styles.counterButtonCompact,
+                  { backgroundColor: negativeBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  -5
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDecrementByTwenty}
+                style={({ pressed }) => [
+                  styles.counterButton,
+                  styles.counterButtonNegative,
+                  styles.counterButtonCompact,
+                  { backgroundColor: negativeBackground },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.counterButtonText}>
+                  -20
+                </ThemedText>
+              </Pressable>
+              {rightFooter}
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -526,6 +638,7 @@ export default function BeginScoutingRoute() {
   const params = useLocalSearchParams<BeginScoutingParams>();
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
   const router = useRouter();
+  const leftHandedMode = useLeftHandedMode();
 
   const mode = toSingleValue(params.mode);
   const isPrescoutMode = mode === "prescout";
@@ -1312,6 +1425,7 @@ export default function BeginScoutingRoute() {
                     onDecrementByOne={() => handleAdjust("fuelScored", -1)}
                     onDecrementByFive={() => handleAdjust("fuelScored", -5)}
                     onDecrementByTwenty={() => handleAdjust("fuelScored", -20)}
+                    incrementsOnRight={!leftHandedMode}
                     leftFooter={
                       <>
                         {isAutoTab ? (

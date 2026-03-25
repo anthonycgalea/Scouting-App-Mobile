@@ -26,7 +26,7 @@ WebBrowser.maybeCompleteAuthSession();
 (SecureStore as typeof SecureStore & { default?: typeof SecureStore }).default ??= SecureStore;
 
 type ProvidersModule = typeof import('@/app/providers');
-const { AuthProvider, OrganizationProvider, QueryProvider, ColorSchemeProvider } =
+const { AuthProvider, OrganizationProvider, QueryProvider, ColorSchemeProvider, AppSettingsProvider } =
   require('@/app/providers') as ProvidersModule;
 
 type UseColorSchemeModule = typeof import('@/hooks/use-color-scheme');
@@ -48,7 +48,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ColorSchemeProvider>
-        <ThemedRootLayout />
+        <AppSettingsProvider>
+          <ThemedRootLayout />
+        </AppSettingsProvider>
       </ColorSchemeProvider>
     </SafeAreaProvider>
   );
