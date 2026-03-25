@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ThemedText } from '@/components/themed-text';
@@ -7,16 +7,37 @@ import {
   useColorSchemePreference,
   useSetColorSchemePreference,
 } from '@/hooks/use-color-scheme';
+import { useLeftHandedMode, useSetLeftHandedMode } from '@/hooks/use-app-settings';
 
 export function AppSettingsScreen() {
   const colorScheme = useColorScheme();
   const preference = useColorSchemePreference();
   const setPreference = useSetColorSchemePreference();
+  const leftHandedMode = useLeftHandedMode();
+  const setLeftHandedMode = useSetLeftHandedMode();
 
   return (
     <ScreenContainer>
       <ThemedText type="title">App Settings</ThemedText>
       <ThemedText>Choose how the app should look on your device.</ThemedText>
+
+
+      <View style={styles.section}>
+        <ThemedText style={styles.sectionLabel}>Match Scouting</ThemedText>
+        <View style={styles.switchRow}>
+          <View style={styles.switchTextContainer}>
+            <ThemedText style={styles.optionLabel}>Left Handed Mode</ThemedText>
+            <ThemedText style={styles.optionDescription}>
+              Flips increment/decrement button sides while scouting matches.
+            </ThemedText>
+          </View>
+          <Switch
+            value={leftHandedMode}
+            onValueChange={setLeftHandedMode}
+            accessibilityLabel="Toggle Left Handed Mode"
+          />
+        </View>
+      </View>
 
       <View style={styles.section}>
         <ThemedText style={styles.sectionLabel}>Appearance</ThemedText>
@@ -112,5 +133,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     opacity: 0.8,
+  },
+  switchRow: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  switchTextContainer: {
+    flex: 1,
   },
 });
